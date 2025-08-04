@@ -14,8 +14,8 @@ class Supplier(models.Model):
     address = models.TextField(blank=True, default='')
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.name
@@ -36,8 +36,8 @@ class PurchaseOrder(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.po_number
@@ -67,8 +67,8 @@ class PurchaseOrderItem(models.Model):
     status = models.CharField(max_length=20, choices=STATUS, default='pending')
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.product.modelname
@@ -106,8 +106,8 @@ class SupplierPayment(models.Model):
     remark = models.TextField(max_length=255, default='', blank=True)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.trxn_ref
@@ -131,8 +131,8 @@ class GoodsReceipt(models.Model):
     status = models.CharField(max_length=20, choices=STATUS, default='pending')
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.receipt_id
@@ -148,8 +148,8 @@ class GoodsReceiptItem(models.Model):
     serial_item = models.ForeignKey(SerializedInventory, on_delete=models.PROTECT, related_name='receipt_items_as_serial_item', null=True)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.product.modelname

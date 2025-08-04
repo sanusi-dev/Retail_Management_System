@@ -14,8 +14,8 @@ class Customer(models.Model):
     address = models.TextField(blank=True, default='')
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.name
@@ -30,8 +30,8 @@ class Sale(models.Model):
     status = models.CharField(max_length=20, choices=STATUS, default='pending')
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.sale_id
@@ -49,8 +49,8 @@ class SaleItem(models.Model):
     status = models.CharField(max_length=20, choices=STATUS, default='pending')
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.sale_item_id
@@ -58,7 +58,8 @@ class SaleItem(models.Model):
     class Meta:
         constraints = [
             CheckConstraint (
-                check= (Q(sold_quantity__gt=0, unit_selling_prive__gt=0))
+                check= (Q(sold_quantity__gt=0, unit_selling_prive__gt=0)),
+                name='chk_sales_items_positive_amount'
             )
         ]
 
@@ -87,8 +88,8 @@ class CustomerTransaction(models.Model):
     remark = models.TextField(max_length=255, default='', blank=True)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.trxn_ref
