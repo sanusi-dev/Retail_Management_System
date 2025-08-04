@@ -22,7 +22,13 @@ class Supplier(models.Model):
     
 
 class PurchaseOrder(models.Model):
-    STATUS = ['active', 'pending', 'approved', 'partially received', 'received', 'cancelled']
+    class Status(models.TextChoices):
+        ACTIVE = 'active', 'Active'
+        PENDING = 'pending', 'Pending'
+        APPROVED = 'approved', 'Approved'
+        PARTIALLY_RECEIVED = 'partially received', 'Partially Received'
+        RECEIVED = 'received', 'Received'
+        CANCELLED = 'cancelled', 'Cancelled'
 
     def gen_po_number():
         return f"PO-{timezone.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
@@ -32,7 +38,7 @@ class PurchaseOrder(models.Model):
     po_number = models.CharField(max_length=50, editable=False, unique=True, default=gen_po_number)
     order_date = models.DateTimeField(auto_now_add=True)
     expected_delivery_date = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS, default='pending')
+    status = models.CharField(max_length=20, choices=Status.PENDING)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
@@ -56,15 +62,21 @@ class PurchaseOrder(models.Model):
         ]
 
 class PurchaseOrderItem(models.Model):
-    STATUS = ['active', 'pending', 'approved', 'partially received', 'received', 'cancelled']
+    class Status(models.TextChoices):
+        ACTIVE = 'active', 'Active'
+        PENDING = 'pending', 'Pending'
+        APPROVED = 'approved', 'Approved'
+        PARTIALLY_RECEIVED = 'partially received', 'Partially Received'
+        RECEIVED = 'received', 'Received'
+        CANCELLED = 'cancelled', 'Cancelled'
 
     po_item_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     purchase_order = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name='purchase_order_items')
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='purchase_order_items')
-    ordered_quantity = models.IntegerField(max_length=20, default=1)
-    received_quantity = models.IntegerField(max_length=20, default=0)
+    ordered_quantity = models.IntegerField()
+    received_quantity = models.IntegerField()
     unit_price_at_order = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=20, choices=STATUS, default='pending')
+    status = models.CharField(max_length=20, choices=Status.PENDING)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
@@ -90,8 +102,15 @@ class PurchaseOrderItem(models.Model):
 
 
 class SupplierPayment(models.Model):
-    PAYMENT_METHOD = ['cash', 'transfer']
-    STATUS = ['pending', 'completed', 'voided']
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        FULFILLED = 'fulfilled', 'Fulfilled'
+        CANCELLED = 'cancelled', 'Cancelled'
+        VOIDED = 'voided', 'Voided'
+
+    class PaymentMethod(models.TextChoices):
+        CASH = 'cash', 'Cash'
+        TRANSFER = 'transfer', 'Transfer'
 
     def generate_trxn_ref():
         return f"SP-TXN-{timezone.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
@@ -100,9 +119,9 @@ class SupplierPayment(models.Model):
     purchase_order = models.ForeignKey(PurchaseOrder, on_delete=models.PROTECT, related_name='supplier_payments')
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2)
     payment_date = models.DateTimeField(auto_now_add=True)
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD)
+    payment_method = models.CharField(max_length=20, choices=PaymentMethod)
     trxn_ref = models.CharField(max_length=50, editable=False, unique=True, default=generate_trxn_ref)
-    status = models.CharField(max_length=20, default='completed', choices=STATUS)
+    status = models.CharField(max_length=20, choices=Status.FULFILLED)
     remark = models.TextField(max_length=255, default='', blank=True)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
@@ -122,13 +141,17 @@ class SupplierPayment(models.Model):
 
 
 class GoodsReceipt(models.Model):
-    STATUS = ['completed', 'pending', 'cancelled']
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        FULFILLED = 'fulfilled', 'Fulfilled'
+        CANCELLED = 'cancelled', 'Cancelled'
+        VOIDED = 'voided', 'Voided'
 
     receipt_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     purchase_order = models.ForeignKey(PurchaseOrder, on_delete=models.PROTECT, related_name='goods_receipts')
     delivery_date = models.DateTimeField(null=True, blank=True)
     received_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    status = models.CharField(max_length=20, choices=STATUS, default='pending')
+    status = models.CharField(max_length=20, choices=Status.PENDING)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
@@ -144,7 +167,7 @@ class GoodsReceiptItem(models.Model):
     purchase_order_item = models.ForeignKey(PurchaseOrderItem, on_delete=models.PROTECT, related_name='reciept_items')
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='receipt_items_as_product')
     actual_product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='receipt_items_as_actual_product')
-    received_quantity = models.IntegerField(max_length=20, default=0)
+    received_quantity = models.IntegerField()
     serial_item = models.ForeignKey(SerializedInventory, on_delete=models.PROTECT, related_name='receipt_items_as_serial_item', null=True)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)

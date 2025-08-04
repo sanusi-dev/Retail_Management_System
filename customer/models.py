@@ -22,12 +22,16 @@ class Customer(models.Model):
 
 
 class Sale(models.Model):
-    STATUS = ['pending', 'completed', 'cancelled', 'voided']
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        COMPLETED = 'completed', 'Completed'
+        CANCELLED = 'cancelled', 'Cancelled'
+        VOIDED = 'voided', 'Voided'
 
     sale_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name='customer_sales')
     sale_date = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=STATUS, default='pending')
+    status = models.CharField(max_length=20, choices=Status.PENDING)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
@@ -38,15 +42,19 @@ class Sale(models.Model):
     
 
 class SaleItem(models.Model):
-    STATUS = ['pending', 'fulfilled', 'cancelled', 'voided']
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        FULFILLED = 'fulfilled', 'Fulfilled'
+        CANCELLED = 'cancelled', 'Cancelled'
+        VOIDED = 'voided', 'Voided'
 
     sale_item_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='sale_item')
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='sale_items')
-    sold_quantity = models.IntegerField(max_length=20)
+    sold_quantity = models.IntegerField()
     unit_selling_price = models.DecimalField(max_digits=10, decimal_places=2)
     serial_item_id = models.ForeignKey(SerializedInventory, on_delete=models.PROTECT, related_name='sale_items', null=True)
-    status = models.CharField(max_length=20, choices=STATUS, default='pending')
+    status = models.CharField(max_length=20, choices=Status.PENDING)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
@@ -65,11 +73,27 @@ class SaleItem(models.Model):
 
 
 class CustomerTransaction(models.Model):
-    TRANSACTION_TYPE = ['deposit', 'withdrawal', 'sale payment']
-    FLOW_DIRECTION = ['in', 'out']
-    DEPOSIT_PURPOSE = ['normal deposit', 'buy goods', 'covert to cfa']
-    PAYMENT_METHOD = ['cash', 'transfer']
-    STATUS = ['completed', 'voided']
+    class TransactionType(models.TextChoices):
+        DEPOSIT = 'deposit', 'Deposit'
+        WITHDRAWAL = 'withdrawal', 'Withdrawal'
+        SALE_PAYMENT = 'sale payment', 'Sale Payment'
+
+    class FlowDirection(models.TextChoices):
+        IN = 'in', 'In'
+        OUT = 'out', 'Out'
+
+    class DepositPurpose(models.TextChoices):
+        NORMAL_DEPOSIT = 'normal deposit', 'Normal Deposit'
+        BUY_GOODS = 'buy goods', 'Buy Goods'
+        CONVERT_TO_CFA = 'convert to cfa', 'Convert to CFA'
+
+    class PaymentMethod(models.TextChoices):
+        CASH = 'cash', 'Cash'
+        TRANSFER = 'transfer', 'Transfer'
+
+    class Status(models.TextChoices):
+        COMPLETED = 'completed', 'Completed'
+        VOIDED = 'voided', 'Voided'
 
     def generate_trxn_ref():
         return f"CS-TXN-{timezone.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
@@ -77,14 +101,14 @@ class CustomerTransaction(models.Model):
     transaction_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     customer = models.ForeignKey(CustomUser, on_delete=models.PROTECT, related_name='customer_trxns')
     sale = models.ForeignKey(Sale, on_delete=models.PROTECT, related_name='sale_trxn', null=True)
-    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE)
+    transaction_type = models.CharField(max_length=20, choices=TransactionType)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    flow_direction = models.CharField(max_length=10, choices=FLOW_DIRECTION)
-    deposit_purpose = models.CharField(max_length=20, blank=True, null=True, choices=DEPOSIT_PURPOSE)
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD)
+    flow_direction = models.CharField(max_length=10, choices=FlowDirection)
+    deposit_purpose = models.CharField(max_length=20, blank=True, null=True, choices=DepositPurpose)
+    payment_method = models.CharField(max_length=20, choices=PaymentMethod)
     trxn_ref = models.CharField(max_length=50, editable=False, unique=True, default=generate_trxn_ref)
     transaction_date = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, default='completed', choices=STATUS)
+    status = models.CharField(max_length=20, default='completed', choices=Status)
     remark = models.TextField(max_length=255, default='', blank=True)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
