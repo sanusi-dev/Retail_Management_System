@@ -7,17 +7,25 @@ from django.utils import timezone
 
 
 class Loan(models.Model):
-    LOAN_TYPE = ['sales loan', 'normal loan']
-    STATUS = ['active', 'paid', 'overdue', 'wtitten off', 'cancelled']
+    class LoanType(models.TextChoices):
+        SALES_LOAN = 'sales loan', 'Sales Loan'
+        NORMAL_LOAN = 'normal loan', 'Normal Loan'
+
+    class Status(models.TextChoices):
+        ACTIVE = 'active', 'Active'
+        PAID = 'paid', 'Paid'
+        OVERDUE = 'overdue', 'Overdue'
+        WRITTEN_OFF = 'written off', 'Written Off'
+        CANCELLED = 'cancelled', 'Cancelled'
 
     loan_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name='customer_loans')
     sale = models.ForeignKey(Sale, on_delete=models.PROTECT, related_name='loan_sales', null=True)
-    loan_type = models.CharField(max_length=20, choices=LOAN_TYPE)
+    loan_type = models.CharField(max_length=20, choices=LoanType)
     principal_amount = models.DecimalField(max_digits=10, decimal_places=2)
     loan_date = models.DateTimeField(auto_now_add=True)
     due_date = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS, default='active', blank=True)
+    status = models.CharField(max_length=20, choices=Status, default='active', blank=True)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
@@ -48,7 +56,9 @@ class Loan(models.Model):
 
 
 class LoanRepayments(models.Model):
-    PAYMENT_METHOD = ['cash', 'transfer']
+    class PaymentMethod(models.TextChoices):
+        CASH = 'cash', 'Cash'
+        TRANSFER = 'transfer', 'Transfer'
 
     def generate_txn_ref(self):
         return f"LP-TXN-{timezone.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
@@ -57,7 +67,7 @@ class LoanRepayments(models.Model):
     loan = models.ForeignKey(Loan, on_delete=models.PROTECT, related_name='loan_repayments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     repayment_date = models.DateTimeField(auto_now_add=True)
-    payment_method = models.CharField(max_length=20, default='cash', choices=PAYMENT_METHOD)
+    payment_method = models.CharField(max_length=20, default='cash', choices=PaymentMethod)
     trxn_ref = models.CharField(max_length=50, editable=False, default=generate_txn_ref, unique=True)
     remark = models.TextField(blank=True, default='')
     create_at = models.DateTimeField(auto_now_add=True)
