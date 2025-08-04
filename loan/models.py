@@ -20,8 +20,8 @@ class Loan(models.Model):
     status = models.CharField(max_length=20, choices=STATUS, default='active', blank=True)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.loan_id
@@ -62,8 +62,8 @@ class LoanRepayments(models.Model):
     remark = models.TextField(blank=True, default='')
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.trxn_ref

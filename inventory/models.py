@@ -25,8 +25,8 @@ class Product(models.Model):
     base_product = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='variants', help_text="Parent product if this is a variant")
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.modelname
@@ -37,7 +37,7 @@ class Inventory(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='inventories')
     quantity_on_hand = models.IntegerField(max_length=20)
     last_updated_at = models.DateTimeField(auto_now_add=True)
-
+    
     def __str__(self):
         return self.product.modelname
 
@@ -53,8 +53,8 @@ class SerializedInventory(models.Model):
     received_date = models.DateTimeField(auto_now_add=True)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.product.modelname
@@ -69,8 +69,8 @@ class InventoryTransformation(models.Model):
     transformation_date = models.DateTimeField(auto_now_add=True)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-    create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
-    update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
+    updated_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='updated_%(class)s_set')
 
     def __str__(self):
         return self.transformation_id
