@@ -7,22 +7,12 @@ from django.utils import timezone
 
 
 class Loan(models.Model):
-    LOAN_TYPE = [
-        ('sl', 'Sales Loan'),
-        ('nl', 'Normal Loan'),
-    ]
-
-    STATUS = [
-        ('active', 'Active'),
-        ('paid', 'Paid'),
-        ('overdue', 'Overdue'),
-        ('wtitten off', 'Written Off'),
-        ('cancelled', 'Cancelled'),
-    ]
+    LOAN_TYPE = ['sales loan', 'normal loan']
+    STATUS = ['active', 'paid', 'overdue', 'wtitten off', 'cancelled']
 
     loan_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name='customer_loan')
-    sale = models.ForeignKey(Sale, on_delete=models.PROTECT, related_name='loan_sale', null=True)
+    customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name='customer_loans')
+    sale = models.ForeignKey(Sale, on_delete=models.PROTECT, related_name='loan_sales', null=True)
     loan_type = models.CharField(max_length=20, choices=LOAN_TYPE)
     principal_amount = models.DecimalField(max_digits=10, decimal_places=2)
     loan_date = models.DateTimeField(auto_now_add=True)
@@ -33,47 +23,50 @@ class Loan(models.Model):
     create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
     update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
 
+    def __str__(self):
+        return self.loan_id
     
     class Meta:
         constraints = [
             CheckConstraint (
                 check= (
-                    Q(loan_type='SL', sale_id__isnull=False) |
-                    Q(loan_type='NL', sale_id__isnull=True)
+                    Q(loan_type='sales loan', sale_id__isnull=False) |
+                    Q(loan_type='normal loan', sale_id__isnull=True)
                 ), name= 'chk_loan_type_sale_logic'
             ),
 
             CheckConstraint (
-                check= Q(principal_amount__gt=0), name='chk_positive_principal_amount'
+                check= Q(principal_amount__gt=0), 
+                name='chk_positive_principal_amount'
             ),
         
             CheckConstraint (
-                check= (
-                    Q(due_date__gte=F('loan_date'))
-                ), name= 'chk_due_date_logic'
+                check= (Q(due_date__gte=F('loan_date'))), 
+                name= 'chk_due_date_logic'
             ),
         ]
 
+
 class LoanRepayments(models.Model):
-    PAYMENT_METHOD = [
-        ('cash', 'Cash'),
-        ('transfer', 'Bank Transfer'),
-    ]
+    PAYMENT_METHOD = ['cash', 'transfer']
 
     def generate_txn_ref(self):
-        return f"TXN-{timezone.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
+        return f"LP-TXN-{timezone.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
 
     repayment_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    loan = models.ForeignKey(Loan, on_delete=models.PROTECT, related_name='loan_repayment')
+    loan = models.ForeignKey(Loan, on_delete=models.PROTECT, related_name='loan_repayments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     repayment_date = models.DateTimeField(auto_now_add=True)
     payment_method = models.CharField(max_length=20, default='cash', choices=PAYMENT_METHOD)
-    trxn_ref = models.CharField(max_length=50, editable=False, default=generate_txn_ref)
+    trxn_ref = models.CharField(max_length=50, editable=False, default=generate_txn_ref, unique=True)
     remark = models.TextField(blank=True, default='')
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
     create_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
     update_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL)
+
+    def __str__(self):
+        return self.trxn_ref
 
     class Meta:
         constraints = [
