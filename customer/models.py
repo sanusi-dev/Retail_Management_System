@@ -31,7 +31,7 @@ class Sale(models.Model):
     sale_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name='customer_sales')
     sale_date = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=Status.PENDING)
+    status = models.CharField(max_length=20, choices=Status, default=Status.PENDING)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
@@ -54,7 +54,7 @@ class SaleItem(models.Model):
     sold_quantity = models.IntegerField()
     unit_selling_price = models.DecimalField(max_digits=10, decimal_places=2)
     serial_item_id = models.ForeignKey(SerializedInventory, on_delete=models.PROTECT, related_name='sale_items', null=True)
-    status = models.CharField(max_length=20, choices=Status.PENDING)
+    status = models.CharField(max_length=20, choices=Status, default=Status.PENDING)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, blank=True, null=True, related_name='created_%(class)s_set')
@@ -66,7 +66,7 @@ class SaleItem(models.Model):
     class Meta:
         constraints = [
             CheckConstraint (
-                check= (Q(sold_quantity__gt=0, unit_selling_prive__gt=0)),
+                check= (Q(sold_quantity__gt=0, unit_selling_price__gt=0)),
                 name='chk_sales_items_positive_amount'
             )
         ]
@@ -134,6 +134,6 @@ class CustomerTransaction(models.Model):
                 ), name='chk_sale_payment_logic'
             ),
             CheckConstraint (
-                check=(Q(amount_gt=0)), name='chk_positive_amount'
+                check=(Q(amount__gt=0)), name='chk_positive_amount'
             ),
         ]

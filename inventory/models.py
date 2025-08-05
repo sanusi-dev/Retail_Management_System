@@ -59,7 +59,7 @@ class SerializedInventory(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='serialized_products')
     engine_number = models.CharField(max_length=255, unique=True)
     chassis_number = models.CharField(max_length=255, unique=True)
-    status = models.CharField(max_length=20, choices=Status.AVAILABLE, blank=True)
+    status = models.CharField(max_length=20, choices=Status, default=Status.AVAILABLE, blank=True)
     received_date = models.DateTimeField(auto_now_add=True)
     create_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
