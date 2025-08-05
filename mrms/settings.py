@@ -27,9 +27,24 @@ INSTALLED_APPS = [
     'supply_chain',
     'customer',
     'inventory',
+
+    'django_extensions', 
+    # 'debug_toolbar',
+    'livereload'
 ]
 
 AUTH_USER_MODEL = "account.CustomUser"
+
+LIVERELOAD_WATCH_PATTERNS = [
+    '*.html',
+    '*.js',
+    '*.css',
+    '*/templates/**/*',
+    '*/static/**/*',
+    '*.py'
+]
+
+RUNSERVER_PLUS_POLLER_RELOADER = True
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -39,6 +54,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    # 'debug_toolbar.middleware.DebugToolbarMiddleware',
+    # 'core.middleware.livereload.CustomLiveReloadMiddleware',
 ]
 
 ROOT_URLCONF = 'mrms.urls'
@@ -46,7 +64,7 @@ ROOT_URLCONF = 'mrms.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -61,9 +79,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'mrms.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -71,9 +86,6 @@ DATABASES = {
     }
 }
 
-
-# Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -91,24 +103,28 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
+
 
 LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
+TIME_ZONE = 'Africa/Lagos'
 USE_I18N = True
-
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # For production collectstatic
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+STATICFILES_DIRS = [BASE_DIR / 'static'] # Global static files
 
+# # Media files (user-uploaded content)
+# MEDIA_URL = '/media/'
+# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# ========================
+# Optimization
+# ========================
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+]
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
