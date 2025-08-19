@@ -1,0 +1,10 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block content %}
+    <div class="space-y-6">
+        <div>{% include "supply_chain/suppliers/add_supplier.html" %}</div>
+        <div class="flex gap-6">
+            <div style="width: 100%;">{% include "supply_chain/suppliers/supplier_table.html" %}</div>
+        </div>
+    </div>
+{% endblock content %}

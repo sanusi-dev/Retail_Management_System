@@ -1,0 +1,51 @@
+{% load static %}
+<div class="relative overflow-x-auto shadow-sm" style="z-index: 1;">
+    <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+            <tr>
+                <th scope="col" class="px-6 py-3">purchase order#</th>
+                <th scope="col" class="px-6 py-3">date</th>
+                <th scope="col" class="px-6 py-3">supplier</th>
+                <th scope="col" class="px-6 py-3">status</th>
+                <th scope="col" class="px-6 py-3">received</th>
+                <th scope="col" class="px-6 py-3">amount</th>
+                <th scope="col" class="px-6 py-3">delivery date</th>
+                <th scope="col" class="px-6 py-3"></th>
+                <th scope="col" class="px-6 py-3"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for po in purchases %}
+                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
+                    <th scope="row"
+                        class="px-6 py-4 font-medium capitalize text-gray-900 whitespace-nowrap dark:text-white">
+                        <a href="">{{ po.po_number }}</a>
+                    </th>
+                    <td class="px-6 py-4">{{ po.order_date }}</td>
+                    <td class="px-6 py-4">{{ po.supplier.name }}</td>
+                    <td class="px-6 py-4 uppercase">{{ po.status }}</td>
+                    <td class="px-6 py-4">{{ po.total_recieved|default:"N/A" }}</td>
+                    <td class="px-6 py-4">NGN {{ po.total_amount|floatformat:"2g" }}</td>
+                    <td class="px-6 py-4">{{ po.delivery_date|default_if_none:"N/A" }}</td>
+                    {% if po.can_delete %}
+                        <td class="px-6 py-4">
+                            <a href="{{ po.get_edit_url }}"
+                               class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
+                        </td>
+                        <td class="px-6 py-4">
+                            <form action="{{ po.get_delete_url }}" method='post'>
+                                {% csrf_token %}
+                                <button type='submit'
+                                        class="font-medium text-red-600 dark:text-red-500 hover:underline">
+                                    Delete
+                                </button>
+                            </form>
+                        </td>
+                    {% else %}
+                        <td class="px-6 py-4">Restricted</td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

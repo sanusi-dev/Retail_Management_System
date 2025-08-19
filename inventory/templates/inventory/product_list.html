@@ -1,0 +1,11 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block content %}
+    <div class="space-y-6">
+        <div>{% include "inventory/add_product.html" %}</div>
+        <div class="flex gap-6">
+            <div style="width: 80%;">{% include "inventory/product_table.html" %}</div>
+            <div class="pr-3" style="width: 20%;">{% include "inventory/filter.html" %}</div>
+        </div>
+    </div>
+{% endblock content %}
