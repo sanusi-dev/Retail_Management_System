@@ -29,22 +29,20 @@ INSTALLED_APPS = [
     'inventory',
 
     'django_extensions', 
+    'tailwind',
+    'theme',
+    'django_htmx',
     # 'debug_toolbar',
-    'livereload'
 ]
+
+TAILWIND_APP_NAME = 'theme'
+NPM_BIN_PATH = r"C:\Program Files\nodejs\npm.cmd"
+
+if DEBUG:
+    # Add django_browser_reload only in DEBUG mode
+    INSTALLED_APPS += ['django_browser_reload']
 
 AUTH_USER_MODEL = "account.CustomUser"
-
-LIVERELOAD_WATCH_PATTERNS = [
-    '*.html',
-    '*.js',
-    '*.css',
-    '*/templates/**/*',
-    '*/static/**/*',
-    '*.py'
-]
-
-RUNSERVER_PLUS_POLLER_RELOADER = True
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -54,11 +52,17 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django_htmx.middleware.HtmxMiddleware',
 
     # 'debug_toolbar.middleware.DebugToolbarMiddleware',
-    # 'core.middleware.livereload.CustomLiveReloadMiddleware',
 ]
 
+if DEBUG:
+    # Add django_browser_reload middleware only in DEBUG mode
+    MIDDLEWARE += [
+        "django_browser_reload.middleware.BrowserReloadMiddleware",
+    ]
+    
 ROOT_URLCONF = 'mrms.urls'
 
 TEMPLATES = [
@@ -114,7 +118,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # For production collectstatic
 
-STATICFILES_DIRS = [BASE_DIR / 'static'] # Global static files
+# STATICFILES_DIRS = [BASE_DIR / 'static'] # Global static files
 
 # # Media files (user-uploaded content)
 # MEDIA_URL = '/media/'
@@ -127,4 +131,5 @@ STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 ]
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

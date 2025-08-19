@@ -1,0 +1,17 @@
+<tr class="border-b" id="form-row-{{ forloop.counter0 }}">
+    <td class="p-2">{{ form.product }}</td>
+    <td class="p-2">{{ form.ordered_quantity }}</td>
+    <td class="p-2">{{ form.unit_price_at_order }}</td>
+    <td class="p-2">
+        {% if form in formset.initial_forms %}
+            {{ form.DELETE }}
+            <button type="button"
+                    class="text-red-500 hover:text-red-700"
+                    onclick="deleteExistingForm(this)">✕</button>
+        {% else %}
+            <button type="button"
+                    class="text-red-500 hover:text-red-700"
+                    onclick="deleteNewForm(this)">✕</button>
+        {% endif %}
+    </td>
+</tr>

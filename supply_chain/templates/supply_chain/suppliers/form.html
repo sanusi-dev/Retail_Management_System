@@ -1,0 +1,54 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block content %}
+    <div class="grid grid-cols-12 gap-6 md:gap-6">
+        <div class="col-span-6">
+            <section class="bg-white dark:bg-gray-900">
+                <div class="py-8 px-4 mx-auto max-w-2xl lg:py-16">
+                    <h2 class="mb-5 text-xl text-gray-900 dark:text-white">
+                        {% if is_editing %}
+                            Edit Supplier
+                        {% else %}
+                            New Supplier
+                        {% endif %}
+                    </h2>
+                    <form action="" method='post'>
+                        {% csrf_token %}
+                        <div class="grid gap-4 sm:grid-cols-2 sm:gap-6">
+                            {% if form.non_field_errors %}
+                                <div class="sm:col-span-2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+                                     role="alert">
+                                    {% for error in form.non_field_errors %}<p class="font-bold">{{ error }}</p>{% endfor %}
+                                </div>
+                            {% endif %}
+                            {% for field in form %}
+                                <div class=" {% if field.name == 'name' or field.name == 'address' %} sm:col-span-2 {% else %} w-full {% endif %} ">
+                                    <label for="{{ field.id_for_label }}"
+                                           class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                                        {{ field.label }}
+                                    </label>
+                                    {{ field }}
+                                    {% if field.errors %}
+                                        <div class="mt-2">
+                                            {% for error in field.errors %}<p class="text-sm text-red-600 dark:text-red-500">{{ error }}</p>{% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button type="submit"
+                                    class="inline-flex items-center px-3 py-1.5 mt-4 sm:mt-6 text-sm font-medium text-center text-white bg-brand-500 rounded-lg focus:ring-4 focus:ring-primary-200 dark:focus:ring-primary-900 hover:bg-primary-800">
+                                Save
+                            </button>
+                            <a href="{% url 'suppliers' %}"
+                               class="inline-flex items-center px-3 py-1.5 mt-4 sm:mt-6 text-sm font-medium text-center text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-2 focus:ring-primary-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-900">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </div>
+{% endblock content %}
