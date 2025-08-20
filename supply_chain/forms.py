@@ -99,18 +99,10 @@ class PurchaseOrderItemFormset(BaseModelFormSet):
                 products.add(product)
 
 
-# PurchaseOrderItemFormset = modelformset_factory(
-#     PurchaseOrderItem,
-#     form=PurchaseOrderItemForm,
-#     formset=PurchaseOrderItemFormset,
-#     fields=("product", "ordered_quantity", "unit_price_at_order"),
-#     extra=0,
-#     can_delete=True,
-# )
 PurchaseOrderItemFormSet = modelformset_factory(
     PurchaseOrderItem,
     form=PurchaseOrderItemForm,
     formset=PurchaseOrderItemFormset,
     can_delete=True,
-    extra=2,
+    extra=1,
 )

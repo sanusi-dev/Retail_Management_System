@@ -107,7 +107,7 @@ class PurchaseOrder(models.Model):
         return self.po_number
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-updated_at"]
 
     # Total value of undelivered units for this purchase order
     @property

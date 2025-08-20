@@ -63,7 +63,9 @@ def manage_purchases(request, pk=None):
 
     if request.method == "POST":
         form = PurchaseOrderForm(request.POST, instance=po_instance)
-        formset = PurchaseOrderItemFormSet(request.POST, queryset=queryset)
+        formset = PurchaseOrderItemFormSet(
+            request.POST, queryset=queryset, prefix="items"
+        )
 
         if form.is_valid() and formset.is_valid():
             with transaction.atomic():
@@ -75,7 +77,7 @@ def manage_purchases(request, pk=None):
 
                 items = formset.save(commit=False)
                 for item in items:
-                    item.po = po
+                    item.purchase_order = po
                     if not item.created_by_id:
                         item.created_by = request.user
                     item.updated_by = request.user
@@ -87,7 +89,7 @@ def manage_purchases(request, pk=None):
     else:
 
         form = PurchaseOrderForm(instance=po_instance)
-        formset = PurchaseOrderItemFormSet(queryset=queryset)
+        formset = PurchaseOrderItemFormSet(queryset=queryset, prefix="items")
 
     context = {
         "po_form": form,
@@ -105,3 +107,21 @@ def delete_po(request, pk):
     if request.method == "POST":
         po.delete()
         return redirect("purchases")
+
+
+def htmx_add_po_item(request):
+    """
+    This view is called by HTMX to add a new item form to the formset.
+    """
+    # Get the index for the new form from the request parameters
+    try:
+        current_index = int(request.GET.get("index", "0"))
+    except (ValueError, TypeError):
+        current_index = 0
+
+    formset = PurchaseOrderItemFormSet(prefix="items")
+    empty_form = formset.empty_form
+    empty_form.prefix = f"items-{current_index}"
+
+    context = {"form": empty_form}
+    return render(request, "supply_chain/po/partials/po_item_form_row.html", context)
