@@ -13,4 +13,6 @@ urlpatterns = [
     path("po/edit/<str:pk>/", manage_purchases, name="edit_po"),
     path("po_detail", po_detail, name="po_detail"),
     path("po/delete/<str:pk>", delete_po, name="delete_po"),
+    # +++ NEW URL FOR HTMX +++
+    path("htmx/po/add-item/", htmx_add_po_item, name="htmx_add_po_item"),
 ]

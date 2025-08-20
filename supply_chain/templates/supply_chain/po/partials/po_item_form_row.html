@@ -1,0 +1,46 @@
+<tr class="item-form-row {% if form.errors %}bg-red-50{% endif %}">
+   {# Render hidden fields like 'id' and 'purchase_order' #}
+   {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+   <!-- Product field with errors -->
+   <td class="p-2">
+      {{ form.product }}
+      {% if form.product.errors %}
+         <div class="text-red-600 text-sm mt-1">
+            {% for error in form.product.errors %}<div>{{ error }}</div>{% endfor %}
+         </div>
+      {% endif %}
+   </td>
+   <!-- Quantity field with errors -->
+   <td class="p-2">
+      {{ form.ordered_quantity }}
+      {% if form.ordered_quantity.errors %}
+         <div class="text-red-600 text-sm mt-1">
+            {% for error in form.ordered_quantity.errors %}<div>{{ error }}</div>{% endfor %}
+         </div>
+      {% endif %}
+   </td>
+   <!-- Unit price field with errors -->
+   <td class="p-2">
+      {{ form.unit_price_at_order }}
+      {% if form.unit_price_at_order.errors %}
+         <div class="text-red-600 text-sm mt-1">
+            {% for error in form.unit_price_at_order.errors %}<div>{{ error }}</div>{% endfor %}
+         </div>
+      {% endif %}
+   </td>
+   <td class="p-2">
+      <button type="button"
+              class="remove-form-row text-red-500 hover:text-red-700 font-medium">Remove</button>
+      {% if form.initial %}<div class="hidden">{{ form.DELETE }}</div>{% endif %}
+   </td>
+</tr>
+<!-- Display non-field errors for this form -->
+{% if form.non_field_errors %}
+   <tr class="bg-red-50 item-form-row-errors">
+      <td colspan="4" class="p-2">
+         <div class="text-red-600 text-sm">
+            {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+         </div>
+      </td>
+   </tr>
+{% endif %}

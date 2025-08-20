@@ -11,7 +11,8 @@
     </head>
     <body x-data="{ page: 'ecommerce', 'loaded': true, 'darkMode': false, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false }"
           x-init=" darkMode = JSON.parse(localStorage.getItem('darkMode')); $watch('darkMode', value => localStorage.setItem('darkMode', JSON.stringify(value)))"
-          :class="{'dark bg-gray-900': darkMode === true}">
+          :class="{'dark bg-gray-900': darkMode === true}"
+          hx-headers='{"x-csrftoken": "{{ csrf_token }}"}'>
         {% comment %} this is will utilize later {% endcomment %}
         <div class="fixed top-0 right-0 h-screen w-10 bg-gray-100 dark:bg-gray-900 z-30"></div>
         {% include "partials/preloader.html" %}
