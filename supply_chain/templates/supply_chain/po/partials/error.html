@@ -1,0 +1,70 @@
+<!-- supply_chain/po/partials/error.html -->
+{% if po_form.errors or item_formset.errors or po_form.non_field_errors or item_formset.non_form_errors %}
+   <div class="bg-red-50 border-b border-red-200 px-5 py-3">
+      <div class="max-w-4xl space-y-2">
+         <!-- Main form errors -->
+         {% for field in po_form %}
+            {% if field.errors %}
+               {% for error in field.errors %}
+                  <div class="flex items-center">
+                     <svg xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          class="size-4 text-red-500 mr-2 flex-shrink-0">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                     </svg>
+                     <p class="text-sm text-red-700">{{ error }}</p>
+                  </div>
+               {% endfor %}
+            {% endif %}
+         {% endfor %}
+         <!-- Formset field errors -->
+         {% for form in item_formset %}
+            {% if form.errors %}
+               {% for field in form %}
+                  {% if field.errors %}
+                     {% for error in field.errors %}
+                        <div class="flex items-center">
+                           <svg xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                class="size-4 text-red-500 mr-2 flex-shrink-0">
+                              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                           </svg>
+                           <p class="text-sm text-red-700">{{ error }}</p>
+                        </div>
+                     {% endfor %}
+                  {% endif %}
+               {% endfor %}
+            {% endif %}
+         {% endfor %}
+         <!-- Non-field errors -->
+         {% if po_form.non_field_errors %}
+            {% for error in po_form.non_field_errors %}
+               <div class="flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg"
+                       viewBox="0 0 20 20"
+                       fill="currentColor"
+                       class="size-4 text-red-500 mr-2 flex-shrink-0">
+                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                  </svg>
+                  <p class="text-sm text-red-700">{{ error }}</p>
+               </div>
+            {% endfor %}
+         {% endif %}
+         {% if item_formset.non_form_errors %}
+            {% for error in item_formset.non_form_errors %}
+               <div class="flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg"
+                       viewBox="0 0 20 20"
+                       fill="currentColor"
+                       class="size-4 text-red-500 mr-2 flex-shrink-0">
+                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                  </svg>
+                  <p class="text-sm text-red-700">{{ error }}</p>
+               </div>
+            {% endfor %}
+         {% endif %}
+      </div>
+   </div>
+{% endif %}

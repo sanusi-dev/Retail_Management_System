@@ -1,0 +1,135 @@
+{% extends 'index.html' %}
+{% load static %}
+{% load widget_tweaks %}
+{% block content %}
+    <div class="flex h-full flex-col">
+        <form action="" method="post" class="flex flex-col flex-1">
+            {% csrf_token %}
+            <div class="flex-none bg-gray-50 border-b py-5 px-5 h-20">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-2xl font-normal text-gray-900">
+                        {% if is_editing %}
+                            Edit Item
+                        {% else %}
+                            New Item
+                        {% endif %}
+                    </h1>
+                    <a href="{% url 'products' %}"
+                       class="p-2 text-gray-500 hover:text-gray-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="1.5"
+                             stroke="currentColor"
+                             class="size-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+            <div class="flex-1 overflow-y-auto px-5 bg-gray-50">
+                <div class="mt-5 py-5 max-w-4xl">
+                    <!-- Non-field errors -->
+                    {% if form.non_field_errors %}
+                        <div class="mb-6 bg-red-100 border border-red-400 text-red-600 px-4 py-3 rounded-md relative"
+                             role="alert">
+                            {% for error in form.non_field_errors %}<p class="font-light">{{ error }}</p>{% endfor %}
+                        </div>
+                    {% endif %}
+                    {% with WIDGET_ERROR_CLASS='bg-red-500' %}
+                        <div class="space-y-6">
+                            <!-- Brand Field -->
+                            <div class="flex items-center max-w-lg">
+                                <label for="{{ form.brand.id_for_label }}"
+                                       class="text-sm font-normal text-red-600 mr-8 whitespace-nowrap w-32">
+                                    Brand*
+                                </label>
+                                <div class="flex-1">
+                                    {% render_field form.brand class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 focus:outline-none block w-full py-1.5 px-2.5" %}
+                                    {% if form.brand.errors %}
+                                        {% for error in form.brand.errors %}<p class="text-red-500 text-sm mt-1">{{ error }}</p>{% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <!-- Model Name Field -->
+                            <div class="flex items-center max-w-lg">
+                                <label for="{{ form.modelname.id_for_label }}"
+                                       class="text-sm font-normal text-red-600 mr-8 whitespace-nowrap w-32">
+                                    Model Name*
+                                </label>
+                                <div class="flex-1">
+                                    {% render_field form.modelname class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 focus:outline-none block w-full py-1.5 px-2.5" placeholder="e.g., CGL 125" %}
+                                    {% if form.modelname.errors %}
+                                        {% for error in form.modelname.errors %}<p class="text-red-500 text-sm mt-1">{{ error }}</p>{% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <!-- Category Field -->
+                            <div class="flex items-center max-w-lg">
+                                <label for="{{ form.category.id_for_label }}"
+                                       class="text-sm font-normal text-red-600 mr-8 whitespace-nowrap w-32">
+                                    Category*
+                                </label>
+                                <div class="flex-1">
+                                    {% render_field form.category class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 focus:outline-none block w-full py-1.5 px-2.5" placeholder="e.g., CGL 125" %}
+                                    {% if form.category.errors %}
+                                        {% for error in form.category.errors %}<p class="text-red-500 text-sm mt-1">{{ error }}</p>{% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <!-- Type Variant Field (Radio Buttons - Inline) -->
+                            <div class="flex items-start max-w-lg">
+                                <label class="text-sm font-normal text-red-600 mr-8 whitespace-nowrap w-32 mt-2">Type*</label>
+                                <div class="flex-1">
+                                    <div class="flex space-x-6">
+                                        {% for choice in form.type_variant %}
+                                            {% if choice.choice_label != "Select a Type" %}
+                                                <div class="flex items-center">
+                                                    <div class="flex items-center h-5">{{ choice.tag }}</div>
+                                                    <div class="ml-2 text-sm">
+                                                        <label for="{{ choice.id_for_label }}" class="font-medium text-gray-700">{{ choice.choice_label }}</label>
+                                                    </div>
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    {% if form.type_variant.errors %}
+                                        {% for error in form.type_variant.errors %}<p class="text-red-500 text-sm mt-2">{{ error }}</p>{% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <!-- Base Product Field -->
+                            <div class="flex items-center max-w-lg">
+                                <label for="{{ form.base_product.id_for_label }}"
+                                       class="text-sm font-normal text-gray-700 mr-8 whitespace-nowrap w-32">
+                                    Base Product
+                                </label>
+                                <div class="flex-1">
+                                    {% render_field form.base_product class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 focus:outline-none block w-full py-1.5 px-2.5" %}
+                                    {% if form.base_product.errors %}
+                                        {% for error in form.base_product.errors %}<p class="text-red-500 text-sm mt-1">{{ error }}</p>{% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <!-- Description Field -->
+                            <div class="flex items-start max-w-lg">
+                                <label for="{{ form.description.id_for_label }}"
+                                       class="text-sm font-normal text-gray-700 mr-8 whitespace-nowrap w-32 mt-2">
+                                    Description
+                                </label>
+                                <div class="flex-1">
+                                    {% render_field form.description rows="4" class="block py-1.5 px-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 focus:outline-none" placeholder="Enter a description for the product..." %}
+                                    {% if form.description.errors %}
+                                        {% for error in form.description.errors %}<p class="text-red-500 text-sm mt-1">{{ error }}</p>{% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endwith %}
+                </div>
+            </div>
+            {% url 'products' as cancel_url %}
+            {% include 'partials/form_buttons.html' with cancel_url=cancel_url %}
+        </form>
+    </div>
+{% endblock content %}

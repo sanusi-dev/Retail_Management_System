@@ -1,0 +1,178 @@
+<div class="relative"
+     x-data="{ dropdownOpen: false }"
+     @click.outside="dropdownOpen = false">
+   <button class="flex h-8 w-8 items-center justify-center rounded-sm bg-brand-500 text-white transition-colors hover:bg-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:ring-opacity-25"
+           @click.prevent="dropdownOpen = ! dropdownOpen">
+      <svg xmlns="http://www.w3.org/2000/svg"
+           fill="none"
+           viewBox="0 0 24 24"
+           stroke-width="1.5"
+           stroke="currentColor"
+           class="size-6">
+         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+   </button>
+   <div x-show="dropdownOpen"
+        x-transition:enter="transition ease-linear duration-50"
+        x-transition:enter-start="opacity-0 translate-y-1"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-linear duration-50"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 translate-y-1"
+        class="shadow-theme-lg absolute right-0 mt-[20px] w-screen max-w-sm rounded-md border border-gray-200 bg-white p-6 sm:max-w-md md:max-w-4xl">
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+         <div class="space-y-4">
+            <div class="flex items-center gap-2">
+               <svg xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="1.5"
+                    stroke="currentColor"
+                    class="size-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+               </svg>
+               <h5 class="font-normal text-gray-500 text-sm">GENERAL</h5>
+            </div>
+            <ul class="space-y-2">
+               <li>
+                  <a href="" class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Add Users</span>
+                  </a>
+               </li>
+               <li>
+                  <a href="" class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Item</span>
+                  </a>
+               </li>
+               <li>
+                  <a href="" class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Item Groups</span>
+                  </a>
+               </li>
+               <li>
+                  <a href="" class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Inventory Adjustments</span>
+                  </a>
+               </li>
+            </ul>
+         </div>
+         <div class="space-y-4">
+            <div class="flex items-center gap-2">
+               <svg xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="1.5"
+                    stroke="currentColor"
+                    class="size-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+               </svg>
+               <h5 class="font-normal text-gray-500 text-sm">SALES</h5>
+            </div>
+            <ul class="space-y-2">
+               <li>
+                  <a href="" class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Customer</span>
+                  </a>
+               </li>
+               <li>
+                  <a href="" class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Customer</span>
+                  </a>
+               </li>
+               <li>
+                  <a href="" class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Customer</span>
+                  </a>
+               </li>
+               <li>
+                  <a href="" class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Customer</span>
+                  </a>
+               </li>
+               <li>
+                  <a href="" class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Customer</span>
+                  </a>
+               </li>
+            </ul>
+         </div>
+         <div class="space-y-4">
+            <div class="flex items-center gap-2">
+               <svg xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="1.5"
+                    stroke="currentColor"
+                    class="size-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+               </svg>
+               <h5 class="font-normal text-gray-500 text-sm">PURCHASES</h5>
+            </div>
+            <ul class="space-y-2">
+               <li>
+                  <a href="" class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Vendor</span>
+                  </a>
+               </li>
+               <li>
+                  <a href="" class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Vendor</span>
+                  </a>
+               </li>
+               <li>
+                  <a href="" class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Vendor</span>
+                  </a>
+               </li>
+               <li>
+                  <a href="" class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Vendor</span>
+                  </a>
+               </li>
+            </ul>
+         </div>
+         <div class="space-y-4">
+            <div class="flex items-center gap-2">
+               <svg xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="1.5"
+                    stroke="currentColor"
+                    class="size-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25M9 16.5v.75m3-3v3M15 12v5.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+               </svg>
+               <h5 class="font-normal text-gray-500 text-sm">REPORTS</h5>
+            </div>
+            <ul class="space-y-2">
+               <li>
+                  <a href="#"
+                     class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Sales Report</span>
+                  </a>
+               </li>
+               <li>
+                  <a href="#"
+                     class="menu-link font-normal text-sm flex items-center gap-1">
+                     {% include 'partials/plus_icon.html' %}
+                     <span>Inventory Report</span>
+                  </a>
+               </li>
+            </ul>
+         </div>
+      </div>
+   </div>
+</div>

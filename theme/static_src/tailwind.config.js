@@ -65,7 +65,7 @@ module.exports = {
     daisyui: {
         styled: true,
         themes: true,
-        base: false, // <--- THIS IS THE FIX. Disables DaisyUI's base style reset.
+        base: true, // <--- THIS IS THE FIX. Disables DaisyUI's base style reset.
         utils: true,
         logs: true,
         rtl: false,

@@ -1,0 +1,17 @@
+<div class="flex items-center max-w-lg">
+   <label for="{{ field.id_for_label }}"
+          class="text-sm font-normal text-gray-700 mr-8 whitespace-nowrap w-32">
+      {{ field.label }}
+      {% if field.field.required %}<span class="text-red-600">*</span>{% endif %}
+   </label>
+   <div class="flex-1">
+      {% if field.field.widget.attrs.placeholder %}
+         {% render_field field class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 focus:outline-none block w-full py-1.5 px-2.5" placeholder=field.field.widget.attrs.placeholder %}
+      {% else %}
+         {% render_field field class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 focus:outline-none block w-full py-1.5 px-2.5" %}
+      {% endif %}
+      {% if field.errors %}
+         {% for error in field.errors %}<p class="text-red-500 text-sm mt-1">{{ error }}</p>{% endfor %}
+      {% endif %}
+   </div>
+</div>
