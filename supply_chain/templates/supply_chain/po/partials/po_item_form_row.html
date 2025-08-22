@@ -1,46 +1,22 @@
-<tr class="item-form-row {% if form.errors %}bg-red-50{% endif %}">
-   {# Render hidden fields like 'id' and 'purchase_order' #}
+{% load widget_tweaks %}
+<tr class="item-form-row border-b-0 {% if form.errors %}bg-red-50{% endif %}">
    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
-   <!-- Product field with errors -->
-   <td class="p-2">
-      {{ form.product }}
-      {% if form.product.errors %}
-         <div class="text-red-600 text-sm mt-1">
-            {% for error in form.product.errors %}<div>{{ error }}</div>{% endfor %}
-         </div>
-      {% endif %}
+   <td class="px-2 py-3 border-r border-b">
+      {% render_field form.product class="w-full font-light px-2 py-1 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none" required=form.product.field.required %}
    </td>
-   <!-- Quantity field with errors -->
-   <td class="p-2">
-      {{ form.ordered_quantity }}
-      {% if form.ordered_quantity.errors %}
-         <div class="text-red-600 text-sm mt-1">
-            {% for error in form.ordered_quantity.errors %}<div>{{ error }}</div>{% endfor %}
-         </div>
-      {% endif %}
+   <td class="px-2 py-3 border-r border-b">
+      {% render_field form.ordered_quantity placeholder="1" class="w-full px-2 py-1 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-right" required=form.ordered_quantity.field.required min="1" %}
    </td>
-   <!-- Unit price field with errors -->
-   <td class="p-2">
-      {{ form.unit_price_at_order }}
-      {% if form.unit_price_at_order.errors %}
-         <div class="text-red-600 text-sm mt-1">
-            {% for error in form.unit_price_at_order.errors %}<div>{{ error }}</div>{% endfor %}
-         </div>
-      {% endif %}
+   <td class="px-2 py-3 border-r border-b">
+      {% render_field form.unit_price_at_order placeholder="0.00" class="w-full px-2 py-1 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-right" required=form.unit_price_at_order.field.required min="10000.00" step="5000.00" %}
    </td>
-   <td class="p-2">
-      <button type="button"
-              class="remove-form-row text-red-500 hover:text-red-700 font-medium">Remove</button>
+   <td class="px-4 py-3">
+      <button type="button" class="remove-form-row text-red-600 hover:text-red-800">
+         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+            </path>
+         </svg>
+      </button>
       {% if form.initial %}<div class="hidden">{{ form.DELETE }}</div>{% endif %}
    </td>
 </tr>
-<!-- Display non-field errors for this form -->
-{% if form.non_field_errors %}
-   <tr class="bg-red-50 item-form-row-errors">
-      <td colspan="4" class="p-2">
-         <div class="text-red-600 text-sm">
-            {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
-         </div>
-      </td>
-   </tr>
-{% endif %}

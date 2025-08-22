@@ -8,7 +8,7 @@ from .forms import *
 
 @login_required(login_url="/admin/login/")
 def suppliers(request):
-    suppliers = Supplier.objects.prefetch_related("purchase_orders__po_items")
+    suppliers = Supplier.objects.all()
     context = {"suppliers": suppliers}
     return render(request, "supply_chain/suppliers/supplier_list.html", context)
 
@@ -48,13 +48,12 @@ def delete_supplier(request, pk):
 
 @login_required(login_url="/admin/login/")
 def purchases(request):
-    purchases = PurchaseOrder.objects.select_related()
+    purchases = PurchaseOrder.objects.select_related("supplier")
     context = {"purchases": purchases}
     return render(request, "supply_chain/po/purchases.html", context)
 
 
 def manage_purchases(request, pk=None):
-
     po_instance = get_object_or_404(PurchaseOrder, pk=pk) if pk else None
     if po_instance:
         queryset = po_instance.po_items.all()
@@ -90,7 +89,6 @@ def manage_purchases(request, pk=None):
 
         form = PurchaseOrderForm(instance=po_instance)
         formset = PurchaseOrderItemFormSet(queryset=queryset, prefix="items")
-
     context = {
         "po_form": form,
         "item_formset": formset,
@@ -125,3 +123,21 @@ def htmx_add_po_item(request):
 
     context = {"form": empty_form}
     return render(request, "supply_chain/po/partials/po_item_form_row.html", context)
+
+
+def supplier_payments(request):
+    payment = SupplierPayment.objects.select_related("purchase_order__supplier")
+    context = {"payments": payment}
+    return render(request, "supply_chain/payment_made/payment_list.html", context)
+
+
+def supplier_payments_detail(request):
+    pass
+
+
+def supplier_payments_create(request):
+    pass
+
+
+def supplier_payments_void(request):
+    pass

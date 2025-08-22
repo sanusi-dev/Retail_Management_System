@@ -9,11 +9,27 @@ from django.core.exceptions import ValidationError
 
 
 class Supplier(models.Model):
+
+    class Salutation(models.TextChoices):
+        MR = "mr", "Mr."
+        MRS = "mrs", "Mrs."
+        MISS = "miss", "Miss"
+        MS = "ms", "Ms."
+        DR = "dr", "Dr."
+        PROF = "prof", "Prof."
+
     supplier_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    name = models.CharField(max_length=255)
-    phone = models.CharField(max_length=20)
-    email = models.EmailField(max_length=255)
-    address = models.TextField(blank=True, default="")
+    firstname = models.CharField(max_length=255, null=True, blank=True)
+    lastname = models.CharField(max_length=255, null=True, blank=True)
+    company_name = models.CharField(max_length=255, unique=True)
+    display_name = models.CharField(max_length=255)
+    salutation = models.CharField(
+        max_length=10, choices=Salutation, default=Salutation.MR
+    )
+    mobile = models.CharField(max_length=20, null=True, blank=True, unique=True)
+    work_phone = models.CharField(max_length=20, unique=True)
+    email = models.EmailField(max_length=255, null=True, blank=True)
+    address = models.TextField(null=True, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
@@ -32,10 +48,17 @@ class Supplier(models.Model):
     )
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["display_name"]
 
     def __str__(self):
-        return self.name
+        return f"{self.salutation.title()} {self.display_name.title()}"
+
+    @property
+    def name(self):
+        if self.salutation and self.display_name:
+            return f"{self.salutation}. {self.display_name}"
+        else:
+            return f"{self.firstname or ''} {self.lastname or ''}".strip()
 
     @property
     def get_absolute_url(self):

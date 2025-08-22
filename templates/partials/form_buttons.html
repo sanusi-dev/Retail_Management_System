@@ -1,0 +1,12 @@
+<div class="flex-none bg-gray-50 border-t border-gray-200 shadow-md px-5 py-3">
+   <div class="flex gap-2">
+      <button type="submit"
+              class="px-4 py-2 text-sm font-normal text-center inline-flex items-center text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:ring-1 focus:outline-none">
+         {{ submit_text|default:"Save" }}
+      </button>
+      <a href="{{ cancel_url|default:'#' }}"
+         class="px-3 py-2 text-sm font-normal text-center inline-flex items-center text-gray-800 bg-gray-100 border rounded-lg hover:bg-gray-300 focus:ring-1 focus:outline-none">
+         {{ cancel_text|default:"Cancel" }}
+      </a>
+   </div>
+</div>

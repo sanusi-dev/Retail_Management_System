@@ -1,88 +1,98 @@
 {% extends 'index.html' %}
 {% load static %}
+{% load widget_tweaks %}
 {% block content %}
-   <div class="flex p-4">
-      <div class="p-6 w-full max-w-4xl">
-         <form method="post">
-            {% csrf_token %}
-            <h1 class="text-xl mb-10">New Purchase Order</h1>
-            <!-- Display non-field errors for the main form -->
-            {% if po_form.non_field_errors %}
-               <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                  {% for error in po_form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
-               </div>
-            {% endif %}
-            <div class="w-[80%]">
-               <div class="grid grid-cols-[1fr_2fr_50px] mb-6 items-center">
-                  <div>
-                     <label for="{{ po_form.supplier.id_for_label }}"
-                            class="block text-sm font-medium {% if po_form.supplier.errors %}text-red-600{% else %}text-gray-700{% endif %}">
-                        {{ po_form.supplier.label }}
-                     </label>
-                  </div>
-                  <div class="flex items-center">
-                     {{ po_form.supplier }}
-                     <!-- Display supplier field errors -->
-                     {% if po_form.supplier.errors %}
-                        <div class="ml-2 text-red-600 text-sm">
-                           {% for error in po_form.supplier.errors %}<div>{{ error }}</div>{% endfor %}
-                        </div>
-                     {% endif %}
-                  </div>
+   <div class="flex h-full flex-col">
+      <form action="" method="post" class="flex flex-col flex-1">
+         {% csrf_token %}
+         <div class="flex-none bg-white py-5 px-5 h-20">
+            <div class="flex justify-between items-center">
+               <h1 class="text-2xl font-normal text-gray-900">New Purchase Order</h1>
+               <a href="{% url 'purchases' %}"
+                  class="p-2 text-gray-500 hover:text-gray-600 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg"
+                       fill="none"
+                       viewBox="0 0 24 24"
+                       stroke-width="1.5"
+                       stroke="currentColor"
+                       class="size-6">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+               </a>
+            </div>
+         </div>
+         {% include "supply_chain/po/partials/error.html" %}
+         <div class="flex-none bg-gray-50 py-5 px-5 h-20">
+            <div class="flex justify-between items-center max-w-lg">
+               <label for="{{ po_form.supplier.id_for_label }}"
+                      class="text-sm font-normal text-red-600 mr-10 whitespace-nowrap">Supplier Name*</label>
+               <div class="relative flex flex-1">
+                  {% render_field po_form.supplier class="w-full font-light px-3 py-1.5 ml-10 bg-white border border-gray-300 rounded-l-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none" %}
                   <a href="{% url 'add_supplier' %}?next={{ request.path }}"
-                     class="border rounded-r-md p-2 flex items-center justify-center h-full bg-blue-500 text-white hover:bg-blue-600">
+                     class="inline-flex items-center justify-center bg-blue-500 text-white rounded-r-sm px-2 hover:bg-blue-600 transition-colors">
                      <svg xmlns="http://www.w3.org/2000/svg"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke-width="1.5"
                           stroke="currentColor"
-                          class="w-6 h-6">
+                          class="size-6">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                      </svg>
                   </a>
                </div>
             </div>
-            <div class="my-10">
-               {% if item_formset.non_form_errors %}
-                  <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                     {% for error in item_formset.non_form_errors %}<div>{{ error }}</div>{% endfor %}
+         </div>
+         <div class="flex-1 overflow-y-auto px-5">
+            <div class="bg-white mt-5 py-5 max-w-4xl">
+               <div class="mb-6">
+                  <div class="border-t border-b rounded-t-xl bg-gray-50 w-179.5">
+                     <h3 class="text-lg font-normal text-gray-900 pl-3 py-2">Item Table</h3>
                   </div>
-               {% endif %}
-               <h2 class="text-lg mb-2 bg-gray-100">Item Table</h2>
-               <div class="overflow-x-auto">
-                  <table class="w-full">
-                     <thead>
-                        <tr class="bg-gray-100">
-                           <th class="p-2 text-left">Product</th>
-                           <th class="p-2 text-left">Quantity</th>
-                           <th class="p-2 text-left">Unit Price</th>
-                           <th class="p-2 text-left">Action</th>
-                        </tr>
-                     </thead>
-                     <tbody id="items-container">
-                        {{ item_formset.management_form }}
-                        {% for form in item_formset %}
-                           {% include 'supply_chain/po/partials/po_item_form_row.html' with form=form %}
-                        {% endfor %}
-                     </tbody>
-                  </table>
+                  <div class="overflow-x-auto">
+                     <table class="w-full table-fixed">
+                        <thead class="bg-white">
+                           <tr>
+                              <th class="w-2/5 pl-2 pr-2 py-3 text-left text-sm font-normal text-gray-700 uppercase tracking-wider border-b border-r">
+                                 Product Name
+                              </th>
+                              <th class="w-1/5 px-2 py-3 text-right text-sm font-normal text-gray-700 uppercase tracking-wider border-b border-r">
+                                 Quantity
+                              </th>
+                              <th class="w-1/5 px-2 py-3 text-right text-sm font-normal text-gray-700 uppercase tracking-wider border-b border-r">
+                                 Amount
+                              </th>
+                              <th class="w-1/5 px-4 py-3 text-left text-sm font-normal text-gray-700 uppercase tracking-wider"></th>
+                           </tr>
+                        </thead>
+                        <tbody id="items-container" class="bg-white divide-y divide-gray-200">
+                           {{ item_formset.management_form }}
+                           {% for form in item_formset %}
+                              {% include 'supply_chain/po/partials/po_item_form_row.html' with form=form %}
+                           {% endfor %}
+                        </tbody>
+                     </table>
+                  </div>
+                  <div class="mt-2">
+                     <button type="button"
+                             id="add-item-btn"
+                             hx-get="{% url 'htmx_add_po_item' %}"
+                             hx-target="#items-container"
+                             hx-swap="beforeend"
+                             class="text-blue-500 bg-gray-200 font-light rounded-lg text-sm px-3 py-1 text-center inline-flex items-center me-2 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             viewBox="0 0 16 16"
+                             fill="currentColor"
+                             class="size-6 **bg-blue-500 rounded-md p-1 mr-2">
+                           <path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14Zm.75-10.25v2.5h2.5a.75.75 0 0 1 0 1.5h-2.5v2.5a.75.75 0 0 1-1.5 0v-2.5h-2.5a.75.75 0 0 1 0-1.5h2.5v-2.5a.75.75 0 0 1 1.5 0Z" clip-rule="evenodd" />
+                        </svg>
+                        Add New Row
+                     </button>
+                  </div>
                </div>
             </div>
-            <!-- HTMX Add Button -->
-            <button type="button"
-                    id="add-item-btn"
-                    hx-get="{% url 'htmx_add_po_item' %}"
-                    hx-target="#items-container"
-                    hx-swap="beforeend"
-                    class="text-blue-700 hover:text-white border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-               Add Another Item
-            </button>
-            <!-- Main Form Actions -->
-            <div class="mt-6 flex space-x-4">
-               <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 ...">Save</button>
-               <a href="{% url 'purchases' %}" class="py-2 px-4.5 ...">Cancel</a>
-            </div>
-         </form>
-      </div>
+         </div>
+         {% url 'purchases' as cancel_url %}
+         {% include 'partials/form_buttons.html' with cancel_url=cancel_url %}
+      </form>
    </div>
 {% endblock content %}

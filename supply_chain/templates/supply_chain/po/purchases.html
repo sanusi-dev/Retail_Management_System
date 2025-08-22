@@ -1,10 +1,8 @@
-{% extends 'index.html' %}
+{% extends "index.html" %}
 {% load static %}
 {% block content %}
-    <div class="space-y-6">
-        <div>{% include "supply_chain/po/add_po.html" %}</div>
-        <div class="flex gap-6">
-            <div style="width: 100%;">{% include "supply_chain/po/purchases_table.html" %}</div>
-        </div>
+    <div class="flex h-full flex-col">
+        {% include "supply_chain/po/po_list_header.html" %}
+        {% include "supply_chain/po/purchases_table.html" %}
     </div>
 {% endblock content %}
