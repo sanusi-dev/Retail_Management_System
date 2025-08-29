@@ -7,34 +7,59 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('inventory', '0018_auto_20250809_0401'),
-        ('supply_chain', '0002_remove_purchaseorderitem_chk_po_item_positive_values_and_more'),
+        ("inventory", "0018_auto_20250809_0401"),
+        (
+            "supply_chain",
+            "0002_remove_purchaseorderitem_chk_po_item_positive_values_and_more",
+        ),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='purchaseorder',
-            old_name='expected_delivery_date',
-            new_name='delivery_date',
+            model_name="purchaseorder",
+            old_name="expected_delivery_date",
+            new_name="delivery_date",
         ),
         migrations.AlterField(
-            model_name='goodsreceiptitem',
-            name='actual_product',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='reciept_items_as_actual_product', to='inventory.product'),
+            model_name="goodsreceiptitem",
+            name="actual_product",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="receipt_items_as_actual_product",
+                to="inventory.product",
+            ),
         ),
         migrations.AlterField(
-            model_name='goodsreceiptitem',
-            name='product',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='reciept_items_as_product', to='inventory.product'),
+            model_name="goodsreceiptitem",
+            name="product",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="receipt_items_as_product",
+                to="inventory.product",
+            ),
         ),
         migrations.AlterField(
-            model_name='goodsreceiptitem',
-            name='serial_item',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, related_name='reciept_items_as_serial_item', to='inventory.serializedinventory'),
+            model_name="goodsreceiptitem",
+            name="serial_item",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="receipt_items_as_serial_item",
+                to="inventory.serializedinventory",
+            ),
         ),
         migrations.AlterField(
-            model_name='purchaseorder',
-            name='status',
-            field=models.CharField(choices=[('pending', 'Pending'), ('partially received', 'Partially Received'), ('received', 'Received'), ('cancelled', 'Cancelled')], default='pending', max_length=20),
+            model_name="purchaseorder",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("pending", "Pending"),
+                    ("partially received", "Partially Received"),
+                    ("received", "Received"),
+                    ("cancelled", "Cancelled"),
+                ],
+                default="pending",
+                max_length=20,
+            ),
         ),
     ]

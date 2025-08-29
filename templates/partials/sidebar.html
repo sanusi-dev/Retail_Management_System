@@ -6,17 +6,10 @@
          class="flex items-center gap-2 pt-6 sidebar-header pb-5">
         <a href="{% url 'dashboard' %}">
             <span class="logo" :class="sidebarToggle ? 'hidden' : ''">
-                <img class="dark:hidden h-8"
-                     src="{% static 'images/logo/logo.svg' %}"
-                     alt="Logo" />
+                <img class="dark:hidden h-8" src="{% static 'images/logo/logo.svg' %}" />
                 <img class="hidden dark:block h-8"
-                     src="{% static 'images/logo/logo-dark.svg' %}"
-                     alt="Logo" />
+                     src="{% static 'images/logo/logo-dark.svg' %}" />
             </span>
-            <img class="logo-icon h-8"
-                 :class="sidebarToggle ? 'lg:block' : 'hidden'"
-                 src="{% static 'images/logo/logo-icon.svg' }}"
-                 alt="Logo" />
         </a>
     </div>
     <!-- SIDEBAR HEADER -->
@@ -187,7 +180,7 @@
                                     </a>
                                 </li>
                                 <li>
-                                    <a href=""
+                                    <a href="{% url 'receipts' %}"
                                        class="menu-dropdown-item group text-xs"
                                        :class="page === 'purchase_receives' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
                                         Purchase Receives

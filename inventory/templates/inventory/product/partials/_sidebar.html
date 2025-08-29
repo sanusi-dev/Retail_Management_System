@@ -1,0 +1,33 @@
+<div x-data="{ activeProduct: '{{ main_product.pk }}' }"
+     class="flex-none w-[360px] bg-white border-r">
+   <div class="flex flex-col h-full">
+      <div class="flex-none border-b">
+         <div class="h-16 flex items-center justify-between px-2 py-2">
+            <h4 class="text-gray-900 text-lg font-medium">All Items</h4>
+            <a href="{% url 'add_product' %}"
+               class="px-1 py-1 text-md font-medium text-center text-white bg-blue-500 rounded-md hover:bg-blue-600 focus:ring-1 focus:outline-none focus:ring-blue-200">
+               <svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    class="size-6">
+                  <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+               </svg>
+            </a>
+         </div>
+      </div>
+      <div class="flex-1">
+         {% for product in side_bar_product %}
+            <a href="{% url 'product_detail' pk=product.pk %}"
+               class="h-10 flex items-center justify-between px-5 border-b hover:bg-gray-100"
+               hx-get="{% url 'get_main_content' pk=product.pk %}"
+               hx-target="#main_content"
+               hx-swap="innerHTML"
+               @click="activeProduct = '{{ product.pk }}'"
+               x-bind:class="{'bg-gray-100': activeProduct === '{{ product.pk }}' }">
+               <h4 class="text-gray-800 font-medium text-sm">{{ product.modelname |upper }}-{{ product.type_variant|upper }}</h4>
+               <h4 class="text-gray-800 font-medium text-sm">NGN{{ product.average_sales_price|default:"0.00" }}</h4>
+            </a>
+         {% endfor %}
+      </div>
+   </div>
+</div>

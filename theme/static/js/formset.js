@@ -1,69 +1,92 @@
+// --- LOGIC FOR ADDING A NEW FORM ---
+document.body.addEventListener('htmx:configRequest', function (event) {
+   const triggerElement = event.detail.elt;
 
-document.addEventListener('DOMContentLoaded', () => {
-   const itemsContainer = document.getElementById('items-container');
+   // Check if the element that triggered the request is an "add row" button
+   if (triggerElement.classList.contains('add-form-row')) {
+
+      // Find the target container from the hx-target attribute
+      const targetSelector = triggerElement.getAttribute('hx-target');
+      if (!targetSelector) return;
+
+      const targetContainer = document.querySelector(targetSelector);
+      if (!targetContainer) return;
+
+      // Count how many form rows currently exist in the container
+      const currentRowCount = targetContainer.querySelectorAll('.item-form-row').length;
+
+      // Add the current count as the 'index' parameter for the GET request
+      event.detail.parameters['index'] = currentRowCount;
+   }
+});
+
+
+// --- LOGIC FOR REMOVING A FORM ---
+document.body.addEventListener('click', function (event) {
+   const removeButton = event.target.closest('.remove-form-row');
+   if (!removeButton) return;
+
+   event.preventDefault();
+
+   const rowToRemove = removeButton.closest('.item-form-row');
+   const container = rowToRemove.closest('tbody, div');
+
+   // Count how many rows are currently VISIBLE
+   const visibleRows = Array.from(container.querySelectorAll('.item-form-row'))
+      .filter(row => row.style.display !== 'none');
+
+   if (visibleRows.length <= 1) {
+      alert('You cannot remove the last item. At least one item is required.');
+      return;
+   }
+
+   const deleteCheckbox = rowToRemove.querySelector('input[name$="-DELETE"]');
+   if (deleteCheckbox) {
+      deleteCheckbox.checked = true;
+      rowToRemove.style.display = 'none';
+   } else {
+      rowToRemove.remove();
+      reindexFormsetRows(container);
+   }
+});
+
+
+// --- UTILITY AND HELPER FUNCTIONS ---
+
+// This function re-indexes all form rows after a *new* (unsaved) row is removed.
+function reindexFormsetRows(container) {
+   const formRows = container.querySelectorAll('.item-form-row');
    const totalFormsInput = document.querySelector('input[name$="-TOTAL_FORMS"]');
 
+   if (!totalFormsInput) return;
 
-   // Extract the prefix from the TOTAL_FORMS input name
-   const managementFormPrefix = totalFormsInput.name.replace('-TOTAL_FORMS', '');
+   const prefix = totalFormsInput.name.replace('-TOTAL_FORMS', '');
+   totalFormsInput.value = formRows.length;
 
-   const updateFormset = () => {
-      const formRows = itemsContainer.querySelectorAll('.item-form-row');
-
-      // Update the TOTAL_FORMS count
-      totalFormsInput.value = formRows.length;
-
-      formRows.forEach((row, index) => {
-         // Find all input, select, and textarea elements within the row
-         const formElements = row.querySelectorAll('input, select, textarea');
-
-         formElements.forEach(el => {
-            // Update name attribute: items-1-product -> items-0-product
-            if (el.name && el.name.includes(`${managementFormPrefix}-`)) {
-               el.name = el.name.replace(/(-\d+-)/, `-${index}-`);
-            }
-
-            // Update id attribute: id_items-1-product -> id_items-0-product
-            if (el.id && el.id.includes(`id_${managementFormPrefix}-`)) {
-               el.id = el.id.replace(/(id_\w+-\d+-)/, `id_${managementFormPrefix}-${index}-`);
-            }
-         });
-      });
-   };
-
-   // Before HTMX adds a new form, set the correct index for the request
-   document.body.addEventListener('htmx:configRequest', (evt) => {
-      if (evt.detail.elt.id === 'add-item-btn') {
-         const formRowCount = itemsContainer.querySelectorAll('.item-form-row').length;
-         evt.detail.parameters['index'] = formRowCount;
-      }
-   });
-
-   // After HTMX adds a new form, update the TOTAL_FORMS count
-   document.body.addEventListener('htmx:afterSwap', (evt) => {
-      if (evt.target === itemsContainer) {
-         totalFormsInput.value = itemsContainer.querySelectorAll('.item-form-row').length;
-      }
-   });
-
-   // Handle the removal of form rows
-   itemsContainer.addEventListener('click', (e) => {
-      const removeButton = e.target.closest('.remove-form-row');
-
-      if (removeButton) {
-         e.preventDefault();
-         const rowToRemove = removeButton.closest('.item-form-row');
-         const deleteCheckbox = rowToRemove.querySelector('input[name$="-DELETE"]');
-
-         if (deleteCheckbox) {
-            // For existing forms, mark as deleted and hide
-            deleteCheckbox.checked = true;
-            rowToRemove.style.display = 'none';
-         } else {
-            // For new forms, remove entirely and reindex
-            rowToRemove.remove();
-            updateFormset();
+   formRows.forEach((row, index) => {
+      row.querySelectorAll('input, select, textarea').forEach(el => {
+         const nameRegex = new RegExp(`^${prefix}-\\d+-`);
+         const idRegex = new RegExp(`^id_${prefix}-\\d+-`);
+         if (el.name && el.name.match(nameRegex)) {
+            el.name = el.name.replace(nameRegex, `${prefix}-${index}-`);
          }
-      }
+         if (el.id && el.id.match(idRegex)) {
+            el.id = el.id.replace(idRegex, `id_${prefix}-${index}-`);
+         }
+      });
    });
+}
+
+// After ANY HTMX swap, update the TOTAL_FORMS count. This handles adding new rows.
+document.body.addEventListener('htmx:afterSwap', function (event) {
+   // Check if the swap happened inside a potential formset container
+   const container = event.target;
+   if (container.querySelectorAll('.item-form-row').length > 0) {
+      const totalFormsInput = document.querySelector('input[name$="-TOTAL_FORMS"]');
+      const formRows = container.querySelectorAll('.item-form-row');
+
+      if (totalFormsInput) {
+         totalFormsInput.value = formRows.length;
+      }
+   }
 });

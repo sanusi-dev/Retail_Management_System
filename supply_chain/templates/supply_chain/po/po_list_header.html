@@ -1,5 +1,5 @@
 <div class="h-16 flex items-center justify-between px-4">
-    {% include "partials/table_filter.html" %}
+    {% include "partials/table_filter.html" with view_name="All Purchase Orders" %}
     <a href="{% url 'add_po' %}"
        class="px-3 py-2 text-sm font-medium text-center inline-flex items-center text-white bg-brand-500 rounded-md hover:bg-blue-600 focus:ring-1 focus:outline-none focus:ring-blue-200">
         <svg xmlns="http://www.w3.org/2000/svg"

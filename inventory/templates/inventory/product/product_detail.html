@@ -1,0 +1,14 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block content %}
+   <div class="flex flex-col h-full">
+      <div class="flex flex-row h-full">
+         {% comment %} sidebar section {% endcomment %}
+         {% include "inventory/product/partials/_sidebar.html" %}
+         {% comment %} content area {% endcomment %}
+         <div class="flex-1 bg-white" id="main_content">
+            {% include "inventory/product/partials/_full_detail.html" with product=main_product overview_url=overview_url transactions_url=transactions_url%}
+         </div>
+      </div>
+   </div>
+{% endblock content %}

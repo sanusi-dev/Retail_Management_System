@@ -1,0 +1,8 @@
+{% extends "index.html" %}
+{% load static %}
+{% block content %}
+   <div class="flex h-full flex-col">
+      {% include "supply_chain/goods_receipts/receipt_list_header.html" %}
+      {% include "supply_chain/goods_receipts/receipts_table.html" %}
+   </div>
+{% endblock content %}

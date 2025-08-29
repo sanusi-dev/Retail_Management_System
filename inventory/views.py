@@ -24,13 +24,36 @@ def manage_products(request, pk=None):
     return render(request, "inventory/product/form.html", context)
 
 
+def product_detail(request, pk):
+    main_product = get_object_or_404(Product, pk=pk)
+    side_bar_product = Product.objects.all()
+
+    context = {
+        "main_product": main_product,
+        "side_bar_product": side_bar_product,
+    }
+    return render(request, "inventory/product/product_detail.html", context)
+
+
 def delete_product(request, pk):
-    product = Product.objects.get(pk=pk)
+    product = get_object_or_404(Product, pk=pk)
 
     if request.method == "POST":
         product.delete()
         return redirect("products")
 
 
-def product_detail(request):
-    pass
+def mark_as_inactive(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+
+    if request.method == 'POST':
+        product.is_active = False
+        product.save()
+        return redirect('products')
+
+
+def htmx_get_main_content(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    return render(
+        request, "inventory/product/partials/_full_detail.html", {"product": product}
+    )
