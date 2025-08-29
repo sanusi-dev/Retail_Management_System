@@ -1,33 +1,44 @@
 <div class="flex-1 overflow-y-auto">
-    <div class="relative overflow-x-auto shadow-sm sm:rounded-lg">
+    <div class="relative overflow-x-auto">
         <table class="w-full text-sm text-left text-gray-500">
             <thead class="text-xs text-gray-500 font-normal uppercase bg-gray-50 sticky top-0 z-10">
                 <tr class="border-t border-b">
+                    <th scope="col" class="px-6 py-3">Name</th>
                     <th scope="col" class="px-6 py-3">SKU</th>
-                    <th scope="col" class="px-6 py-3">Brand</th>
-                    <th scope="col" class="px-6 py-3">Model Name</th>
+                    {% comment %} <th scope="col" class="px-6 py-3">Brand</th> {% endcomment %}
                     <th scope="col" class="px-6 py-3">Category</th>
-                    <th scope="col" class="px-6 py-3">Type</th>
-                    <th scope="col" class="px-6 py-3">Parent</th>
+                    <th scope="col" class="px-6 py-3">Stock on Hand</th>
+                    {% comment %} <th scope="col" class="px-6 py-3">Type</th> {% endcomment %}
+                    {% comment %} <th scope="col" class="px-6 py-3">Parent</th> {% endcomment %}
                 </tr>
             </thead>
             <tbody class="text-sm text-black font-light">
-                {% for product in products %}
+                {% if products %}
+                    {% for product in products %}
+                        <tr class="bg-white border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                            @click="window.location.href = '{{ product.get_absolute_url }}'">
+                            <td class="px-6 py-3 capitalize">{{ product.modelname|upper }}</td>
+                            <td class="px-6 py-3 capitalize">{{ product.sku|upper }}</td>
+                            {% comment %} <td class="px-6 py-3 capitalize">{{ product.brand.name }}</td> {% endcomment %}
+                            <td class="px-6 py-3 capitalize">{{ product.category }}</td>
+                            <td class="px-6 py-3 capitalize">{{ product.stock_on_hand|default:"0.00" }}</td>
+                            {% comment %} <td class="px-6 py-3 capitalize">{{ product.type_variant }}</td> {% endcomment %}
+                            {% comment %} <td class="px-6 py-3 capitalize">
+                                {% if product.base_product %}
+                                    {{ product.base_product.modelname|upper }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td> {% endcomment %}
+                        </tr>
+                    {% endfor %}
+                {% else %}
                     <tr class="bg-white border-b border-gray-100 hover:bg-gray-50">
-                        <td class="px-6 py-4 capitalize">{{ product.sku|upper }}</td>
-                        <td class="px-6 py-4 capitalize">{{ product.brand.name }}</td>
-                        <td class="px-6 py-4 capitalize">{{ product.modelname|upper }}</td>
-                        <td class="px-6 py-4 capitalize">{{ product.category }}</td>
-                        <td class="px-6 py-4 capitalize">{{ product.type_variant }}</td>
-                        <td class="px-6 py-4 capitalize">
-                            {% if product.base_product %}
-                                {{ product.base_product.modelname|upper }}
-                            {% else %}
-                                N/A
-                            {% endif %}
+                        <td colspan="6" class="px-6 py-3 text-center">
+                            <p>No products available.</p>
                         </td>
                     </tr>
-                {% endfor %}
+                {% endif %}
             </tbody>
         </table>
     </div>

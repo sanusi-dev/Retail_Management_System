@@ -37,7 +37,8 @@ class PurchaseOrderAdmin(admin.ModelAdmin):
         "po_number",
         "order_date",
         "delivery_date",
-        "status",
+        "delivery_status",
+        "payment_status",
         "total_amount",
     )
     search_fields = ("supplier", "po_number", "status")
@@ -59,8 +60,8 @@ class PurchaseOrderItemAdmin(admin.ModelAdmin):
     search_fields = ("purchase_order", "product", "status")
 
 
-@admin.register(SupplierPayment)
-class SupplierPaymentAdmin(admin.ModelAdmin):
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
     list_display = (
         "purchase_order",
         "amount_paid",
@@ -76,6 +77,7 @@ class SupplierPaymentAdmin(admin.ModelAdmin):
 @admin.register(GoodsReceipt)
 class GoodsReceiptAdmin(admin.ModelAdmin):
     list_display = (
+        "gr_number",
         "purchase_order",
         "delivery_date",
         "received_by",
@@ -90,11 +92,9 @@ class GoodsReceiptAdmin(admin.ModelAdmin):
 @admin.register(GoodsReceiptItem)
 class GoodsReceiptItemAdmin(admin.ModelAdmin):
     list_display = (
-        "goods_reciept",
+        "goods_receipt",
         "purchase_order_item",
         "product",
-        "actual_product",
         "received_quantity",
-        "serial_item",
     )
-    search_fields = ("goods_reciept", "purchase_order_item", "product", "serial_item")
+    search_fields = ("goods_receipt", "purchase_order_item", "product", "serial_item")

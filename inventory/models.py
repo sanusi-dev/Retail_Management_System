@@ -1,7 +1,7 @@
 from django.db import models
 from account.models import CustomUser
 import uuid
-from django.db.models import Q, CheckConstraint, F
+from django.db.models import Q, CheckConstraint, F, Sum, Count
 from django.core.exceptions import ValidationError
 from django.urls import reverse
 from .utils import has_any_children
@@ -80,10 +80,14 @@ class Product(models.Model):
     )
 
     def __str__(self):
-        return f"{self.modelname.upper()} - {self.type_variant.upper()}"
+        return f"{self.brand.name.upper()} - {self.modelname.upper()}"
+
+    @property
+    def name(self):
+        return f"{self.modelname}-{self.type_variant}".upper()
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["brand"]
 
     def save(self, *args, **kwargs):
         if self.type_variant == "coupled" and not self.base_product:
@@ -93,9 +97,49 @@ class Product(models.Model):
 
         super().save(*args, **kwargs)
 
-    # @property
-    # def get_absolute_url(self):
-    #     return reverse("product_detail", kwargs={"pk": self.pk})
+    @property
+    def average_cost_price(self):
+        aggregation = self.po_items.aggregate(
+            total_sum=Sum("unit_price_at_order"), total_count=Count("pk")
+        )
+
+        total_sum = aggregation["total_sum"] or 0
+        total_count = aggregation["total_count"] or 0
+
+        if total_count > 0:
+            avg = total_sum / total_count
+            return f"{avg:,.2f}"
+        return "0.00"
+
+    @property
+    def average_sales_price(self):
+        aggregation = self.sale_items.aggregate(
+            total_sum=Sum("unit_selling_price"), total_count=Count("pk")
+        )
+
+        total_sum = aggregation["total_sum"] or 0
+        total_count = aggregation["total_count"] or 0
+
+        if total_count > 0:
+            avg = total_sum / total_count
+            return f"{avg:,.2f}"
+        return "0.00"
+
+    @property
+    def total_remaining_qty(self):
+        annotated = self.po_items.annotate(
+            total_received=Sum("receipt_items__received_quantity")
+        ).annotate(remaining_calc=F("ordered_quantity") - F("total_received"))
+        remaining_calc = annotated.aggregate(total=Sum("remaining_calc"))["total"]
+        return remaining_calc or 0
+
+    @classmethod
+    def get_list_url(cls):
+        return reverse("products")
+
+    @property
+    def get_absolute_url(self):
+        return reverse("product_detail", kwargs={"pk": self.pk})
 
     @property
     def get_edit_url(self):
@@ -106,12 +150,16 @@ class Product(models.Model):
         return reverse("delete_product", kwargs={"pk": self.pk})
 
     @property
-    def can_edit(self):
-        return not has_any_children(self)
+    def mark_as_inactive_url(self):
+        return reverse("mark_as_inactive", kwargs={"pk": self.pk})
 
     @property
     def can_delete(self):
-        return not has_any_children(self)
+        for related in self._meta.related_objects:
+            manager = getattr(self, related.get_accessor_name())
+            if manager.exists():
+                return False
+        return True
 
 
 class Inventory(models.Model):

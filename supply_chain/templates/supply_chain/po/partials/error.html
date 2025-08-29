@@ -1,70 +1,64 @@
-<!-- supply_chain/po/partials/error.html -->
-{% if po_form.errors or item_formset.errors or po_form.non_field_errors or item_formset.non_form_errors %}
-   <div class="bg-red-50 border-b border-red-200 px-5 py-3">
+{# This partial expects two context variables: 'form' and 'formset' #}
+{% if form.errors or formset.errors or form.non_field_errors or formset.non_form_errors %}
+   <div class="bg-red-50 border-b border-red-200 py-5">
       <div class="max-w-4xl space-y-2">
-         <!-- Main form errors -->
-         {% for field in po_form %}
-            {% if field.errors %}
-               {% for error in field.errors %}
-                  <div class="flex items-center">
-                     <svg xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                          class="size-4 text-red-500 mr-2 flex-shrink-0">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                     </svg>
-                     <p class="text-sm text-red-700">{{ error }}</p>
-                  </div>
-               {% endfor %}
-            {% endif %}
+         <!-- Main form field errors -->
+         {% for field in form %}
+            {% for error in field.errors %}
+               <div class="flex items-center">
+                  <svg ... class="size-4 text-red-500 mr-2 ...">
+                  </svg>
+                  <p class="text-sm text-red-700">{{ field.label }}: {{ error }}</p>
+               </div>
+            {% endfor %}
          {% endfor %}
          <!-- Formset field errors -->
-         {% for form in item_formset %}
-            {% if form.errors %}
-               {% for field in form %}
-                  {% if field.errors %}
-                     {% for error in field.errors %}
-                        <div class="flex items-center">
-                           <svg xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                                class="size-4 text-red-500 mr-2 flex-shrink-0">
-                              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                           </svg>
-                           <p class="text-sm text-red-700">{{ error }}</p>
-                        </div>
-                     {% endfor %}
-                  {% endif %}
+         {% for formset_form in formset %}
+            {% for field in formset_form %}
+               {% for error in field.errors %}
+                  <div class="flex items-center">
+                     <svg ... class="size-4 text-red-500 mr-2 ...">
+                     </svg>
+                     <p class="text-sm text-red-700">{{ field.label }}: {{ error }}</p>
+                  </div>
                {% endfor %}
-            {% endif %}
+            {% endfor %}
          {% endfor %}
-         <!-- Non-field errors -->
-         {% if po_form.non_field_errors %}
-            {% for error in po_form.non_field_errors %}
-               <div class="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg"
-                       viewBox="0 0 20 20"
-                       fill="currentColor"
-                       class="size-4 text-red-500 mr-2 flex-shrink-0">
-                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                  </svg>
-                  <p class="text-sm text-red-700">{{ error }}</p>
-               </div>
-            {% endfor %}
-         {% endif %}
-         {% if item_formset.non_form_errors %}
-            {% for error in item_formset.non_form_errors %}
-               <div class="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg"
-                       viewBox="0 0 20 20"
-                       fill="currentColor"
-                       class="size-4 text-red-500 mr-2 flex-shrink-0">
-                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                  </svg>
-                  <p class="text-sm text-red-700">{{ error }}</p>
-               </div>
-            {% endfor %}
-         {% endif %}
+         <!-- Main form non-field errors -->
+         {% for error in form.non_field_errors %}
+            <div class="flex items-center">
+               <svg ... class="size-4 text-red-500 mr-2 ...">
+               </svg>
+               <p class="text-sm text-red-700">{{ error }}</p>
+            </div>
+         {% endfor %}
+         <!-- Formset-wide errors (e.g., management form issues) -->
+         {% for error in formset.non_form_errors %}
+            <div class="flex items-center">
+               <svg ... class="size-4 text-red-500 mr-2 ...">
+               </svg>
+               <p class="text-sm text-red-700">{{ error }}</p>
+            </div>
+         {% endfor %}
       </div>
    </div>
 {% endif %}
+{% comment %}
+<input type="hidden" name="items-TOTAL_FORMS" value="1" id="id_items-TOTAL_FORMS">
+<input type="hidden" name="items-INITIAL_FORMS" value="2" id="id_items-INITIAL_FORMS">
+<input type="hidden" name="items-MIN_NUM_FORMS" value="0" id="id_items-MIN_NUM_FORMS">
+<input type="hidden" name="items-MAX_NUM_FORMS" value="1000" id="id_items-MAX_NUM_FORMS">
+<ul class="errorlist nonfield">
+   <li>“express” is not a valid UUID.</li>
+</ul>
+<div>
+   <label for="id_items-0-received_quantity">Received quantity:</label>
+   <input type="number" name="items-0-received_quantity" value="25" id="id_items-0-received_quantity">
+</div>
+<div>
+   <label for="id_items-0-DELETE">Delete:</label>
+   <input type="checkbox" name="items-0-DELETE" id="id_items-0-DELETE">
+   <input type="hidden" name="items-0-purchase_order_item" value="85c6a6d6-8e6e-4b8e-a7de-c2874177e044" id="id_items-0-purchase_order_item">
+   <input type="hidden" name="items-0-product" value="e400872f-2d5c-467a-b577-d47f5eabd3f9" id="id_items-0-product">
+   <input type="hidden" name="items-0-receipt_item_id" value="936e085a-c92c-48d1-85f1-c9d8896e691e" id="id_items-0-receipt_item_id">
+</div> {% endcomment %}

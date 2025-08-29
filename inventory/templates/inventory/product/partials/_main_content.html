@@ -1,0 +1,64 @@
+<div class="flex-1 py-5 px-5" id="main-content-section">
+   <div class="flex flex-row h-full gap-10">
+      <div class="flex-none w-2/5 flex flex-col gap-4">
+         <div class="bg-white pb-5">
+            <div class="mb-2">
+               <h4 class="text-lg font-normal text-gray-900">Product Details</h4>
+            </div>
+            <div class="space-y-4">
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Item Name</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.modelname|title }}</span>
+               </div>
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Brand</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.brand|title }}</span>
+               </div>
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Type</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.type_variant|title }}</span>
+               </div>
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Category</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.category|title }}</span>
+               </div>
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Created by</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.created_by|title }}</span>
+               </div>
+            </div>
+         </div>
+         <div class="bg-white pb-5">
+            <div class="mb-2">
+               <h4 class="text-lg font-normal text-gray-900">Purchase Information</h4>
+            </div>
+            <div class="space-y-4">
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Cost Price</span>
+                  <span class="text-sm font-medium text-gray-700">NGN{{ product.average_cost_price }}</span>
+               </div>
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">To be Recieved</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.total_remaining_qty }} Qty</span>
+               </div>
+            </div>
+         </div>
+         <div class="bg-white pb-5">
+            <div class="mb-2">
+               <h4 class="text-lg font-normal text-gray-900">Sales Information</h4>
+            </div>
+            <div class="space-y-4">
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Sales Price</span>
+                  <span class="text-sm font-medium text-gray-700">NGN{{ product.average_sales_price }}</span>
+               </div>
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Total Sold</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.sale_items.count }}</span>
+               </div>
+            </div>
+         </div>
+      </div>
+      <div class="flex-1 border">images section</div>
+   </div>
+</div>

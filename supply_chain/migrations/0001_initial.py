@@ -12,130 +12,465 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('inventory', '0001_initial'),
+        ("inventory", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='PurchaseOrder',
+            name="PurchaseOrder",
             fields=[
-                ('po_id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('po_number', models.CharField(default=supply_chain.models.PurchaseOrder.gen_po_number, editable=False, max_length=50, unique=True)),
-                ('order_date', models.DateTimeField(auto_now_add=True)),
-                ('expected_delivery_date', models.DateTimeField(blank=True, null=True)),
-                ('status', models.CharField(choices=[('active', 'Active'), ('pending', 'Pending'), ('approved', 'Approved'), ('partially received', 'Partially Received'), ('received', 'Received'), ('cancelled', 'Cancelled')], default='pending', max_length=20)),
-                ('total_amount', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('create_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now_add=True)),
-                ('created_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_%(class)s_set', to=settings.AUTH_USER_MODEL)),
-                ('updated_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='updated_%(class)s_set', to=settings.AUTH_USER_MODEL)),
+                (
+                    "po_id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "po_number",
+                    models.CharField(
+                        default=supply_chain.models.PurchaseOrder.gen_po_number,
+                        editable=False,
+                        max_length=50,
+                        unique=True,
+                    ),
+                ),
+                ("order_date", models.DateTimeField(auto_now_add=True)),
+                ("expected_delivery_date", models.DateTimeField(blank=True, null=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("active", "Active"),
+                            ("pending", "Pending"),
+                            ("approved", "Approved"),
+                            ("partially received", "Partially Received"),
+                            ("received", "Received"),
+                            ("cancelled", "Cancelled"),
+                        ],
+                        default="pending",
+                        max_length=20,
+                    ),
+                ),
+                ("total_amount", models.DecimalField(decimal_places=2, max_digits=10)),
+                ("create_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="created_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "updated_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="updated_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='GoodsReceipt',
+            name="GoodsReceipt",
             fields=[
-                ('receipt_id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('delivery_date', models.DateTimeField(blank=True, null=True)),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('fulfilled', 'Fulfilled'), ('cancelled', 'Cancelled'), ('voided', 'Voided')], default='pending', max_length=20)),
-                ('create_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now_add=True)),
-                ('created_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_%(class)s_set', to=settings.AUTH_USER_MODEL)),
-                ('received_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='received_%(class)s_set', to=settings.AUTH_USER_MODEL)),
-                ('updated_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='updated_%(class)s_set', to=settings.AUTH_USER_MODEL)),
-                ('purchase_order', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='goods_receipts', to='supply_chain.purchaseorder')),
+                (
+                    "receipt_id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("delivery_date", models.DateTimeField(blank=True, null=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending"),
+                            ("fulfilled", "Fulfilled"),
+                            ("cancelled", "Cancelled"),
+                            ("voided", "Voided"),
+                        ],
+                        default="pending",
+                        max_length=20,
+                    ),
+                ),
+                ("create_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="created_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "received_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="received_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "updated_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="updated_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "purchase_order",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="goods_receipts",
+                        to="supply_chain.purchaseorder",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='PurchaseOrderItem',
+            name="PurchaseOrderItem",
             fields=[
-                ('po_item_id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('ordered_quantity', models.IntegerField()),
-                ('received_quantity', models.IntegerField()),
-                ('unit_price_at_order', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('status', models.CharField(choices=[('active', 'Active'), ('pending', 'Pending'), ('approved', 'Approved'), ('partially received', 'Partially Received'), ('received', 'Received'), ('cancelled', 'Cancelled')], default='pending', max_length=20)),
-                ('create_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now_add=True)),
-                ('created_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_%(class)s_set', to=settings.AUTH_USER_MODEL)),
-                ('product', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='purchase_order_items', to='inventory.product')),
-                ('purchase_order', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='purchase_order_items', to='supply_chain.purchaseorder')),
-                ('updated_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='updated_%(class)s_set', to=settings.AUTH_USER_MODEL)),
+                (
+                    "po_item_id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("ordered_quantity", models.IntegerField()),
+                ("received_quantity", models.IntegerField()),
+                (
+                    "unit_price_at_order",
+                    models.DecimalField(decimal_places=2, max_digits=10),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("active", "Active"),
+                            ("pending", "Pending"),
+                            ("approved", "Approved"),
+                            ("partially received", "Partially Received"),
+                            ("received", "Received"),
+                            ("cancelled", "Cancelled"),
+                        ],
+                        default="pending",
+                        max_length=20,
+                    ),
+                ),
+                ("create_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="created_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "product",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="purchase_order_items",
+                        to="inventory.product",
+                    ),
+                ),
+                (
+                    "purchase_order",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="purchase_order_items",
+                        to="supply_chain.purchaseorder",
+                    ),
+                ),
+                (
+                    "updated_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="updated_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='GoodsReceiptItem',
+            name="GoodsReceiptItem",
             fields=[
-                ('receipt_item_id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('received_quantity', models.IntegerField()),
-                ('create_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now_add=True)),
-                ('actual_product', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='receipt_items_as_actual_product', to='inventory.product')),
-                ('created_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_%(class)s_set', to=settings.AUTH_USER_MODEL)),
-                ('goods_reciept', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='reciept_items', to='supply_chain.goodsreceipt')),
-                ('product', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='receipt_items_as_product', to='inventory.product')),
-                ('serial_item', models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, related_name='receipt_items_as_serial_item', to='inventory.serializedinventory')),
-                ('updated_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='updated_%(class)s_set', to=settings.AUTH_USER_MODEL)),
-                ('purchase_order_item', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='reciept_items', to='supply_chain.purchaseorderitem')),
+                (
+                    "receipt_item_id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("received_quantity", models.IntegerField()),
+                ("create_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "actual_product",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="receipt_items_as_actual_product",
+                        to="inventory.product",
+                    ),
+                ),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="created_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "goods_receipt",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="receipt_items",
+                        to="supply_chain.goodsreceipt",
+                    ),
+                ),
+                (
+                    "product",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="receipt_items_as_product",
+                        to="inventory.product",
+                    ),
+                ),
+                (
+                    "serial_item",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="receipt_items_as_serial_item",
+                        to="inventory.serializedinventory",
+                    ),
+                ),
+                (
+                    "updated_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="updated_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "purchase_order_item",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="receipt_items",
+                        to="supply_chain.purchaseorderitem",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Supplier',
+            name="Supplier",
             fields=[
-                ('supplier_id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('name', models.CharField(max_length=255)),
-                ('phone', models.CharField(max_length=20)),
-                ('email', models.EmailField(max_length=255)),
-                ('address', models.TextField(blank=True, default='')),
-                ('create_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now_add=True)),
-                ('created_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_%(class)s_set', to=settings.AUTH_USER_MODEL)),
-                ('updated_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='updated_%(class)s_set', to=settings.AUTH_USER_MODEL)),
+                (
+                    "supplier_id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("name", models.CharField(max_length=255)),
+                ("phone", models.CharField(max_length=20)),
+                ("email", models.EmailField(max_length=255)),
+                ("address", models.TextField(blank=True, default="")),
+                ("create_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="created_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "updated_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="updated_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
         migrations.AddField(
-            model_name='purchaseorder',
-            name='supplier',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='purchase_orders', to='supply_chain.supplier'),
+            model_name="purchaseorder",
+            name="supplier",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="purchase_orders",
+                to="supply_chain.supplier",
+            ),
         ),
         migrations.CreateModel(
-            name='SupplierPayment',
+            name="SupplierPayment",
             fields=[
-                ('payment_id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('amount_paid', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('payment_date', models.DateTimeField(auto_now_add=True)),
-                ('payment_method', models.CharField(choices=[('cash', 'Cash'), ('transfer', 'Transfer')], max_length=20)),
-                ('trxn_ref', models.CharField(default=supply_chain.models.SupplierPayment.generate_trxn_ref, editable=False, max_length=50, unique=True)),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('fulfilled', 'Fulfilled'), ('cancelled', 'Cancelled'), ('voided', 'Voided')], default='fulfilled', max_length=20)),
-                ('remark', models.TextField(blank=True, default='', max_length=255)),
-                ('create_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now_add=True)),
-                ('created_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_%(class)s_set', to=settings.AUTH_USER_MODEL)),
-                ('purchase_order', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='supplier_payments', to='supply_chain.purchaseorder')),
-                ('updated_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='updated_%(class)s_set', to=settings.AUTH_USER_MODEL)),
+                (
+                    "payment_id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("amount_paid", models.DecimalField(decimal_places=2, max_digits=10)),
+                ("payment_date", models.DateTimeField(auto_now_add=True)),
+                (
+                    "payment_method",
+                    models.CharField(
+                        choices=[("cash", "Cash"), ("transfer", "Transfer")],
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "trxn_ref",
+                    models.CharField(
+                        default=supply_chain.models.Payment.generate_trxn_ref,
+                        editable=False,
+                        max_length=50,
+                        unique=True,
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending"),
+                            ("fulfilled", "Fulfilled"),
+                            ("cancelled", "Cancelled"),
+                            ("voided", "Voided"),
+                        ],
+                        default="fulfilled",
+                        max_length=20,
+                    ),
+                ),
+                ("remark", models.TextField(blank=True, default="", max_length=255)),
+                ("create_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="created_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "purchase_order",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="supplier_payments",
+                        to="supply_chain.purchaseorder",
+                    ),
+                ),
+                (
+                    "updated_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="updated_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
         migrations.AddConstraint(
-            model_name='purchaseorderitem',
-            constraint=models.CheckConstraint(condition=models.Q(('ordered_quantity__gt', 0), ('received_quantity__gte', 0), ('unit_price_at_order__gt', 0)), name='chk_po_item_positive_values'),
+            model_name="purchaseorderitem",
+            constraint=models.CheckConstraint(
+                condition=models.Q(
+                    ("ordered_quantity__gt", 0),
+                    ("received_quantity__gte", 0),
+                    ("unit_price_at_order__gt", 0),
+                ),
+                name="chk_po_item_positive_values",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='purchaseorderitem',
-            constraint=models.CheckConstraint(condition=models.Q(('received_quantity__lte', models.F('ordered_quantity'))), name='chk_po_item_received_not_exceed_ordered'),
+            model_name="purchaseorderitem",
+            constraint=models.CheckConstraint(
+                condition=models.Q(
+                    ("received_quantity__lte", models.F("ordered_quantity"))
+                ),
+                name="chk_po_item_received_not_exceed_ordered",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='goodsreceiptitem',
-            constraint=models.CheckConstraint(condition=models.Q(('received_quantity__gte', 0)), name='chk_receipt_item_positive_quantity'),
+            model_name="goodsreceiptitem",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("received_quantity__gte", 0)),
+                name="chk_receipt_item_positive_quantity",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='purchaseorder',
-            constraint=models.CheckConstraint(condition=models.Q(('expected_delivery_date__gte', models.F('order_date'))), name='chk_po_delivery_date'),
+            model_name="purchaseorder",
+            constraint=models.CheckConstraint(
+                condition=models.Q(
+                    ("expected_delivery_date__gte", models.F("order_date"))
+                ),
+                name="chk_po_delivery_date",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='purchaseorder',
-            constraint=models.CheckConstraint(condition=models.Q(('total_amount__gt', 0)), name='chk_po_total_amount'),
+            model_name="purchaseorder",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("total_amount__gt", 0)), name="chk_po_total_amount"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='supplierpayment',
-            constraint=models.CheckConstraint(condition=models.Q(('amount_paid__gt', 0)), name='chk_positive_payment_amount'),
+            model_name="supplierpayment",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("amount_paid__gt", 0)),
+                name="chk_positive_payment_amount",
+            ),
         ),
     ]

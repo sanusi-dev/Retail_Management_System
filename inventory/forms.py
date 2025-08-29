@@ -17,15 +17,24 @@ class ProductForm(forms.ModelForm):
         ]
         widgets = {"type_variant": RadioSelect()}
 
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # this is to not display the is_active field when creating
-        if not (self.instance and self.instance.pk):
-            del self.fields["is_active"]
-
         self.fields["brand"].empty_label = "Select brand"
         self.fields["base_product"].empty_label = "Select parent"
+        self.fields["base_product"].queryset = Product.objects.exclude(
+            type_variant="coupled"
+        )
+
+        if not self.instance._state.adding:
+            print(self.instance.receipt_items.all())
+            for related in self.instance._meta.related_objects:
+                manager = getattr(self.instance, related.get_accessor_name())
+                if manager.exists():
+                    self.fields["type_variant"].disabled = True
+                    self.fields["base_product"].disabled = True
+
 
     def clean(self):
         cleaned_data = super().clean()
@@ -39,7 +48,7 @@ class ProductForm(forms.ModelForm):
             sku = f"{str(brand)}-{modelname}-{type_variant}"
 
             query = Product.objects.filter(sku=sku)
-            if self.instance.pk:
+            if not self.instance._state.adding:
                 query = query.exclude(pk=self.instance.pk)
 
             if query.exists():
