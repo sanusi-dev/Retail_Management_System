@@ -6,7 +6,9 @@
         <meta name="viewport"
               content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0" />
         <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+        <meta name="htmx-view-transitions" content="true">
         <title>Ayotola & Sons</title>
+        <meta name="htmx-config" content='{"scrollIntoViewOnBoost": false}'>
         {% tailwind_css %}
     </head>
     <body x-data="{ page: 'dashboard', 'loaded': true, 'sidebarToggle': false }"
@@ -17,6 +19,8 @@
             <div class="relative flex flex-1 flex-col bg-white overflow-x-hidden overflow-y-auto">
                 {% include "partials/overlay.html" %}
                 {% include "partials/header.html" %}
+                <div id="message-container"
+                     class="fixed top-20 left-0 right-0 flex justify-center z-50"></div>
                 <main class="flex-1">
                     {% block content %}
                     {% endblock content %}

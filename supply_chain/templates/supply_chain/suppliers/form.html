@@ -2,8 +2,12 @@
 {% load static %}
 {% load widget_tweaks %}
 {% block content %}
-    <div class="flex h-full flex-col">
-        <form action="" method="post" class="flex flex-col flex-1">
+    {% include "partials/spinner.html" with id="body_spinner" %}
+    <div class="flex h-full flex-col" id="main_body">
+        <form hx-post="{{ form_action_url }}"
+              hx-push-url="true"
+              hx-indicator="#body_spinner"
+              class="flex flex-col flex-1">
             {% csrf_token %}
             <div class="flex-none bg-gray-50 border-b py-5 px-5 h-20">
                 <div class="flex justify-between items-center">
@@ -15,6 +19,9 @@
                         {% endif %}
                     </h1>
                     <a href="{% url 'suppliers' %}"
+                       hx-boost="true"
+                       hx-target="#main_body"
+                       hx-indicator="#body_spinner"
                        class="p-2 text-gray-500 hover:text-gray-600 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg"
                              fill="none"

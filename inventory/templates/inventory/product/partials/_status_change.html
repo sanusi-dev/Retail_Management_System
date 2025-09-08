@@ -1,0 +1,19 @@
+<div class="flex items-center" id="status_container" hx-swap-oob="true">
+      <span class="text-sm text-gray-600 w-40">Status</span>
+      <span class="text-sm font-medium
+                   {% if product.status == product.Status.ACTIVE %}
+                         text-green-700
+                   {% else %}
+                         text-red-700
+                   {% endif %}">{{ product.status|title }}</span>
+</div>
+<div id="active_inactive_container" hx-swap-oob="true">
+      <button hx-post="{{ product.status_change_url }}"
+              class="px-3 py-2 text-sm w-full text-gray-700 hover:bg-gray-100 hover:rounded-md transition-colors duration-150 text-left">
+            {% if product.status == product.Status.ACTIVE %}
+                  Mark as Inactive
+            {% else %}
+                  Mark as Active
+            {% endif %}
+      </button>
+</div>

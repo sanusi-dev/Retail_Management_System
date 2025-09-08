@@ -1,0 +1,119 @@
+<div class="flex-1 py-5 px-5">
+   <div class="flex flex-row h-full gap-10">
+      <div class="flex-none w-1/4 flex flex-col gap-4 border-r h-full">
+         <div class="bg-white pb-5">
+            <div class="mb-2">
+               <h4 class="text-lg font-normal text-gray-900">Product Details</h4>
+            </div>
+            <div class="space-y-4">
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Item Name</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.modelname|upper }}</span>
+               </div>
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Brand</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.brand|upper }}</span>
+               </div>
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Category</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.category|title }}</span>
+               </div>
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Status</span>
+                  <span class="text-sm font-medium {% if product.status == product.Status.ACTIVE %}text-green-700 {% else %}text-red-700{% endif %}"
+                        id="status_container">{{ product.status|title }}</span>
+               </div>
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Created by</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.created_by|title }}</span>
+               </div>
+            </div>
+         </div>
+         <div class="bg-white pb-5">
+            <div class="mb-2">
+               <h4 class="text-lg font-normal text-gray-900">Purchase Information</h4>
+            </div>
+            <div class="space-y-4">
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Cost Price</span>
+                  <span class="text-sm font-medium text-gray-700">NGN{{ product.average_cost_price }}</span>
+               </div>
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">To be Recieved</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.total_remaining_qty }} Qty</span>
+               </div>
+            </div>
+         </div>
+         <div class="bg-white pb-5">
+            <div class="mb-2">
+               <h4 class="text-lg font-normal text-gray-900">Sales Information</h4>
+            </div>
+            <div class="space-y-4">
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Sales Price</span>
+                  <span class="text-sm font-medium text-gray-700">NGN{{ product.average_sales_price }}</span>
+               </div>
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Total Coupled Sold</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.sale_items.count }} Qty</span>
+               </div>
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Total Boxed Sold</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.sale_items.count }} Qty</span>
+               </div>
+            </div>
+         </div>
+         <div class="bg-white pb-5">
+            <div class="mb-2">
+               <h4 class="text-lg font-normal text-gray-900">Inventory Information</h4>
+            </div>
+            <div class="space-y-4">
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Total Coupled</span>
+                  <span class="text-sm font-medium text-gray-700">{{ product.serialized_products.count }} Qty</span>
+               </div>
+               <div class="flex items-center">
+                  <span class="text-sm text-gray-600 w-40">Total Boxed</span>
+                  <span class="text-sm font-medium text-gray-700">
+                     {% if product.inventory.quantity_on_hand %}
+                        {{ product.inventory.quantity_on_hand }} Qty
+                     {% else %}
+                        0 Qty
+                     {% endif %}
+                  </span>
+               </div>
+            </div>
+         </div>
+      </div>
+      <div class="flex-1">
+         <ol class="relative border-l border-blue-500 ml-10 mt-10">
+            <li class="mb-10 ml-8 border rounded-sm p-3">
+               <span class="absolute -left-4 flex items-center border border-gray-200 justify-center w-8 h-8 bg-white text-blue-500 rounded-full ring-4 ring-white">
+                  <svg xmlns="http://www.w3.org/2000/svg"
+                       fill="none"
+                       viewBox="0 0 24 24"
+                       stroke-width="1.5"
+                       stroke="currentColor"
+                       class="size-5">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                  </svg>
+               </span>
+               <h3 class="font-medium leading-tight">Personal Info</h3>
+               <p class="text-sm text-gray-500">Your personal details appear here.</p>
+            </li>
+            <li class="mb-10 ml-8">
+               <span class="absolute -left-4 flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full ring-4 ring-white">
+                  <svg class="w-3.5 h-3.5 text-gray-500"
+                       xmlns="http://www.w3.org/2000/svg"
+                       fill="currentColor"
+                       viewBox="0 0 20 16">
+                     <path d="M18 0H2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2ZM6 13H4V8h2v5Zm-2-6V5h2v2H4Zm6 6H8V8h2v5Zm-2-6V5h2v2H8Zm6 6h-2V8h2v5Zm-2-6V5h2v2h-2Z" />
+                  </svg>
+               </span>
+               <h3 class="font-medium leading-tight">Account Info</h3>
+               <p class="text-sm text-gray-500">Your account details appear here.</p>
+            </li>
+         </ol>
+      </div>
+   </div>
+</div>

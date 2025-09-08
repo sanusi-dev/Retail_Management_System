@@ -46,8 +46,8 @@ class PurchaseOrderItemForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["product"].empty_label = "Select an item"
-        self.fields["product"].queryset = Product.objects.exclude(
-            type_variant="coupled"
+        self.fields["product"].queryset = Product.objects.filter(
+            type_variant=Product.TypeVariant.BOXED
         )
 
 

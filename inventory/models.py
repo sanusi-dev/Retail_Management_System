@@ -1,10 +1,10 @@
 from django.db import models
 from account.models import CustomUser
 import uuid
-from django.db.models import Q, CheckConstraint, F, Sum, Count
+from django.db.models import F, Sum, Count
+from django.db.models.functions import Coalesce
 from django.core.exceptions import ValidationError
 from django.urls import reverse
-from .utils import has_any_children
 
 
 class Brand(models.Model):
@@ -43,6 +43,10 @@ class Product(models.Model):
         COUPLED = "coupled", "Coupled"
         EMPTY_OPTION = "", "Select a Type"
 
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        INACTIVE = "inactive", "Inactive"
+
     product_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     sku = models.CharField(max_length=50, unique=True)
     brand = models.ForeignKey(Brand, on_delete=models.PROTECT, related_name="product")
@@ -51,7 +55,7 @@ class Product(models.Model):
         max_length=20, choices=Category, default=Category.EMPTY_OPTION
     )
     type_variant = models.CharField(
-        max_length=20, choices=TypeVariant, default=TypeVariant.EMPTY_OPTION
+        max_length=20, choices=TypeVariant, default=TypeVariant.BOXED
     )
     description = models.TextField(default="", blank=True)
     base_product = models.ForeignKey(
@@ -61,7 +65,7 @@ class Product(models.Model):
         blank=True,
         related_name="variants",
     )
-    is_active = models.BooleanField(default=True)
+    status = models.CharField(max_length=10, choices=Status, default=Status.ACTIVE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
@@ -90,10 +94,14 @@ class Product(models.Model):
         ordering = ["brand"]
 
     def save(self, *args, **kwargs):
+
         if self.type_variant == "coupled" and not self.base_product:
             raise ValidationError("Coupled product needs a base product")
         elif self.type_variant == "boxed" and self.base_product:
             raise ValidationError("Boxed product does not need a base product")
+
+        if self.modelname and self.brand:
+            self.sku = f"{str(self.brand)}-{self.modelname}-{self.type_variant}"
 
         super().save(*args, **kwargs)
 
@@ -128,7 +136,7 @@ class Product(models.Model):
     @property
     def total_remaining_qty(self):
         annotated = self.po_items.annotate(
-            total_received=Sum("receipt_items__received_quantity")
+            total_received=Coalesce(Sum("receipt_items__received_quantity"), 0)
         ).annotate(remaining_calc=F("ordered_quantity") - F("total_received"))
         remaining_calc = annotated.aggregate(total=Sum("remaining_calc"))["total"]
         return remaining_calc or 0
@@ -150,27 +158,54 @@ class Product(models.Model):
         return reverse("delete_product", kwargs={"pk": self.pk})
 
     @property
-    def mark_as_inactive_url(self):
-        return reverse("mark_as_inactive", kwargs={"pk": self.pk})
+    def status_change_url(self):
+        return reverse("status_change", kwargs={"pk": self.pk})
+
+    @property
+    def overview_url(self):
+        return reverse("overview", kwargs={"pk": self.pk})
+
+    @property
+    def transaction_url(self):
+        return reverse("transaction", kwargs={"pk": self.pk})
 
     @property
     def can_delete(self):
         for related in self._meta.related_objects:
             manager = getattr(self, related.get_accessor_name())
-            if manager.exists():
+            if hasattr(manager, "exists") and manager.exists():
                 return False
         return True
+
+    # @property
+    # def all_goods_receipts(self):
+    #     return self.po_items.goods_receipts.all()
 
 
 class Inventory(models.Model):
     inventory_id = models.UUIDField(
         default=uuid.uuid4, primary_key=True, editable=False
     )
-    product = models.ForeignKey(
-        Product, on_delete=models.PROTECT, related_name="inventories"
+    product = models.OneToOneField(
+        Product, on_delete=models.CASCADE, related_name="inventory"
     )
     quantity_on_hand = models.IntegerField()
-    last_updated_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="created_%(class)s_set",
+    )
+    updated_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="updated_%(class)s_set",
+    )
 
     def __str__(self):
         return self.product.modelname
