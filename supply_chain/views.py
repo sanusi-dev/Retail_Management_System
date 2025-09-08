@@ -7,33 +7,69 @@ from .forms import *
 from django.forms import modelformset_factory
 from django.db.models import Sum, F, IntegerField
 from django.db.models.functions import Coalesce
+import time
+from django.core.paginator import Paginator
+from render_block import render_block_to_string
 
 
 @login_required(login_url="/admin/login/")
 def suppliers(request):
-    suppliers = Supplier.objects.all()
-    context = {"suppliers": suppliers}
+    PAGE_SIZE = 10
+    page_number = request.GET.get("page", 1)
+    suppliers_list = Supplier.objects.all()
+    paginator = Paginator(suppliers_list, PAGE_SIZE)
+    page_obj = paginator.get_page(page_number)
+    context = {"suppliers": page_obj}
+
+    if request.htmx:
+        if request.GET.get("page"):
+            supplier_list = render_block_to_string(
+                "supply_chain/suppliers/supplier_list.html",
+                "table_with_pagination",
+                context,
+            )
+            return HttpResponse(supplier_list)
+        else:
+            time.sleep(0.5)
+            supplier_list = render_block_to_string(
+                "supply_chain/suppliers/supplier_list.html", "content", context
+            )
+            return HttpResponse(supplier_list)
+
     return render(request, "supply_chain/suppliers/supplier_list.html", context)
 
 
 @login_required(login_url="/admin/login/")
 def manage_supplier(request, pk=None):
-    supplier = get_object_or_404(Supplier, pk=pk) if pk else None
+    instance = get_object_or_404(Supplier, pk=pk) if pk else None
 
     if request.method == "POST":
-        form = SupplierForm(request.POST, instance=supplier)
+        form = SupplierForm(request.POST, instance=instance)
         if form.is_valid():
             supplier = form.save()
             if not pk and request.GET.get("next"):
                 return redirect(request.GET.get("next"))
             return redirect("suppliers")
     else:
-        form = SupplierForm(instance=supplier)
+        form = SupplierForm(instance=instance)
+
+    if instance:
+        form_acion_url = reverse("edit_supplier", kwargs={"pk": instance.pk})
+    else:
+        form_acion_url = reverse("add_supplier")
 
     context = {
         "form": form,
-        "is_editing": pk is not None,
+        "instance": instance,
+        "form_acion_url": form_acion_url,
     }
+
+    if request.htmx:
+        time.sleep(0.5)
+        html = render_block_to_string(
+            "supply_chain/suppliers/form.html", "content", context
+        )
+        return HttpResponse(html)
     return render(request, "supply_chain/suppliers/form.html", context)
 
 
@@ -51,20 +87,38 @@ def delete_supplier(request, pk):
 
 @login_required(login_url="/admin/login/")
 def purchases(request):
-    purchases = PurchaseOrder.objects.select_related("supplier")
-    context = {"purchases": purchases}
+    PAGE_SIZE = 10
+    page_number = request.GET.get("page", 1)
+    purchases_list = PurchaseOrder.objects.select_related("supplier")
+    paginator = Paginator(purchases_list, PAGE_SIZE)
+    page_obj = paginator.get_page(page_number)
+    context = {"purchases": page_obj}
+
+    if request.htmx:
+        if request.GET.get("page"):
+            primary_html = render_block_to_string(
+                "supply_chain/po/purchases.html", "table_with_pagination", context
+            )
+            return HttpResponse(primary_html)
+        else:
+            time.sleep(0.5)
+            html = render_block_to_string(
+                "supply_chain/po/purchases.html", "content", context
+            )
+            return HttpResponse(html)
+
     return render(request, "supply_chain/po/purchases.html", context)
 
 
 def manage_purchases(request, pk=None):
-    po_instance = get_object_or_404(PurchaseOrder, pk=pk) if pk else None
-    if po_instance:
-        queryset = po_instance.po_items.all()
+    instance = get_object_or_404(PurchaseOrder, pk=pk) if pk else None
+    if instance:
+        queryset = instance.po_items.all()
     else:
         queryset = PurchaseOrderItem.objects.none()
 
     if request.method == "POST":
-        form = PurchaseOrderForm(request.POST, instance=po_instance)
+        form = PurchaseOrderForm(request.POST, instance=instance)
         formset = PurchaseOrderItemFormSet(
             request.POST, queryset=queryset, prefix="items"
         )
@@ -89,13 +143,25 @@ def manage_purchases(request, pk=None):
                 return redirect("purchases")
 
     else:
-
-        form = PurchaseOrderForm(instance=po_instance)
+        form = PurchaseOrderForm(instance=instance)
         formset = PurchaseOrderItemFormSet(queryset=queryset, prefix="items")
+
+    if instance:
+        form_acion_url = reverse("edit_po", kwargs={"pk": instance.pk})
+    else:
+        form_acion_url = reverse("add_po")
+
     context = {
         "po_form": form,
         "item_formset": formset,
+        "form_acion_url": form_acion_url,
     }
+
+    if request.htmx:
+        time.sleep(0.5)
+        html = render_block_to_string("supply_chain/po/form.html", "content", context)
+        return HttpResponse(html)
+
     return render(request, "supply_chain/po/form.html", context)
 
 
@@ -126,8 +192,28 @@ def htmx_add_po_item(request):
 
 
 def payments(request):
-    payments = Payment.objects.select_related("purchase_order__supplier")
-    context = {"payments": payments}
+    PAGE_SIZE = 10
+    page_number = request.GET.get("page", 1)
+    payments_list = Payment.objects.select_related("purchase_order__supplier")
+    paginator = Paginator(payments_list, PAGE_SIZE)
+    page_obj = paginator.get_page(page_number)
+    context = {"payments": page_obj}
+
+    if request.htmx:
+        if request.GET.get("page"):
+            primary_html = render_block_to_string(
+                "supply_chain/payment_made/payment_list.html",
+                "table_with_pagination",
+                context,
+            )
+            return HttpResponse(primary_html)
+        else:
+            time.sleep(0.5)
+            html = render_block_to_string(
+                "supply_chain/payment_made/payment_list.html", "content", context
+            )
+            return HttpResponse(html)
+
     return render(request, "supply_chain/payment_made/payment_list.html", context)
 
 
@@ -159,8 +245,28 @@ def payments_void(request):
 
 @login_required(login_url="/admin/login/")
 def good_receipts(request):
-    receipts = GoodsReceipt.objects.select_related("purchase_order")
-    context = {"receipts": receipts}
+    PAGE_SIZE = 10
+    page_number = request.GET.get("page", 1)
+    receipts_list = GoodsReceipt.objects.select_related("purchase_order")
+    paginator = Paginator(receipts_list, PAGE_SIZE)
+    page_obj = paginator.get_page(page_number)
+    context = {"receipts": page_obj}
+
+    if request.htmx:
+        if request.GET.get("page"):
+            primary_html = render_block_to_string(
+                "supply_chain/goods_receipts/receipts.html",
+                "table_with_pagination",
+                context,
+            )
+            return HttpResponse(primary_html)
+        else:
+            time.sleep(0.5)
+            html = render_block_to_string(
+                "supply_chain/goods_receipts/receipts.html", "content", context
+            )
+            return HttpResponse(html)
+
     return render(request, "supply_chain/goods_receipts/receipts.html", context)
 
 

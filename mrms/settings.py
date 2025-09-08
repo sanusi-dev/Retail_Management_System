@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "django_htmx",
     "widget_tweaks",
     # 'debug_toolbar',
+    "template_partials",
 ]
 
 TAILWIND_APP_NAME = "theme"

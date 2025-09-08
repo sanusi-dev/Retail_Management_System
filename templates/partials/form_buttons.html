@@ -6,6 +6,9 @@
          {{ submit_text|default:"Save" }}
       </button>
       <a href="{{ cancel_url }}"
+         hx-boost="true"
+         hx-target="#main_body"
+         hx-indicator="#body_spinner"
          class="px-3 py-2 text-sm font-normal text-center inline-flex items-center text-gray-800 bg-gray-100 border rounded-lg hover:bg-gray-100 focus:ring-1 focus:outline-none">
          {{ cancel_text|default:"Cancel" }}
       </a>

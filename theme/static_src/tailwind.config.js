@@ -9,7 +9,7 @@ module.exports = {
         // for example: "./node_modules/flowbite/**/*.js"
     ],
 
-    darkMode: 'class', // Correctly placed at the top level of the config object
+    darkMode: 'class',
 
     theme: {
         extend: {
@@ -57,15 +57,13 @@ module.exports = {
 
     plugins: [
         require('daisyui'),
-        require('flowbite/plugin') // Add Flowbite's plugin
+        require('flowbite/plugin'),
     ],
 
-    // This is the most important part!
-    // We are configuring DaisyUI to NOT add its own base styles.
     daisyui: {
         styled: true,
         themes: true,
-        base: true, // <--- THIS IS THE FIX. Disables DaisyUI's base style reset.
+        base: true,
         utils: true,
         logs: true,
         rtl: false,

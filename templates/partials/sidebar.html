@@ -57,12 +57,13 @@
                     <span class="menu-group-title" :class="sidebarToggle ? 'lg:hidden' : ''">Inventory</span>
                     <svg :class="sidebarToggle ? 'lg:block hidden' : 'hidden'"
                          class="mx-auto fill-current menu-group-icon"
-                         width="20"
-                         height="20"
-                         viewBox="0 0 24 24"
+                         xmlns="http://www.w3.org/2000/svg"
                          fill="none"
-                         xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" clip-rule="evenodd" d="M5.99915 10.2451C6.96564 10.2451 7.74915 11.0286 7.74915 11.9951V12.0051C7.74915 12.9716 6.96564 13.7551 5.99915 13.7551C5.03265 13.7551 4.24915 12.9716 4.24915 12.0051V11.9951C4.24915 11.0286 5.03265 10.2451 5.99915 10.2451ZM17.9991 10.2451C18.9656 10.2451 19.7491 11.0286 19.7491 11.9951V12.0051C19.7491 12.9716 18.9656 13.7551 17.9991 13.7551C17.0326 13.7551 16.2491 12.9716 16.2491 12.0051V11.9951C16.2491 11.0286 17.0326 10.2451 17.9991 10.2451ZM13.7491 11.9951C13.7491 11.0286 12.9656 10.2451 11.9991 10.2451C11.0326 10.2451 10.2491 11.0286 10.2491 11.9951V12.0051C10.2491 12.9716 11.0326 13.7551 11.9991 13.7551C12.9656 13.7551 13.7491 12.9716 13.7491 12.0051V11.9951Z" fill="" />
+                         viewBox="0 0 24 24"
+                         stroke-width="1.5"
+                         stroke="currentColor"
+                         class="size-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
                     </svg>
                 </h3>
                 <ul class="flex flex-col gap-3 mb-5">
@@ -72,27 +73,28 @@
                            class="menu-item group"
                            :class="selected === 'Inventory' ? 'menu-item-active' : 'menu-item-inactive'">
                             <svg :class="selected === 'Inventory' ? 'menu-item-icon-active' :'menu-item-icon-inactive'"
-                                 width="20"
-                                 height="20"
-                                 viewBox="0 0 24 24"
+                                 xmlns="http://www.w3.org/2000/svg"
                                  fill="none"
-                                 xmlns="http://www.w3.org/2000/svg">
-                                <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C11.5858 2 11.25 2.33579 11.25 2.75V12C11.25 12.4142 11.5858 12.75 12 12.75H21.25C21.6642 12.75 22 12.4142 22 12C22 6.47715 17.5228 2 12 2ZM12.75 11.25V3.53263C13.2645 3.57761 13.7659 3.66843 14.25 3.80098V3.80099C15.6929 4.19606 16.9827 4.96184 18.0104 5.98959C19.0382 7.01734 19.8039 8.30707 20.199 9.75C20.3316 10.2341 20.4224 10.7355 20.4674 11.25H12.75ZM2 12C2 7.25083 5.31065 3.27489 9.75 2.25415V3.80099C6.14748 4.78734 3.5 8.0845 3.5 12C3.5 16.6944 7.30558 20.5 12 20.5C15.9155 20.5 19.2127 17.8525 20.199 14.25H21.7459C20.7251 18.6894 16.7492 22 12 22C6.47715 22 2 17.5229 2 12Z" fill="" />
+                                 viewBox="0 0 24 24"
+                                 stroke-width="1.5"
+                                 stroke="currentColor"
+                                 class="size-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
                             </svg>
                             <span class="menu-item-text text-sm"
                                   :class="sidebarToggle ? 'lg:hidden' : ''">Inventory</span>
                         </a>
                         <!-- Dropdown Menu Start -->
-                        <!-- ***** MODIFICATION START ***** -->
-                        <!-- We now control the visibility by animating max-height -->
                         <div x-ref="dropdown_inventory"
                              class="overflow-hidden transition-all duration-200 ease-in-out"
                              :style="selected === 'Inventory' ? `max-height: ${$refs.dropdown_inventory.scrollHeight}px` : 'max-height: 0'">
-                            <!-- ***** MODIFICATION END ***** -->
                             <ul :class="sidebarToggle ? 'lg:hidden' : 'flex'"
                                 class="flex flex-col gap-1 mt-2 menu-dropdown pl-6">
                                 <li>
                                     <a href="{% url 'products' %}"
+                                       hx-boost="true"
+                                       hx-target="#main_body"
+                                       hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
                                        :class="page === 'products' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
                                         Products
@@ -100,6 +102,9 @@
                                 </li>
                                 <li>
                                     <a href=""
+                                       hx-boost="true"
+                                       hx-target="#main_body"
+                                       hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
                                        :class="page === 'serial_items' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
                                         Serial Items
@@ -107,6 +112,9 @@
                                 </li>
                                 <li>
                                     <a href=""
+                                       hx-boost="true"
+                                       hx-target="#main_body"
+                                       hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
                                        :class="page === 'general_inventory' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
                                         General Inventory
@@ -114,6 +122,9 @@
                                 </li>
                                 <li>
                                     <a href=""
+                                       hx-boost="true"
+                                       hx-target="#main_body"
+                                       hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
                                        :class="page === 'inventory_transformations' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
                                         Inventory Transformations
@@ -131,12 +142,13 @@
                     <span class="menu-group-title" :class="sidebarToggle ? 'lg:hidden' : ''">Purchases</span>
                     <svg :class="sidebarToggle ? 'lg:block hidden' : 'hidden'"
                          class="mx-auto fill-current menu-group-icon"
-                         width="20"
-                         height="20"
-                         viewBox="0 0 24 24"
+                         xmlns="http://www.w3.org/2000/svg"
                          fill="none"
-                         xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" clip-rule="evenodd" d="M5.99915 10.2451C6.96564 10.2451 7.74915 11.0286 7.74915 11.9951V12.0051C7.74915 12.9716 6.96564 13.7551 5.99915 13.7551C5.03265 13.7551 4.24915 12.9716 4.24915 12.0051V11.9951C4.24915 11.0286 5.03265 10.2451 5.99915 10.2451ZM17.9991 10.2451C18.9656 10.2451 19.7491 11.0286 19.7491 11.9951V12.0051C19.7491 12.9716 18.9656 13.7551 17.9991 13.7551C17.0326 13.7551 16.2491 12.9716 16.2491 12.0051V11.9951C16.2491 11.0286 17.0326 10.2451 17.9991 10.2451ZM13.7491 11.9951C13.7491 11.0286 12.9656 10.2451 11.9991 10.2451C11.0326 10.2451 10.2491 11.0286 10.2491 11.9951V12.0051C10.2491 12.9716 11.0326 13.7551 11.9991 13.7551C12.9656 13.7551 13.7491 12.9716 13.7491 12.0051V11.9951Z" fill="" />
+                         viewBox="0 0 24 24"
+                         stroke-width="1.5"
+                         stroke="currentColor"
+                         class="size-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
                     </svg>
                 </h3>
                 <ul class="flex flex-col gap-3 mb-5">
@@ -146,27 +158,28 @@
                            class="menu-item group"
                            :class="selected === 'Purchases' ? 'menu-item-active' : 'menu-item-inactive'">
                             <svg :class="selected === 'Purchases' ? 'menu-item-icon-active' :'menu-item-icon-inactive'"
-                                 width="20"
-                                 height="20"
-                                 viewBox="0 0 24 24"
+                                 xmlns="http://www.w3.org/2000/svg"
                                  fill="none"
-                                 xmlns="http://www.w3.org/2000/svg">
-                                <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C11.5858 2 11.25 2.33579 11.25 2.75V12C11.25 12.4142 11.5858 12.75 12 12.75H21.25C21.6642 12.75 22 12.4142 22 12C22 6.47715 17.5228 2 12 2ZM12.75 11.25V3.53263C13.2645 3.57761 13.7659 3.66843 14.25 3.80098V3.80099C15.6929 4.19606 16.9827 4.96184 18.0104 5.98959C19.0382 7.01734 19.8039 8.30707 20.199 9.75C20.3316 10.2341 20.4224 10.7355 20.4674 11.25H12.75ZM2 12C2 7.25083 5.31065 3.27489 9.75 2.25415V3.80099C6.14748 4.78734 3.5 8.0845 3.5 12C3.5 16.6944 7.30558 20.5 12 20.5C15.9155 20.5 19.2127 17.8525 20.199 14.25H21.7459C20.7251 18.6894 16.7492 22 12 22C6.47715 22 2 17.5229 2 12Z" fill="" />
+                                 viewBox="0 0 24 24"
+                                 stroke-width="1.5"
+                                 stroke="currentColor"
+                                 class="size-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
                             </svg>
                             <span class="menu-item-text text-sm"
                                   :class="sidebarToggle ? 'lg:hidden' : ''">Purchases</span>
                         </a>
                         <!-- Dropdown Menu Start -->
-                        <!-- ***** MODIFICATION START ***** -->
-                        <!-- We now control the visibility by animating max-height -->
                         <div x-ref="dropdown_purchases"
                              class="overflow-hidden transition-all duration-200 ease-in-out"
                              :style="selected === 'Purchases' ? `max-height: ${$refs.dropdown_purchases.scrollHeight}px` : 'max-height: 0'">
-                            <!-- ***** MODIFICATION END ***** -->
                             <ul :class="sidebarToggle ? 'lg:hidden' : 'flex'"
                                 class="flex flex-col gap-1 mt-2 menu-dropdown pl-6">
                                 <li>
                                     <a href="{% url 'suppliers' %}"
+                                       hx-boost="true"
+                                       hx-target="#main_body"
+                                       hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
                                        :class="page === 'suppliers' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
                                         Suppliers
@@ -174,6 +187,9 @@
                                 </li>
                                 <li>
                                     <a href="{% url 'purchases' %}"
+                                       hx-boost="true"
+                                       hx-target="#main_body"
+                                       hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
                                        :class="page === 'purchase_orders' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
                                         Purchase Orders
@@ -181,6 +197,9 @@
                                 </li>
                                 <li>
                                     <a href="{% url 'receipts' %}"
+                                       hx-boost="true"
+                                       hx-target="#main_body"
+                                       hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
                                        :class="page === 'purchase_receives' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
                                         Purchase Receives
@@ -188,6 +207,9 @@
                                 </li>
                                 <li>
                                     <a href="{% url 'payments' %}"
+                                       hx-boost="true"
+                                       hx-target="#main_body"
+                                       hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
                                        :class="page === 'payments_made' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
                                         Payments Made

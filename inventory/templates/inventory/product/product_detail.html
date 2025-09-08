@@ -1,13 +1,288 @@
 {% extends 'index.html' %}
 {% load static %}
 {% block content %}
-   <div class="flex flex-col h-full">
+   {% include "partials/spinner.html" with id="body_spinner" %}
+   <div class="flex flex-col h-full" id="main_body">
       <div class="flex flex-row h-full">
-         {% comment %} sidebar section {% endcomment %}
-         {% include "inventory/product/partials/_sidebar.html" %}
-         {% comment %} content area {% endcomment %}
-         <div class="flex-1 bg-white" id="main_content">
-            {% include "inventory/product/partials/_full_detail.html" with product=main_product overview_url=overview_url transactions_url=transactions_url%}
+         {% block _side_bar %}
+            <div x-data="{ activeProduct: '{{ main_product.pk }}' }"
+                 class="flex-none w-[360px] bg-white border-r">
+               <div class="flex flex-col h-full">
+                  <div class="flex-none border-b">
+                     <div class="h-16 flex items-center justify-between px-2 py-2">
+                        <h4 class="text-gray-900 text-lg font-medium">All Items</h4>
+                        <a href="{% url 'add_product' %}"
+                           hx-boost="true"
+                           hx-target="#main_body"
+                           hx-indicator="#body_spinner"
+                           class="px-1 py-1 text-md font-medium text-center text-white bg-blue-500 rounded-md hover:bg-blue-600 focus:ring-1 focus:outline-none focus:ring-blue-200">
+                           <svg xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                class="size-6">
+                              <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+                           </svg>
+                        </a>
+                     </div>
+                  </div>
+                  <div class="flex-1" id="side_bar">
+                     {% block side_bar_list %}
+                        {% for product in product_list %}
+                           <a href="{% url 'product_detail' pk=product.pk %}"
+                              class="h-10 flex items-center justify-between px-5 border-b hover:bg-gray-100 transition-colors duration-150"
+                              hx-boost="true"
+                              hx-target="#main_content"
+                              hx-indicator="#side_bar_spinner"
+                              @click="activeProduct = '{{ product.pk }}'"
+                              x-bind:class="{'bg-blue-50 border-r-2 border-r-blue-500': activeProduct === '{{ product.pk }}' }">
+                              <h4 class="text-gray-800 font-medium text-sm">{{ product.modelname|upper }}</h4>
+                              <h4 class="text-gray-800 font-medium text-sm">NGN{{ product.average_sales_price }}</h4>
+                           </a>
+                        {% endfor %}
+                        {% include "partials/pagination.html" with page_obj=product_list target="side_bar" %}
+                     {% endblock side_bar_list %}
+                  </div>
+               </div>
+            </div>
+         {% endblock _side_bar %}
+         <div class="flex-1 bg-white relative" id="content-wrapper">
+            <!-- Spinner overlay -->
+            {% include "partials/spinner.html" with id="side_bar_spinner" %}
+            <div id="main_content">
+               {% block main_content %}
+                  {% block _header %}
+                     <div class="flex-none bg-white py-3 px-5 h-16">
+                        <div class="flex justify-between items-start">
+                           <h1 class="text-lg font-medium text-gray-900">{{ product.modelname|upper }}</h1>
+                           <div class="flex inline-items items-center gap-2">
+                              <a href="{{ product.get_edit_url }}"
+                                 hx-boost="true"
+                                 hx-target="#main_body"
+                                 hx-indicator="#body_spinner"
+                                 class="text-gray-600 bg-gray-100 px-1 py-1 border border-gray-300 rounded-md">
+                                 <svg xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 16 16"
+                                      fill="currentColor"
+                                      class="size-6">
+                                    <path d="M13.488 2.513a1.75 1.75 0 0 0-2.475 0L6.75 6.774a2.75 2.75 0 0 0-.596.892l-.848 2.047a.75.75 0 0 0 .98.98l2.047-.848a2.75 2.75 0 0 0 .892-.596l4.261-4.262a1.75 1.75 0 0 0 0-2.474Z" />
+                                    <path d="M4.75 3.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h6.5c.69 0 1.25-.56 1.25-1.25V9A.75.75 0 0 1 14 9v2.25A2.75 2.75 0 0 1 11.25 14h-6.5A2.75 2.75 0 0 1 2 11.25v-6.5A2.75 2.75 0 0 1 4.75 2H7a.75.75 0 0 1 0 1.5H4.75Z" />
+                                 </svg>
+                              </a>
+                              <div class="relative" x-data="{ open: false }">
+                                 <button @click="open = !open"
+                                         @click.away="open = false"
+                                         class="flex items-center gap-1 bg-gray-100 py-1 px-2 border border-gray-300 rounded-md text-md font-light text-gray-900 transition-colors duration-200">
+                                    <span>More</span>
+                                    <svg class="w-2 h-2 text-gray-900 transition-transform duration-150"
+                                         :class="{ 'rotate-180': open }"
+                                         xmlns="http://www.w3.org/2000/svg"
+                                         fill="none"
+                                         viewBox="0 0 24 24"
+                                         stroke="currentColor">
+                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                 </button>
+                                 <div x-show="open"
+                                      x-transition:enter="transition ease-in-out duration-50"
+                                      x-transition:enter-start="opacity-0 translate-y-1"
+                                      x-transition:enter-end="opacity-100 translate-y-0"
+                                      x-transition:leave="transition ease-in-out duration-50"
+                                      x-transition:leave-start="opacity-100 translate-y-0"
+                                      x-transition:leave-end="opacity-0 translate-y-1"
+                                      class="absolute top-full right-0 mt-2 w-35 bg-white border border-gray-200 rounded-md shadow-lg z-[100]">
+                                    <div class="py-1 flex flex-col">
+                                       <div id="active_inactive_container">
+                                          <button hx-post="{{ product.status_change_url }}"
+                                                  class="px-3 py-2 text-sm w-full text-gray-700 hover:bg-gray-100 hover:rounded-md transition-colors duration-150 text-left">
+                                             {% if product.status == product.Status.ACTIVE %}
+                                                Mark as Inactive
+                                             {% else %}
+                                                Mark as Active
+                                             {% endif %}
+                                          </button>
+                                       </div>
+                                       {% if product.can_delete %}
+                                          <button hx-delete="{{ product.get_delete_url }}"
+                                                  hx-swap="outerHTML top"
+                                                  hx-target="#main_body"
+                                                  hx-indicator="#body_spinner"
+                                                  hx-confirm="Are you sure you want to delete this product?"
+                                                  class="px-3 py-2 text-sm w-full text-gray-700 hover:bg-gray-100 transition-colors duration-150 text-left">
+                                             Delete
+                                          </button>
+                                       {% endif %}
+                                    </div>
+                                 </div>
+                              </div>
+                              <a href="{{ product.get_list_url }}"
+                                 hx-boost="true"
+                                 hx-target="#main_body"
+                                 hx-indicator="#body_spinner"
+                                 class="text-gray-600 hover:text-gray-600 transition-colors">
+                                 <svg xmlns="http://www.w3.org/2000/svg"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke-width="1.5"
+                                      stroke="currentColor"
+                                      class="size-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                 </svg>
+                              </a>
+                           </div>
+                        </div>
+                     </div>
+                     <div x-data="{activeTab: 'overview'}"
+                          class="flex-none text-sm font-medium text-center text-gray-500 border-b border-gray-200">
+                        <ul class="flex flex-wrap -mb-px">
+                           <li class="me-2">
+                              <a href="{{ product.overview_url }}"
+                                 hx-boost="true"
+                                 hx-target="#_content"
+                                 @click="activeTab = 'overview'"
+                                 x-bind:class="{ 'inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg hover:text-gray-600 hover:border-gray-300': activeTab === 'overview', 'inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300': activeTab !== 'overview' }">
+                                 Overview
+                              </a>
+                           </li>
+                           <li class="me-2">
+                              <a href="{{ product.transaction_url }}"
+                                 hx-boost="true"
+                                 hx-target="#_content"
+                                 @click="activeTab = 'transactions'"
+                                 x-bind:class="{ 'inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg hover:text-gray-600 hover:border-gray-300': activeTab === 'transactions', 'inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300': activeTab !== 'transactions' }"
+                                 aria-current="page">Transactions</a>
+                           </li>
+                        </ul>
+                     </div>
+                  {% endblock _header %}
+                  {% block _content %}
+                     <div id="_content">
+                        <div class="flex-1 py-5 px-5">
+                           <div class="flex flex-row h-full gap-10">
+                              <div class="flex-none w-1/4 flex flex-col gap-4 border-r h-full">
+                                 <div class="bg-white pb-5">
+                                    <div class="mb-2">
+                                       <h4 class="text-lg font-normal text-gray-900">Product Details</h4>
+                                    </div>
+                                    <div class="space-y-4">
+                                       <div class="flex items-center">
+                                          <span class="text-sm text-gray-600 w-40">Item Name</span>
+                                          <span class="text-sm font-medium text-gray-700">{{ product.modelname|upper }}</span>
+                                       </div>
+                                       <div class="flex items-center">
+                                          <span class="text-sm text-gray-600 w-40">Brand</span>
+                                          <span class="text-sm font-medium text-gray-700">{{ product.brand|upper }}</span>
+                                       </div>
+                                       <div class="flex items-center">
+                                          <span class="text-sm text-gray-600 w-40">Category</span>
+                                          <span class="text-sm font-medium text-gray-700">{{ product.category|title }}</span>
+                                       </div>
+                                       <div class="flex items-center" id="status_container">
+                                          <span class="text-sm text-gray-600 w-40">Status</span>
+                                          <span class="text-sm font-medium
+                                                       {% if product.status == product.Status.ACTIVE %}
+                                                          text-green-700
+                                                       {% else %}
+                                                          text-red-700
+                                                       {% endif %}">{{ product.status|title }}</span>
+                                       </div>
+                                       <div class="flex items-center">
+                                          <span class="text-sm text-gray-600 w-40">Created by</span>
+                                          <span class="text-sm font-medium text-gray-700">{{ product.created_by|title }}</span>
+                                       </div>
+                                    </div>
+                                 </div>
+                                 <div class="bg-white pb-5">
+                                    <div class="mb-2">
+                                       <h4 class="text-lg font-normal text-gray-900">Purchase Information</h4>
+                                    </div>
+                                    <div class="space-y-4">
+                                       <div class="flex items-center">
+                                          <span class="text-sm text-gray-600 w-40">Cost Price</span>
+                                          <span class="text-sm font-medium text-gray-700">NGN{{ product.average_cost_price }}</span>
+                                       </div>
+                                       <div class="flex items-center">
+                                          <span class="text-sm text-gray-600 w-40">To be Recieved</span>
+                                          <span class="text-sm font-medium text-gray-700">{{ product.total_remaining_qty }} Qty</span>
+                                       </div>
+                                    </div>
+                                 </div>
+                                 <div class="bg-white pb-5">
+                                    <div class="mb-2">
+                                       <h4 class="text-lg font-normal text-gray-900">Sales Information</h4>
+                                    </div>
+                                    <div class="space-y-4">
+                                       <div class="flex items-center">
+                                          <span class="text-sm text-gray-600 w-40">Sales Price</span>
+                                          <span class="text-sm font-medium text-gray-700">NGN{{ product.average_sales_price }}</span>
+                                       </div>
+                                       <div class="flex items-center">
+                                          <span class="text-sm text-gray-600 w-40">Total Coupled Sold</span>
+                                          <span class="text-sm font-medium text-gray-700">{{ product.sale_items.count }} Qty</span>
+                                       </div>
+                                       <div class="flex items-center">
+                                          <span class="text-sm text-gray-600 w-40">Total Boxed Sold</span>
+                                          <span class="text-sm font-medium text-gray-700">{{ product.sale_items.count }} Qty</span>
+                                       </div>
+                                    </div>
+                                 </div>
+                                 <div class="bg-white pb-5">
+                                    <div class="mb-2">
+                                       <h4 class="text-lg font-normal text-gray-900">Inventory Information</h4>
+                                    </div>
+                                    <div class="space-y-4">
+                                       <div class="flex items-center">
+                                          <span class="text-sm text-gray-600 w-40">Total Coupled</span>
+                                          <span class="text-sm font-medium text-gray-700">{{ product.serialized_products.count }} Qty</span>
+                                       </div>
+                                       <div class="flex items-center">
+                                          <span class="text-sm text-gray-600 w-40">Total Boxed</span>
+                                          <span class="text-sm font-medium text-gray-700">
+                                             {% if product.inventory.quantity_on_hand %}
+                                                {{ product.inventory.quantity_on_hand }} Qty
+                                             {% else %}
+                                                0 Qty
+                                             {% endif %}
+                                          </span>
+                                       </div>
+                                    </div>
+                                 </div>
+                              </div>
+                              <div class="flex-1">
+                                 <ol class="relative border-l border-blue-500 ml-10 mt-10">
+                                    <li class="mb-10 ml-8 border rounded-sm p-3">
+                                       <span class="absolute -left-4 flex items-center border border-gray-200 justify-center w-8 h-8 bg-white text-blue-500 rounded-full ring-4 ring-white">
+                                          <svg xmlns="http://www.w3.org/2000/svg"
+                                               fill="none"
+                                               viewBox="0 0 24 24"
+                                               stroke-width="1.5"
+                                               stroke="currentColor"
+                                               class="size-5">
+                                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                                          </svg>
+                                       </span>
+                                       <h3 class="font-medium leading-tight">Personal Info</h3>
+                                       <p class="text-sm text-gray-500">Your personal details appear here.</p>
+                                    </li>
+                                    <li class="mb-10 ml-8">
+                                       <span class="absolute -left-4 flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full ring-4 ring-white">
+                                          <svg class="w-3.5 h-3.5 text-gray-500"
+                                               xmlns="http://www.w3.org/2000/svg"
+                                               fill="currentColor"
+                                               viewBox="0 0 20 16">
+                                             <path d="M18 0H2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2ZM6 13H4V8h2v5Zm-2-6V5h2v2H4Zm6 6H8V8h2v5Zm-2-6V5h2v2H8Zm6 6h-2V8h2v5Zm-2-6V5h2v2h-2Z" />
+                                          </svg>
+                                       </span>
+                                       <h3 class="font-medium leading-tight">Account Info</h3>
+                                       <p class="text-sm text-gray-500">Your account details appear here.</p>
+                                    </li>
+                                 </ol>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  {% endblock _content %}
+               {% endblock main_content %}
+            </div>
          </div>
       </div>
    </div>

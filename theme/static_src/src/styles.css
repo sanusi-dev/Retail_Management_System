@@ -178,6 +178,10 @@
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+
+  body {
+    @apply relative text-base font-normal font-outfit z-1 bg-gray-50;
+  }
 }
 
 
@@ -263,23 +267,6 @@
 
 .dark .custom-scrollbar::-webkit-scrollbar-thumb {
   background-color: #344054;
-}
-
-@layer base {
-  body {
-    @apply relative text-base font-normal font-outfit z-1 bg-gray-50;
-  }
-}
-
-@layer utilities {
-
-  input[type="date"]::-webkit-inner-spin-button,
-  input[type="time"]::-webkit-inner-spin-button,
-  input[type="date"]::-webkit-calendar-picker-indicator,
-  input[type="time"]::-webkit-calendar-picker-indicator {
-    display: none;
-    -webkit-appearance: none;
-  }
 }
 
 .sidebar:hover {
@@ -786,4 +773,68 @@
     @apply border-brand-500 text-brand-600 dark:border-brand-400 dark:text-brand-400;
   }
 
+  /* HTMX Loading Indicators */
+  .htmx-indicator {
+    opacity: 0;
+    transition: opacity 300ms ease-in-out;
+    pointer-events: none;
+  }
+
+  .htmx-request .htmx-indicator {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* Optional: Add a subtle fade effect to content during loading */
+  .htmx-request #main_content {
+    opacity: 0.7;
+    transition: opacity 200ms ease-in-out;
+  }
+
+  .htmx-request #main_body {
+    opacity: 0.7;
+    transition: opacity 200ms ease-in-out;
+  }
+
+
+  /* View Transition Animations */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes slide-from-right {
+    from {
+      transform: translateX(-20px);
+    }
+  }
+
+  @keyframes slide-to-left {
+    to {
+      transform: translateX(-20px);
+    }
+  }
+
+  /* define animations for the old and new content */
+  ::view-transition-old(slide-it) {
+    animation: 180ms cubic-bezier(0.4, 0, 1, 1) both fade-out,
+      200ms cubic-bezier(0.4, 0, 0.2, 1) both slide-to-left;
+  }
+
+  ::view-transition-new(slide-it) {
+    animation: 420ms cubic-bezier(0, 0, 0.2, 1) 90ms both fade-in,
+      200ms cubic-bezier(0.4, 0, 0.2, 1) both slide-from-right;
+  }
+
+  /* tie the view transition to a given CSS class */
+  .sample-transition {
+    view-transition-name: slide-it;
+  }
 }

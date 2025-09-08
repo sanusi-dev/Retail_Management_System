@@ -190,6 +190,10 @@ class PurchaseOrder(models.Model):
         ]
         return total or 0
 
+    @classmethod
+    def get_list_url(cls):
+        return reverse("purchases")
+
     # @property
     # def get_absolute_url(self):
     #     return reverse("po_detail", kwargs={"pk": self.pk})
@@ -272,6 +276,14 @@ class PurchaseOrderItem(models.Model):
 
     def __str__(self):
         return self.product.modelname
+
+    @property
+    def total_price(self):
+        return self.ordered_quantity * self.unit_price_at_order or 0
+
+    @property
+    def type_variant(self):
+        return f"{self.product.type_variant}"
 
     def save(self, *args, **kwargs):
         if self.ordered_quantity is None or self.ordered_quantity <= 0:
