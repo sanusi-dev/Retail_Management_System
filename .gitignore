@@ -60,3 +60,4 @@ celerybeat-schedule
 
 # SageMath parsed files
 *.sage.py
+virtualenv/
