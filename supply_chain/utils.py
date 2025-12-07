@@ -1,88 +1,77 @@
-# {% extends 'index.html' %}
-# {% load static %}
-# {% block content %}
-#    <div class="flex p-4">
-#       <div class="p-6 w-full max-w-4xl">
-#          <form method="post">
-#             {% csrf_token %}
-#             <h1 class="text-xl mb-10">New Purchase Order</h1>
-#             <!-- Display non-field errors for the main form -->
-#             {% if po_form.non_field_errors %}
-#                <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-#                   {% for error in po_form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
-#                </div>
-#             {% endif %}
-#             <div class="w-[80%]">
-#                <div class="grid grid-cols-[1fr_2fr_50px] mb-6 items-center">
-#                   <div>
-#                      <label for="{{ po_form.supplier.id_for_label }}"
-#                             class="block text-sm font-medium {% if po_form.supplier.errors %}text-red-600{% else %}text-gray-700{% endif %}">
-#                         {{ po_form.supplier.label }}
-#                      </label>
-#                   </div>
-#                   <div class="flex items-center">
-#                      {{ po_form.supplier }}
-#                      <!-- Display supplier field errors -->
-#                      {% if po_form.supplier.errors %}
-#                         <div class="ml-2 text-red-600 text-sm">
-#                            {% for error in po_form.supplier.errors %}<div>{{ error }}</div>{% endfor %}
-#                         </div>
-#                      {% endif %}
-#                   </div>
-#                   <a href="{% url 'add_supplier' %}?next={{ request.path }}"
-#                      class="border rounded-r-md p-2 flex items-center justify-center h-full bg-blue-500 text-white hover:bg-blue-600">
-#                      <svg xmlns="http://www.w3.org/2000/svg"
-#                           fill="none"
-#                           viewBox="0 0 24 24"
-#                           stroke-width="1.5"
-#                           stroke="currentColor"
-#                           class="w-6 h-6">
-#                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-#                      </svg>
-#                   </a>
-#                </div>
-#             </div>
-#             <div class="my-10">
-#                {% if item_formset.non_form_errors %}
-#                   <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-#                      {% for error in item_formset.non_form_errors %}<div>{{ error }}</div>{% endfor %}
-#                   </div>
-#                {% endif %}
-#                <h2 class="text-lg mb-2 bg-gray-100">Item Table</h2>
-#                <div class="overflow-x-auto">
-#                   <table class="w-full">
-#                      <thead>
-#                         <tr class="bg-gray-100">
-#                            <th class="p-2 text-left">Product</th>
-#                            <th class="p-2 text-left">Quantity</th>
-#                            <th class="p-2 text-left">Unit Price</th>
-#                            <th class="p-2 text-left">Action</th>
-#                         </tr>
-#                      </thead>
-#                      <tbody id="items-container">
-#                         {{ item_formset.management_form }}
-#                         {% for form in item_formset %}
-#                            {% include 'supply_chain/po/partials/po_item_form_row.html' with form=form %}
-#                         {% endfor %}
-#                      </tbody>
-#                   </table>
-#                </div>
-#             </div>
-#             <!-- HTMX Add Button -->
-#             <button type="button"
-#                     id="add-item-btn"
-#                     hx-get="{% url 'htmx_add_po_item' %}"
-#                     hx-target="#items-container"
-#                     hx-swap="beforeend"
-#                     class="text-blue-700 hover:text-white border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-#                Add Another Item
-#             </button>
-#             <!-- Main Form Actions -->
-#             <div class="mt-6 flex space-x-4">
-#                <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 ...">Save</button>
-#                <a href="{% url 'purchases' %}" class="py-2 px-4.5 ...">Cancel</a>
-#             </div>
-#          </form>
-#       </div>
-#    </div>
-# {% endblock content %}
+from .models import PurchaseOrder, GoodsReceiptItem
+from .forms import GoodsReceiptItemForm
+from django.forms import modelformset_factory
+from django.db.models import Sum, F, IntegerField
+from django.db.models.functions import Coalesce
+from django.shortcuts import get_object_or_404
+
+
+def weight_average_cost_calc(instance):
+
+    inventory = instance.inventory
+
+    inventory_qty, inventory_wac = inventory.quantity, inventory.weighted_average_cost
+    inventory_value = inventory_qty * inventory_wac
+    recieve_value = instance.received_quantity * instance.unit_cost_at_receipt
+
+    new_inventory_quantity = inventory_qty + instance.received_qunatity
+    new_inventory_value = inventory_value + recieve_value
+    new_wac = (
+        new_inventory_value / new_inventory_quantity
+        if new_inventory_value or new_inventory_quantity != 0
+        else 0
+    )
+
+    return inventory, new_wac, new_inventory_quantity
+
+
+def get_formset_data(purchase_order):
+    if not purchase_order:
+        EmptyFormset = modelformset_factory(
+            GoodsReceiptItem, form=GoodsReceiptItemForm, extra=0
+        )
+        return (
+            EmptyFormset(queryset=GoodsReceiptItem.objects.none(), prefix="items"),
+            [],
+        )
+
+    po_items = (
+        purchase_order.po_items.annotate(
+            total_received_qty=Coalesce(
+                Sum("receipt_items__received_quantity"),
+                0,
+                output_field=IntegerField(),
+            )
+        )
+        .filter(ordered_quantity__gt=F("total_received_qty"))
+        .select_related("product")
+    )
+
+    ReceiptItemFormset = modelformset_factory(
+        GoodsReceiptItem,
+        form=GoodsReceiptItemForm,
+        can_delete=True,
+        extra=len(po_items),
+    )
+    initial_formset_data = [
+        {"purchase_order_item": item, "product": item.product} for item in po_items
+    ]
+
+    formset = ReceiptItemFormset(
+        queryset=GoodsReceiptItem.objects.none(),
+        initial=initial_formset_data,
+        prefix="items",
+    )
+    return formset, po_items
+
+
+def get_initial_purchase_order(request):
+    purchase_order = None
+    initial_data = {}
+
+    purchase_order_pk = request.GET.get("purchase_order")
+    if purchase_order_pk:
+        purchase_order = get_object_or_404(PurchaseOrder, pk=purchase_order_pk)
+        initial_data["purchase_order"] = purchase_order
+
+    return purchase_order, initial_data

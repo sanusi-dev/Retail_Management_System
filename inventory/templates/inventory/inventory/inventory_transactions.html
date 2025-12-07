@@ -1,0 +1,71 @@
+{% extends "index.html" %}
+{% load static %}
+{% load color_filters %}
+{% load humanize %}
+{% block content %}
+   {% include "partials/spinner.html" with id="body_spinner" %}
+   <div class="flex h-full flex-col" id="main_body">
+      {% block header %}
+         <div class="h-16 flex items-center justify-between px-4">
+            {% include "partials/table_filter.html" with view_name="All Inventory Movements" %}
+            <a href=""
+               hx-boost="true"
+               hx-target="#main_body"
+               hx-indicator="#body_spinner"
+               class="px-3 py-2 text-sm font-medium text-center inline-flex items-center text-white bg-brand-500 rounded-md hover:bg-blue-600 focus:ring-1 focus:outline-none focus:ring-blue-200">
+               <svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    class="size-5">
+                  <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+               </svg>
+               New
+            </a>
+         </div>
+      {% endblock header %}
+      {% block body %}
+         <div id="table_container"
+              class="relative flex flex-col h-[calc(100vh-8rem)]">
+            <div class="flex-1 overflow-y-auto pb-25">
+               <table class="w-full text-sm text-left text-gray-500">
+                  <thead class="text-xs text-gray-500 font-normal uppercase bg-gray-50 sticky top-0 z-10">
+                     <tr class="border-t border-b">
+                        <th scope="col" class="px-6 py-3">Date</th>
+                        <th scope="col" class="px-6 py-3">inventory</th>
+                        <th scope="col" class="px-6 py-3">Type</th>
+                        <th scope="col" class="px-6 py-3">Source</th>
+                        <th scope="col" class="px-6 py-3">Quantity Change</th>
+                        <th scope="col" class="px-6 py-3">Cost impact</th>
+                     </tr>
+                  </thead>
+                  <tbody class="text-sm text-black font-light" id="tbody">
+                     {% if inventory_transactions %}
+                        {% for transaction in inventory_transactions %}
+                           <tr class="bg-white border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                              <td class="px-6 py-3 capitalize">{{ transaction.created_at|date:"j M Y" }}</td>
+                              <td class="px-6 py-3 capitalize">{{ transaction.inventory|upper }}</td>
+                              <td class="px-6 py-3 capitalize">{{ transaction.transaction_type|upper }}</td>
+                              <td class="px-6 py-3 capitalize">{{ transaction.source|upper }}</td>
+                              <td class="px-6 py-3 capitalize">{{ transaction.quantity_change }}</td>
+                              <td class="px-6 py-3 capitalize">NGN{{ transaction.cost_impact|floatformat:2|intcomma }}</td>
+                           </tr>
+                        {% endfor %}
+                     {% else %}
+                        <tr class="bg-white border-b border-gray-100 hover:bg-gray-50">
+                           <td colspan="5" class="px-6 py-3 text-center">
+                              <p>No transaction has been recorded yet.</p>
+                           </td>
+                        </tr>
+                     {% endif %}
+                  </tbody>
+               </table>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20">
+               <div class="flex justify-end">
+                  {% include 'partials/pagination.html' with page_obj=inventory_transactions target="table_container" %}
+               </div>
+            </div>
+         </div>
+      {% endblock body %}
+   </div>
+{% endblock content %}

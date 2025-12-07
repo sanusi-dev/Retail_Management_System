@@ -12,14 +12,14 @@
             </span>
         </a>
     </div>
-    <!-- SIDEBAR HEADER -->
     <div class="flex-1 flex flex-col overflow-y-auto">
         <!-- Sidebar Menu -->
         <nav x-data="{selected: $persist('Dashboard')}">
-            <!-- Menu Group -->
+            <!-- ================= DASHBOARD ================= -->
             <div>
                 <h3 class="mb-3 text-xs uppercase leading-[20px] text-stone-50">
                     <span class="menu-group-title" :class="sidebarToggle ? 'lg:hidden' : ''">DASHBOARD</span>
+                    <!-- Icon: Grid -->
                     <svg :class="sidebarToggle ? 'lg:block hidden' : 'hidden'"
                          class="mx-auto fill-current menu-group-icon"
                          width="20"
@@ -31,30 +31,30 @@
                     </svg>
                 </h3>
                 <ul class="flex flex-col gap-3 mb-5">
-                    <!-- Menu Item Dashboard -->
                     <li>
-                        <a href="{% url 'dashboard' %}"
+                        <a href="{% url 'sales' %}"
                            class="menu-item group"
                            :class="page === 'dashboard' ? 'menu-item-active' : 'menu-item-inactive'">
+                            <!-- Icon: Dashboard/Home -->
                             <svg :class="page === 'dashboard' ? 'menu-item-icon-active' :'menu-item-icon-inactive'"
                                  width="20"
                                  height="20"
                                  viewBox="0 0 24 24"
                                  fill="none"
                                  xmlns="http://www.w3.org/2000/svg">
-                                <path fill-rule="evenodd" clip-rule="evenodd" d="M5.5 3.25C4.25736 3.25 3.25 4.25736 3.25 5.5V8.99998C3.25 10.2426 4.25736 11.25 5.5 11.25H9C10.2426 11.25 11.25 10.2426 11.25 8.99998V5.5C11.25 4.25736 10.2426 3.25 9 3.25H5.5ZM4.75 5.5C4.75 5.08579 5.08579 4.75 5.5 4.75H9C9.41421 4.75 9.75 5.08579 9.75 5.5V8.99998C9.75 9.41419 9.41421 9.74998 9 9.74998H5.5C5.08579 9.74998 4.75 9.41419 4.75 8.99998V5.5ZM5.5 12.75C4.25736 12.75 3.25 13.7574 3.25 15V18.5C3.25 19.7426 4.25736 20.75 5.5 20.75H9C10.2426 20.75 11.25 19.7427 11.25 18.5V15C11.25 13.7574 10.2426 12.75 9 12.75H5.5ZM4.75 15C4.75 14.5858 5.08579 14.25 5.5 14.25H9C9.41421 14.25 9.75 14.5858 9.75 15V18.5C9.75 18.9142 9.41421 19.25 9 19.25H5.5C5.08579 19.25 4.75 18.9142 4.75 18.5V15ZM12.75 5.5C12.75 4.25736 13.7574 3.25 15 3.25H18.5C19.7426 3.25 20.75 4.25736 20.75 5.5V8.99998C20.75 10.2426 19.7426 11.25 18.5 11.25H15C13.7574 11.25 12.75 10.2426 12.75 8.99998V5.5ZM15 4.75C14.5858 4.75 14.25 5.08579 14.25 5.5V8.99998C14.25 9.41419 14.5858 9.74998 15 9.74998H18.5C18.9142 9.74998 19.25 9.41419 19.25 8.99998V5.5C19.25 5.08579 18.9142 4.75 18.5 4.75H15ZM15 12.75C13.7574 12.75 12.75 13.7574 12.75 15V18.5C12.75 19.7426 13.7574 20.75 15 20.75H18.5C19.7426 20.75 20.75 19.7427 20.75 18.5V15C20.75 13.7574 19.7426 12.75 18.5 12.75H15ZM14.25 15C14.25 14.5858 14.5858 14.25 15 14.25H18.5C18.9142 14.25 19.25 14.5858 19.25 15V18.5C19.25 18.9142 18.9142 19.25 18.5 19.25H15C14.5858 19.25 14.25 18.9142 14.25 18.5V15Z" fill="" />
+                                <path fill-rule="evenodd" clip-rule="evenodd" d="M5.5 3.25C4.25736 3.25 3.25 4.25736 3.25 5.5V8.99998C3.25 10.2426 4.25736 11.25 5.5 11.25H9C10.2426 11.25 11.25 10.2426 11.25 8.99998V5.5C11.25 4.25736 10.2426 3.25 9 3.25H5.5ZM15 4.75C14.5858 4.75 14.25 5.08579 14.25 5.5V8.99998C14.25 9.41419 14.5858 9.74998 15 9.74998H18.5C18.9142 9.74998 19.25 9.41419 19.25 8.99998V5.5C19.25 5.08579 18.9142 4.75 18.5 4.75H15ZM15 12.75C13.7574 12.75 12.75 13.7574 12.75 15V18.5C12.75 19.7426 13.7574 20.75 15 20.75H18.5C19.7426 20.75 20.75 19.7427 20.75 18.5V15C20.75 13.7574 19.7426 12.75 18.5 12.75H15ZM14.25 15C14.25 14.5858 14.5858 14.25 15 14.25H18.5C18.9142 14.25 19.25 14.5858 19.25 15V18.5C19.25 18.9142 18.9142 19.25 18.5 19.25H15C14.5858 19.25 14.25 18.9142 14.25 18.5V15Z" fill="" />
                             </svg>
                             <span class="menu-item-text text-sm"
                                   :class="sidebarToggle ? 'lg:hidden' : ''">Dashboard</span>
                         </a>
                     </li>
-                    <!-- Menu Item Dashboard -->
                 </ul>
             </div>
-            <!-- Inventory Group -->
+            <!-- ================= INVENTORY ================= -->
             <div>
                 <h3 class="mb-3 text-xs uppercase leading-[20px] text-stone-50">
                     <span class="menu-group-title" :class="sidebarToggle ? 'lg:hidden' : ''">Inventory</span>
+                    <!-- Icon: Box -->
                     <svg :class="sidebarToggle ? 'lg:block hidden' : 'hidden'"
                          class="mx-auto fill-current menu-group-icon"
                          xmlns="http://www.w3.org/2000/svg"
@@ -63,7 +63,7 @@
                          stroke-width="1.5"
                          stroke="currentColor"
                          class="size-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
                     </svg>
                 </h3>
                 <ul class="flex flex-col gap-3 mb-5">
@@ -79,12 +79,12 @@
                                  stroke-width="1.5"
                                  stroke="currentColor"
                                  class="size-5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
                             </svg>
                             <span class="menu-item-text text-sm"
                                   :class="sidebarToggle ? 'lg:hidden' : ''">Inventory</span>
                         </a>
-                        <!-- Dropdown Menu Start -->
+                        <!-- Dropdown -->
                         <div x-ref="dropdown_inventory"
                              class="overflow-hidden transition-all duration-200 ease-in-out"
                              :style="selected === 'Inventory' ? `max-height: ${$refs.dropdown_inventory.scrollHeight}px` : 'max-height: 0'">
@@ -96,50 +96,55 @@
                                        hx-target="#main_body"
                                        hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
-                                       :class="page === 'products' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
-                                        Products
-                                    </a>
+                                       :class="page === 'products' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'products'">Products</a>
                                 </li>
                                 <li>
-                                    <a href=""
+                                    <a href="{% url 'inventories' %}"
                                        hx-boost="true"
                                        hx-target="#main_body"
                                        hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
-                                       :class="page === 'serial_items' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
-                                        Serial Items
-                                    </a>
+                                       :class="page === 'inventories' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'inventories'">Inventory</a>
                                 </li>
                                 <li>
-                                    <a href=""
+                                    <a href="{% url 'serialized_inventories' %}"
                                        hx-boost="true"
                                        hx-target="#main_body"
                                        hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
-                                       :class="page === 'general_inventory' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
-                                        General Inventory
-                                    </a>
+                                       :class="page === 'serial_items' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'serial_items'">Serial Inventory</a>
                                 </li>
                                 <li>
-                                    <a href=""
+                                    <a href="{% url 'inventory_transactions' %}"
                                        hx-boost="true"
                                        hx-target="#main_body"
                                        hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
-                                       :class="page === 'inventory_transformations' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
-                                        Inventory Transformations
-                                    </a>
+                                       :class="page === 'inventory_transactions' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'inventory_transactions'">Transactions</a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'transformations' %}"
+                                       hx-boost="true"
+                                       hx-target="#main_body"
+                                       hx-indicator="#body_spinner"
+                                       class="menu-dropdown-item group text-xs"
+                                       :class="page === 'inventory_transformations' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'inventory_transformations'">Transformations</a>
                                 </li>
                             </ul>
                         </div>
-                        <!-- Dropdown Menu End -->
                     </li>
                 </ul>
             </div>
-            <!-- Purchases Group -->
+            <!-- ================= PURCHASES ================= -->
             <div>
                 <h3 class="mb-3 text-xs uppercase leading-[20px] text-stone-50">
                     <span class="menu-group-title" :class="sidebarToggle ? 'lg:hidden' : ''">Purchases</span>
+                    <!-- Icon: Shopping Bag -->
                     <svg :class="sidebarToggle ? 'lg:block hidden' : 'hidden'"
                          class="mx-auto fill-current menu-group-icon"
                          xmlns="http://www.w3.org/2000/svg"
@@ -167,9 +172,9 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
                             </svg>
                             <span class="menu-item-text text-sm"
-                                  :class="sidebarToggle ? 'lg:hidden' : ''">Purchases</span>
+                                  :class="sidebarToggle ? 'lg:hidden' : ''">Purchase</span>
                         </a>
-                        <!-- Dropdown Menu Start -->
+                        <!-- Dropdown -->
                         <div x-ref="dropdown_purchases"
                              class="overflow-hidden transition-all duration-200 ease-in-out"
                              :style="selected === 'Purchases' ? `max-height: ${$refs.dropdown_purchases.scrollHeight}px` : 'max-height: 0'">
@@ -181,9 +186,8 @@
                                        hx-target="#main_body"
                                        hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
-                                       :class="page === 'suppliers' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
-                                        Suppliers
-                                    </a>
+                                       :class="page === 'suppliers' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'suppliers'">Suppliers</a>
                                 </li>
                                 <li>
                                     <a href="{% url 'purchases' %}"
@@ -191,19 +195,8 @@
                                        hx-target="#main_body"
                                        hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
-                                       :class="page === 'purchase_orders' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
-                                        Purchase Orders
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="{% url 'receipts' %}"
-                                       hx-boost="true"
-                                       hx-target="#main_body"
-                                       hx-indicator="#body_spinner"
-                                       class="menu-dropdown-item group text-xs"
-                                       :class="page === 'purchase_receives' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
-                                        Purchase Receives
-                                    </a>
+                                       :class="page === 'purchase_orders' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'purchase_orders'">Orders</a>
                                 </li>
                                 <li>
                                     <a href="{% url 'payments' %}"
@@ -211,13 +204,135 @@
                                        hx-target="#main_body"
                                        hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
-                                       :class="page === 'payments_made' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'">
-                                        Payments Made
-                                    </a>
+                                       :class="page === 'payments_made' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'payments_made'">Payments</a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'receipts' %}"
+                                       hx-boost="true"
+                                       hx-target="#main_body"
+                                       hx-indicator="#body_spinner"
+                                       class="menu-dropdown-item group text-xs"
+                                       :class="page === 'purchase_receives' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'purchase_receives'">Receipts</a>
                                 </li>
                             </ul>
                         </div>
-                        <!-- Dropdown Menu End -->
+                    </li>
+                </ul>
+            </div>
+            <!-- ================= CUSTOMERS ================= -->
+            <div>
+                <h3 class="mb-3 text-xs uppercase leading-[20px] text-stone-50">
+                    <span class="menu-group-title" :class="sidebarToggle ? 'lg:hidden' : ''">Customer</span>
+                    <svg :class="sidebarToggle ? 'lg:block hidden' : 'hidden'"
+                         class="mx-auto fill-current menu-group-icon"
+                         xmlns="http://www.w3.org/2000/svg"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke-width="1.5"
+                         stroke="currentColor"
+                         class="size-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                    </svg>
+                </h3>
+                <ul class="flex flex-col gap-3 mb-5">
+                    <li>
+                        <a href="#"
+                           @click.prevent="selected = (selected === 'Customers' ? '':'Customers')"
+                           class="menu-item group"
+                           :class="selected === 'Customers' ? 'menu-item-active' : 'menu-item-inactive'">
+                            <svg :class="selected === 'Customers' ? 'menu-item-icon-active' :'menu-item-icon-inactive'"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 stroke-width="1.5"
+                                 stroke="currentColor"
+                                 class="size-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                            </svg>
+                            <span class="menu-item-text text-sm"
+                                  :class="sidebarToggle ? 'lg:hidden' : ''">Customer</span>
+                        </a>
+                        <!-- Dropdown -->
+                        <div x-ref="dropdown_customers"
+                             class="overflow-hidden transition-all duration-200 ease-in-out"
+                             :style="selected === 'Customers' ? `max-height: ${$refs.dropdown_customers.scrollHeight}px` : 'max-height: 0'">
+                            <ul :class="sidebarToggle ? 'lg:hidden' : 'flex'"
+                                class="flex flex-col gap-1 mt-2 menu-dropdown pl-6">
+                                <li>
+                                    <a href="{% url 'customers' %}"
+                                       hx-boost="true"
+                                       hx-target="#main_body"
+                                       hx-indicator="#body_spinner"
+                                       class="menu-dropdown-item group text-xs"
+                                       :class="page === 'customers' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'customers'">Customers</a>
+                                </li>
+                                <li>
+                                    <a href="{% url "customer_transactions" %}"
+                                       hx-boost="true"
+                                       hx-target="#main_body"
+                                       hx-indicator="#body_spinner"
+                                       class="menu-dropdown-item group text-xs"
+                                       :class="page === 'customer_transactions' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'customer_transactions'">Transactions</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <!-- ================= SALES ================= -->
+            <div>
+                <h3 class="mb-3 text-xs uppercase leading-[20px] text-stone-50">
+                    <span class="menu-group-title" :class="sidebarToggle ? 'lg:hidden' : ''">Sales</span>
+                    <!-- Icon: Banknotes/Receipt (Changed from duplicate bag/user icon) -->
+                    <svg :class="sidebarToggle ? 'lg:block hidden' : 'hidden'"
+                         class="mx-auto fill-current menu-group-icon"
+                         xmlns="http://www.w3.org/2000/svg"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke-width="1.5"
+                         stroke="currentColor"
+                         class="size-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                </h3>
+                <ul class="flex flex-col gap-3 mb-5">
+                    <li>
+                        <a href="#"
+                           @click.prevent="selected = (selected === 'Sales' ? '':'Sales')"
+                           class="menu-item group"
+                           :class="selected === 'Sales' ? 'menu-item-active' : 'menu-item-inactive'">
+                            <svg :class="selected === 'Sales' ? 'menu-item-icon-active' :'menu-item-icon-inactive'"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 stroke-width="1.5"
+                                 stroke="currentColor"
+                                 class="size-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                            <span class="menu-item-text text-sm"
+                                  :class="sidebarToggle ? 'lg:hidden' : ''">Sales</span>
+                        </a>
+                        <div x-ref="dropdown_sales"
+                             class="overflow-hidden transition-all duration-200 ease-in-out"
+                             :style="selected === 'Sales' ? `max-height: ${$refs.dropdown_sales.scrollHeight}px` : 'max-height: 0'">
+                            <ul :class="sidebarToggle ? 'lg:hidden' : 'flex'"
+                                class="flex flex-col gap-1 mt-2 menu-dropdown pl-6">
+                                <li>
+                                    <a href="{% url "sales" %}"
+                                       hx-boost="true"
+                                       hx-target="#main_body"
+                                       hx-indicator="#body_spinner"
+                                       class="menu-dropdown-item group text-xs"
+                                       :class="page === 'sales_list' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'sales_list'">All Sales</a>
+                                </li>
+                            </ul>
+                        </div>
                     </li>
                 </ul>
             </div>

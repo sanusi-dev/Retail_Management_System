@@ -1,32 +1,33 @@
 {% extends 'index.html' %}
 {% load static %}
+{% load field_name %}
 {% block content %}
    {% include "partials/spinner.html" with id="body_spinner" %}
    <div class="flex flex-col h-full" id="main_body">
       <div class="flex flex-row h-full">
          {% block _side_bar %}
-            <div x-data="{ activeProduct: '{{ main_product.pk }}' }"
-                 class="flex-none w-[360px] bg-white border-r">
-               <div class="flex flex-col h-full">
-                  <div class="flex-none border-b">
-                     <div class="h-16 flex items-center justify-between px-2 py-2">
-                        <h4 class="text-gray-900 text-lg font-medium">All Items</h4>
-                        <a href="{% url 'add_product' %}"
-                           hx-boost="true"
-                           hx-target="#main_body"
-                           hx-indicator="#body_spinner"
-                           class="px-1 py-1 text-md font-medium text-center text-white bg-blue-500 rounded-md hover:bg-blue-600 focus:ring-1 focus:outline-none focus:ring-blue-200">
-                           <svg xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                                class="size-6">
-                              <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-                           </svg>
-                        </a>
-                     </div>
+            <div x-data="{ activeProduct: '{{ product.pk }}' }"
+                 class="flex-none w-[360px] h-screen bg-white border-r flex flex-col">
+               <div class="flex-none border-b">
+                  <div class="h-16 flex items-center justify-between px-2 py-2">
+                     <h4 class="text-gray-900 text-lg font-medium">All Items</h4>
+                     <a href="{% url 'add_product' %}"
+                        hx-boost="true"
+                        hx-target="#main_body"
+                        hx-indicator="#body_spinner"
+                        class="px-1 py-1 text-md font-medium text-center text-white bg-blue-500 rounded-md hover:bg-blue-600 focus:ring-1 focus:outline-none focus:ring-blue-200">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             viewBox="0 0 20 20"
+                             fill="currentColor"
+                             class="size-6">
+                           <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+                        </svg>
+                     </a>
                   </div>
-                  <div class="flex-1" id="side_bar">
-                     {% block side_bar_list %}
+               </div>
+               {% block side_bar_list %}
+                  <div id="sidebar_pagination" class="flex-1 flex flex-col min-h-0">
+                     <div id="side_bar" class="flex-1 overflow-y-auto min-h-0">
                         {% for product in product_list %}
                            <a href="{% url 'product_detail' pk=product.pk %}"
                               class="h-10 flex items-center justify-between px-5 border-b hover:bg-gray-100 transition-colors duration-150"
@@ -39,14 +40,17 @@
                               <h4 class="text-gray-800 font-medium text-sm">NGN{{ product.average_sales_price }}</h4>
                            </a>
                         {% endfor %}
-                        {% include "partials/pagination.html" with page_obj=product_list target="side_bar" %}
-                     {% endblock side_bar_list %}
+                     </div>
+                     <div class="flex-none sticky bottom-0 bg-white border-t border-gray-200 p-2 z-10">
+                        <div class="flex justify-end">
+                           {% include "partials/pagination.html" with page_obj=product_list target="sidebar_pagination" %}
+                        </div>
+                     </div>
                   </div>
-               </div>
+               {% endblock side_bar_list %}
             </div>
          {% endblock _side_bar %}
          <div class="flex-1 bg-white relative" id="content-wrapper">
-            <!-- Spinner overlay -->
             {% include "partials/spinner.html" with id="side_bar_spinner" %}
             <div id="main_content">
                {% block main_content %}
@@ -114,11 +118,8 @@
                                     </div>
                                  </div>
                               </div>
-                              <a href="{{ product.get_list_url }}"
-                                 hx-boost="true"
-                                 hx-target="#main_body"
-                                 hx-indicator="#body_spinner"
-                                 class="text-gray-600 hover:text-gray-600 transition-colors">
+                              <button onclick="history.back()"
+                                      class="text-gray-600 hover:text-gray-600 transition-colors">
                                  <svg xmlns="http://www.w3.org/2000/svg"
                                       fill="none"
                                       viewBox="0 0 24 24"
@@ -127,7 +128,7 @@
                                       class="size-6">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                                  </svg>
-                              </a>
+                              </button>
                            </div>
                         </div>
                      </div>
@@ -138,6 +139,7 @@
                               <a href="{{ product.overview_url }}"
                                  hx-boost="true"
                                  hx-target="#_content"
+                                 hx-push-url="false"
                                  @click="activeTab = 'overview'"
                                  x-bind:class="{ 'inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg hover:text-gray-600 hover:border-gray-300': activeTab === 'overview', 'inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300': activeTab !== 'overview' }">
                                  Overview
@@ -147,6 +149,7 @@
                               <a href="{{ product.transaction_url }}"
                                  hx-boost="true"
                                  hx-target="#_content"
+                                 hx-push-url="false"
                                  @click="activeTab = 'transactions'"
                                  x-bind:class="{ 'inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg hover:text-gray-600 hover:border-gray-300': activeTab === 'transactions', 'inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300': activeTab !== 'transactions' }"
                                  aria-current="page">Transactions</a>
@@ -155,8 +158,8 @@
                      </div>
                   {% endblock _header %}
                   {% block _content %}
-                     <div id="_content">
-                        <div class="flex-1 py-5 px-5">
+                     <div id="_content" class="flex-1 h-screen overflow-y-auto">
+                        <div class="flex-1 pt-5 pb-10 px-5">
                            <div class="flex flex-row h-full gap-10">
                               <div class="flex-none w-1/4 flex flex-col gap-4 border-r h-full">
                                  <div class="bg-white pb-5">
@@ -249,41 +252,206 @@
                               </div>
                               <div class="flex-1">
                                  <ol class="relative border-l border-blue-500 ml-10 mt-10">
-                                    <li class="mb-10 ml-8 border rounded-sm p-3">
-                                       <span class="absolute -left-4 flex items-center border border-gray-200 justify-center w-8 h-8 bg-white text-blue-500 rounded-full ring-4 ring-white">
-                                          <svg xmlns="http://www.w3.org/2000/svg"
-                                               fill="none"
-                                               viewBox="0 0 24 24"
-                                               stroke-width="1.5"
-                                               stroke="currentColor"
-                                               class="size-5">
-                                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-                                          </svg>
-                                       </span>
-                                       <h3 class="font-medium leading-tight">Personal Info</h3>
-                                       <p class="text-sm text-gray-500">Your personal details appear here.</p>
-                                    </li>
-                                    <li class="mb-10 ml-8">
-                                       <span class="absolute -left-4 flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full ring-4 ring-white">
-                                          <svg class="w-3.5 h-3.5 text-gray-500"
-                                               xmlns="http://www.w3.org/2000/svg"
-                                               fill="currentColor"
-                                               viewBox="0 0 20 16">
-                                             <path d="M18 0H2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2ZM6 13H4V8h2v5Zm-2-6V5h2v2H4Zm6 6H8V8h2v5Zm-2-6V5h2v2H8Zm6 6h-2V8h2v5Zm-2-6V5h2v2h-2Z" />
-                                          </svg>
-                                       </span>
-                                       <h3 class="font-medium leading-tight">Account Info</h3>
-                                       <p class="text-sm text-gray-500">Your account details appear here.</p>
-                                    </li>
-                                 </ol>
+                                    {% for log in product.all_logs %}
+                                       {% if log.content_type.model == 'purchaseorderitem' %}
+                                          <li class="mb-10 ml-8 border rounded-lg p-3">
+                                             <span class="absolute -left-4 flex items-center border border-gray-200 justify-center w-8 h-8 bg-white text-blue-500 rounded-full ring-4 ring-white">
+                                                <svg xmlns="http://www.w3.org/2000/svg"
+                                                     fill="none"
+                                                     viewBox="0 0 24 24"
+                                                     stroke-width="1.5"
+                                                     stroke="currentColor"
+                                                     class="size-5">
+                                                   <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                                                </svg>
+                                             </span>
+                                             {% if log.is_create %}
+                                                <h3 class="font-light leading-tight mb-3">Purchase Order created</h3>
+                                                <p class="text-sm text-gray-500">Purchase Order {{ log | get_field:'purchase_order.po_number' }} created</p>
+                                                <p class="text-sm text-gray-500 font-semibold">
+                                                   by {{ log.user }} on {{ log.datetime }} - <a href="{% url 'po_detail' pk=log|get_field:'purchase_order.pk' %}"
+    hx-boost="true"
+    hx-target="#main_body"
+    hx-indicator="#body_spinner"
+    class="text-blue-500 font-light">view details</a>
+                                                {% elif log.is_update %}
+                                                   <h3 class="font-light leading-tight mb-3">Purchase Order Item updated</h3>
+                                                   <p class="text-sm text-gray-500">
+                                                      Purchase Order Item of {{ log | get_field:'purchase_order.po_number' }} has been updated
+                                                   </p>
+                                                   {% comment %} <p class="text-sm text-gray-500 font-semibold">
+                                                   by {{ log.user }} on {{ log.datetime }} - <a href="{% url 'po_detail' pk=log|get_field:'purchase_order.pk' %}" class="text-blue-500 font-light">view details</a>
+                                                   </p> {% endcomment %}
+                                                   <p class="text-sm text-gray-500 font-semibold">
+                                                      by {{ log.user }} on {{ log.datetime }} - <a href="{% url 'po_detail' pk=log|get_field:'purchase_order.pk' %}"
+    hx-boost="true"
+    hx-target="#main_body"
+    hx-indicator="#body_spinner"
+    class="text-blue-500 font-light">view details</a>
+                                                   </p>
+                                                {% endif %}
+                                             </li>
+                                          {% elif log.content_type.model == 'goodreceiptitem' %}
+                                             <li class="mb-10 ml-8 border rounded-lg p-3">
+                                                <span class="absolute -left-4 flex items-center border border-gray-200 justify-center w-8 h-8 bg-white text-blue-500 rounded-full ring-4 ring-white">
+                                                   <svg xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke-width="1.5"
+                                                        stroke="currentColor"
+                                                        class="size-5">
+                                                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                                                   </svg>
+                                                </span>
+                                                {% if log.is_create %}
+                                                   <h3 class="font-light leading-tight mb-3">Purchase Receives created</h3>
+                                                   <p class="text-sm text-gray-500">
+                                                      Item received for Purchase Order {{ log | get_field:'purchase_order_item.purchase_order.po_number' }}
+                                                   </p>
+                                                   <p class="text-sm text-gray-500 font-semibold">
+                                                      by {{ log.user }} on {{ log.datetime }} - <a href="" class="text-blue-500 font-light">view details</a>
+                                                   </p>
+                                                {% else %}
+                                                   <h3 class="font-light leading-tight mb-3">Purchase Receives Item updated</h3>
+                                                   <p class="text-sm text-gray-500">
+                                                      Purchase Recieves Item for {{ log | get_field:'goods_receipt.gr_number' }} has been updated
+                                                   </p>
+                                                   <p class="text-sm text-gray-500 font-semibold">
+                                                      by {{ log.user }} on {{ log.datetime }} - <a href="" class="text-blue-500 font-light">view details</a>
+                                                   </p>
+                                                {% endif %}
+                                             </li>
+                                          {% elif log.content_type.model == 'saleitem' %}
+                                             <li class="mb-10 ml-8 border rounded-lg p-3">
+                                                <span class="absolute -left-4 flex items-center border border-gray-200 justify-center w-8 h-8 bg-white text-blue-500 rounded-full ring-4 ring-white">
+                                                   <svg xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke-width="1.5"
+                                                        stroke="currentColor"
+                                                        class="size-5">
+                                                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                                                   </svg>
+                                                </span>
+                                                {% if log.is_create %}
+                                                   <h3 class="font-light leading-tight mb-3">Purchase Receives created</h3>
+                                                   <p class="text-sm text-gray-500">
+                                                      Item received for Purchase Order {{ log | get_field:'purchase_order_item.purchase_order.po_number' }}
+                                                   </p>
+                                                   <p class="text-sm text-gray-500 font-semibold">
+                                                      by {{ log.user }} on {{ log.datetime }} - <a href="" class="text-blue-500 font-light">view details</a>
+                                                   </p>
+                                                {% else %}
+                                                   <h3 class="font-light leading-tight mb-3">Purchase Receives Item updated</h3>
+                                                   <p class="text-sm text-gray-500">
+                                                      Purchase Recieves Item for {{ log | get_field:'goods_receipt.gr_number' }} has been updated
+                                                   </p>
+                                                   <p class="text-sm text-gray-500 font-semibold">
+                                                      by {{ log.user }} on {{ log.datetime }} - <a href="" class="text-blue-500 font-light">view details</a>
+                                                   </p>
+                                                {% endif %}
+                                             </li>
+                                          {% elif log.content_type.model == 'inventory' %}
+                                             <li class="mb-10 ml-8 border rounded-lg p-3">
+                                                <span class="absolute -left-4 flex items-center border border-gray-200 justify-center w-8 h-8 bg-white text-blue-500 rounded-full ring-4 ring-white">
+                                                   <svg xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke-width="1.5"
+                                                        stroke="currentColor"
+                                                        class="size-5">
+                                                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                                                   </svg>
+                                                </span>
+                                                {% if log.is_create %}
+                                                   <h3 class="font-light leading-tight mb-3">Purchase Receives created</h3>
+                                                   <p class="text-sm text-gray-500">
+                                                      Item received for Purchase Order {{ log | get_field:'purchase_order_item.purchase_order.po_number' }}
+                                                   </p>
+                                                   <p class="text-sm text-gray-500 font-semibold">
+                                                      by {{ log.user }} on {{ log.datetime }} - <a href="" class="text-blue-500 font-light">view details</a>
+                                                   </p>
+                                                {% else %}
+                                                   <h3 class="font-light leading-tight mb-3">Purchase Receives Item updated</h3>
+                                                   <p class="text-sm text-gray-500">
+                                                      Purchase Recieves Item for {{ log | get_field:'goods_receipt.gr_number' }} has been updated
+                                                   </p>
+                                                   <p class="text-sm text-gray-500 font-semibold">
+                                                      by {{ log.user }} on {{ log.datetime }} - <a href="" class="text-blue-500 font-light">view details</a>
+                                                   </p>
+                                                {% endif %}
+                                             </li>
+                                          {% elif log.content_type.model == 'serializedinventory' %}
+                                             <li class="mb-10 ml-8 border rounded-lg p-3">
+                                                <span class="absolute -left-4 flex items-center border border-gray-200 justify-center w-8 h-8 bg-white text-blue-500 rounded-full ring-4 ring-white">
+                                                   <svg xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke-width="1.5"
+                                                        stroke="currentColor"
+                                                        class="size-5">
+                                                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                                                   </svg>
+                                                </span>
+                                                {% if log.is_create %}
+                                                   <h3 class="font-light leading-tight mb-3">Purchase Receives created</h3>
+                                                   <p class="text-sm text-gray-500">
+                                                      Item received for Purchase Order {{ log | get_field:'purchase_order_item.purchase_order.po_number' }}
+                                                   </p>
+                                                   <p class="text-sm text-gray-500 font-semibold">
+                                                      by {{ log.user }} on {{ log.datetime }} - <a href="" class="text-blue-500 font-light">view details</a>
+                                                   </p>
+                                                {% else %}
+                                                   <h3 class="font-light leading-tight mb-3">Purchase Receives Item updated</h3>
+                                                   <p class="text-sm text-gray-500">
+                                                      Purchase Recieves Item for {{ log | get_field:'goods_receipt.gr_number' }} has been updated
+                                                   </p>
+                                                   <p class="text-sm text-gray-500 font-semibold">
+                                                      by {{ log.user }} on {{ log.datetime }} - <a href="" class="text-blue-500 font-light">view details</a>
+                                                   </p>
+                                                {% endif %}
+                                             </li>
+                                          {% elif log.content_type.model == 'inventorytransformation' %}
+                                             <li class="mb-10 ml-8 border rounded-lg p-3">
+                                                <span class="absolute -left-4 flex items-center border border-gray-200 justify-center w-8 h-8 bg-white text-blue-500 rounded-full ring-4 ring-white">
+                                                   <svg xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke-width="1.5"
+                                                        stroke="currentColor"
+                                                        class="size-5">
+                                                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                                                   </svg>
+                                                </span>
+                                                {% if log.is_create %}
+                                                   <h3 class="font-light leading-tight mb-3">Purchase Receives created</h3>
+                                                   <p class="text-sm text-gray-500">
+                                                      Item received for Purchase Order {{ log | get_field:'purchase_order_item.purchase_order.po_number' }}
+                                                   </p>
+                                                   <p class="text-sm text-gray-500 font-semibold">
+                                                      by {{ log.user }} on {{ log.datetime }} - <a href="" class="text-blue-500 font-light">view details</a>
+                                                   </p>
+                                                {% else %}
+                                                   <h3 class="font-light leading-tight mb-3">Purchase Receives Item updated</h3>
+                                                   <p class="text-sm text-gray-500">
+                                                      Purchase Recieves Item for {{ log | get_field:'goods_receipt.gr_number' }} has been updated
+                                                   </p>
+                                                   <p class="text-sm text-gray-500 font-semibold">
+                                                      by {{ log.user }} on {{ log.datetime }} - <a href="" class="text-blue-500 font-light">view details</a>
+                                                   </p>
+                                                {% endif %}
+                                             </li>
+                                          {% endif %}
+                                       {% endfor %}
+                                    </ol>
+                                 </div>
                               </div>
                            </div>
                         </div>
-                     </div>
-                  {% endblock _content %}
-               {% endblock main_content %}
+                     {% endblock _content %}
+                  {% endblock main_content %}
+               </div>
             </div>
          </div>
       </div>
-   </div>
-{% endblock content %}
+   {% endblock content %}

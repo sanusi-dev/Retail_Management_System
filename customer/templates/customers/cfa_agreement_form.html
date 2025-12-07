@@ -1,0 +1,88 @@
+{% extends 'index.html' %}
+{% load static %}
+{% load widget_tweaks %}
+{% block content %}
+    {% include "partials/spinner.html" with id="body_spinner" %}
+    <div class="flex h-full flex-col" id="main_body">
+        <form hx-post="{{ form_action_url }}"
+              hx-push-url="true"
+              hx-target="#main_body"
+              hx-indicator="#body_spinner"
+              class="flex flex-col flex-1">
+            {% csrf_token %}
+            <!-- Header -->
+            <div class="flex-none bg-gray-50 border-b py-5 px-5 h-20">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-normal text-gray-900">New CFA Agreement</h1>
+                    </div>
+                    <a href=""
+                       hx-boost="true"
+                       hx-target="#main_body"
+                       hx-indicator="#body_spinner"
+                       class="p-2 text-gray-500 hover:text-gray-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="1.5"
+                             stroke="currentColor"
+                             class="size-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+            <!-- Form Body -->
+            <div class="flex-1 overflow-y-auto px-5 bg-gray-50">
+                <div class="mt-5 py-5 max-w-4xl">
+                    <!-- Global Errors -->
+                    {% if form.non_field_errors %}
+                        <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                            {% for error in form.non_field_errors %}<p class="font-bold">{{ error }}</p>{% endfor %}
+                        </div>
+                    {% endif %}
+                    {% with WIDGET_ERROR_CLASS='bg-red-100 border-red-500 focus:ring-red-500 focus:border-red-500' %}
+                        <div class="space-y-6">
+                            <!-- Account (Locked) -->
+                            <div class="flex items-center max-w-lg">
+                                <label class="text-sm font-normal text-gray-700 mr-8 whitespace-nowrap w-36">Customer Account</label>
+                                <div class="flex-1">
+                                    {% render_field form.account class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-1.5 px-2.5" %}
+                                </div>
+                            </div>
+                            <!-- Amount Allocated (Naira) -->
+                            <div class="flex items-center max-w-lg">
+                                <label class="text-sm font-normal text-red-600 mr-8 whitespace-nowrap w-36">Amount (₦)*</label>
+                                <div class="flex-1">
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span class="text-gray-500 font-mono font-bold">₦</span>
+                                        </div>
+                                        {% render_field form.amount_allocated class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full py-1.5 pl-8 pr-2.5 font-mono" placeholder="0.00" %}
+                                    </div>
+                                    {% if form.amount_allocated.errors %}
+                                        {% for error in form.amount_allocated.errors %}<p class="text-red-500 text-sm mt-1">{{ error }}</p>{% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <!-- Exchange Rate -->
+                            <div class="flex items-center max-w-lg">
+                                <label class="text-sm font-normal text-red-600 mr-8 whitespace-nowrap w-36">Exchange Rate*</label>
+                                <div class="flex-1">
+                                    {% render_field form.exchange_rate class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full py-1.5 px-2.5" placeholder="e.g. 1200" %}
+                                    <p class="text-xs text-gray-500 mt-1">Rate: Naira per 1,000 CFA</p>
+                                    {% if form.exchange_rate.errors %}
+                                        {% for error in form.exchange_rate.errors %}<p class="text-red-500 text-sm mt-1">{{ error }}</p>{% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endwith %}
+                </div>
+            </div>
+            <!-- Buttons -->
+            {% url 'customer_detail' pk=form.initial.account.customer.pk|default:0 as cancel_url %}
+            {% include 'partials/form_buttons.html' with cancel_url=cancel_url submit_text="Create Agreement" %}
+        </form>
+    </div>
+{% endblock content %}

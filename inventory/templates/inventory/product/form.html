@@ -8,7 +8,6 @@
               hx-push-url="true"
               hx-indicator="#body_spinner"
               class="flex flex-col flex-1">
-            {% csrf_token %}
             <div class="flex-none bg-gray-50 border-b py-5 px-5 h-20">
                 <div class="flex justify-between items-center">
                     <h1 class="text-2xl font-normal text-gray-900">
@@ -18,11 +17,13 @@
                             New Item
                         {% endif %}
                     </h1>
-                    <a href="{% url 'products' %}"
-                       hx-boost="true"
-                       hx-target="#main_body"
-                       hx-indicator="#body_spinner"
-                       class="p-2 text-gray-500 hover:text-gray-600 transition-colors">
+                    {% comment %} <a href="{% url 'products' %}" hx-boost="true" hx-target="#main_body" hx-indicator="#body_spinner" class="p-2 text-gray-500 hover:text-gray-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                    </a> {% endcomment %}
+                    <button onclick="history.back()"
+                            class="text-gray-600 hover:text-gray-600 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg"
                              fill="none"
                              viewBox="0 0 24 24"
@@ -31,7 +32,7 @@
                              class="size-6">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                         </svg>
-                    </a>
+                    </button>
                 </div>
             </div>
             <div class="flex-1 overflow-y-auto px-5 bg-gray-50">

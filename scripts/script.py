@@ -1,26 +1,26 @@
-from inventory.models import Product
-from django.shortcuts import get_object_or_404
-from django.db.models import Sum
+# from inventory.models import *
+# from supply_chain.models import PurchaseOrder
+# from django.shortcuts import get_object_or_404
+# from django.db.models import Sum
+# from django.apps import apps
+# from django.contrib.contenttypes.models import ContentType
+# from easyaudit.models import CRUDEvent
 
 
+# def run():
+#     inventories = Inventory.objects.all().order_by("created_at")[:10]
+#     inventory_dict = {}
+#     for inventory in inventories:
+#         inventory_dict[inventory] = 0
+#     #  print(inventory_dict)
 
-def run():
-    Product.objects.all().update(status=Product.Status.ACTIVE)
+#     for source_product, qty in inventory_dict.items():
+#         for product in inventories:
+#             if product == source_product:
+#                 import random
 
-#     for p in product:
-#         p.status = product.Status.ACTIVE
+#                 inventory_dict[product] += random.randint(1, 100)
+#                 print(f"{product}: {product.quantity_on_hand}")
+#                 print(f"{source_product}: {qty}")
 
-#         product.save()
-    
-
-
-
-
-
-
-    # def total_remaining_qty(self):
-    #     annotated = self.po_items.annotate(
-    #         total_received=Sum("receipt_items__received_quantity")
-    #     ).annotate(remaining_calc=F("ordered_quantity") - F("total_received"))
-    #     remaining_calc = annotated.aggregate(total=Sum("remaining_calc"))["total"]
-    #     return remaining_calc or 0
+#     print(inventory_dict)

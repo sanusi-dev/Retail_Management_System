@@ -1,115 +1,99 @@
 {
-   "explorer.confirmDelete": false,
-   "extensions.autoCheckUpdates": false,
-   "update.enableWindowsBackgroundUpdates": false,
-   "git.enableSmartCommit": true,
-   "git.confirmSync": false,
-   "github.copilot.enable": {
-      "github.copilot.enable": false
-   },
-   "editor.fontSize": 12,
-   "security.workspace.trust.untrustedFiles": "open",
-   "update.mode": "none",
-   "update.showReleaseNotes": false,
-   "git.optimisticUpdate": false,
-   "extensions.autoUpdate": false,
-   "liveServer.settings.donotVerifyTags": true,
-   "liveServer.settings.donotShowInfoMsg": true,
-   "editor.fontFamily": "Source Code Pro, Consolas, 'Courier New', monospace",
-   "explorer.confirmDragAndDrop": false,
-   "terminal.integrated.defaultProfile.windows": "Command Prompt",
-   "workbench.colorTheme": "GitHub Dark",
-   "editor.linkedEditing": true,
-   "files.associations": {
-      "*.html": "django-html"
-   },
-   "emmet.includeLanguages": {
-      "django-html": "html"
-   },
-   "editor.fontLigatures": false,
-   "editor.tokenColorCustomizations": {
-      "textMateRules": [
-         {
-            "scope": [
-               "keyword.control",
-               "storage.type",
-               "storage.modifier"
-            ],
-            "settings": {
-               "fontStyle": "italic"
-            }
-         }
-      ]
-   },
-   "python.defaultInterpreterPath": "c:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
-   "python.languageServer": "Jedi",
-   "editor.formatOnSave": true,
-   "editor.formatOnPaste": true,
-   "editor.formatOnType": true,
-   "editor.defaultFormatter": "ms-python.black-formatter",
-   // "[django-html]": {
-   //     "editor.defaultFormatter": "esbenp.prettier-vscode"
-   // },
-   // "editor.defaultFormatter": "junstyle.vscode-django-support",
-   // "[html]": {
-   //     "editor.defaultFormatter": "vscode.html-language-features"
-   // },
-   "workbench.startupEditor": "none",
-   // Set Djlint as the default formatter for Django and other template languages
-   "[django-html]": {
-      "editor.defaultFormatter": "monosans.djlint",
-      "editor.formatOnSave": true
-   },
-   "[html]": {
-      "editor.defaultFormatter": "monosans.djlint",
-      "editor.formatOnSave": true
-   },
-   // You can add other languages like jinja, etc., in the same way if needed
-   "djlint.showInstallError": true,
-   "tailwind-fold.unfoldIfLineSelected": true,
-   "tailwind-fold.showTailwindImage": false,
-   "tailwind-fold.supportedLanguages": [
-      "django-html",
-      "html",
-      "typescriptreact",
-      "javascriptreact",
-      "typescript",
-      "javascript",
-      "vue-html",
-      "vue",
-      "php",
-      "markdown",
-      "coffeescript",
-      "svelte",
-      "astro",
-      "erb"
-   ],
-   "editor.tabSize": 3,
-   "[python]": {
-      "diffEditor.ignoreTrimWhitespace": true,
-      "editor.defaultFormatter": "ms-python.black-formatter",
-      "editor.formatOnSave": true
-   },
-   "workbench.sideBar.location": "right",
-   "editor.smoothScrolling": true,
-   "workbench.list.smoothScrolling": true,
-   "terminal.integrated.smoothScrolling": true,
-   "workbench.iconTheme": "vs-minimal",
-   "files.autoSaveDelay": 2000,
-   "editor.minimap.renderCharacters": false,
-   "workbench.editor.autoLockGroups": {
-      "workbench.editor.chatSession": false
-   },
-   "djlint.formatAttributeTemplateTags": true,
-   "djlint.formatCss": true,
-   "djlint.formatJs": true,
-   "terminal.integrated.profiles.linux": {
-      "bash": {
-         "path": "/usr/bin/host-spawn",
-         "args": [
-            "--host",
-            "bash"
-         ]
-      }
-   },
+	"explorer.confirmDelete": false,
+	"extensions.autoCheckUpdates": false,
+	"update.enableWindowsBackgroundUpdates": false,
+	"git.enableSmartCommit": true,
+	"git.confirmSync": false,
+	"github.copilot.enable": {
+		"github.copilot.enable": false
+	},
+	"editor.fontSize": 15,
+	"security.workspace.trust.untrustedFiles": "open",
+	"update.mode": "none",
+	"update.showReleaseNotes": false,
+	"git.optimisticUpdate": false,
+	"extensions.autoUpdate": false,
+	"liveServer.settings.donotVerifyTags": true,
+	"liveServer.settings.donotShowInfoMsg": true,
+	// "editor.fontFamily": "Source Code Pro, Consolas, 'Courier New', monospace",
+	"editor.fontFamily": "Ubuntu Mono",
+	"editor.fontLigatures": true,
+
+	"explorer.confirmDragAndDrop": false,
+	"terminal.integrated.defaultProfile.windows": "Command Prompt",
+	"workbench.colorTheme": "One Dark Pro Mix",
+	"editor.linkedEditing": true,
+	"files.associations": {
+		"*.html": "django-html"
+	},
+	"emmet.includeLanguages": {
+		"django-html": "html"
+	},
+	// "editor.fontLigatures": false,
+	"editor.tokenColorCustomizations": {
+		"textMateRules": [
+			{
+				"scope": [
+					"keyword.control",
+					"storage.type",
+					"storage.modifier"
+				],
+				"settings": {
+					"fontStyle": "italic"
+				}
+			}
+		]
+	},
+	// "python.defaultInterpreterPath": "c:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+	// "python.languageServer": "Pylance",
+	// "editor.formatOnSave": true,
+	"editor.formatOnPaste": true,
+	// "editor.formatOnType": true,
+	"editor.defaultFormatter": "ms-python.black-formatter",
+	// "[django-html]": {
+	//     "editor.defaultFormatter": "esbenp.prettier-vscode"
+	// },
+	// "editor.defaultFormatter": "junstyle.vscode-django-support",
+	// "[html]": {
+	//     "editor.defaultFormatter": "vscode.html-language-features"
+	// },
+	"workbench.startupEditor": "none",
+	// Set Djlint as the default formatter for Django and other template languages
+	"[django-html]": {
+		"editor.defaultFormatter": "monosans.djlint",
+		"editor.formatOnSave": true
+	},
+	"[html]": {
+		"editor.defaultFormatter": "monosans.djlint",
+		"editor.formatOnSave": true
+	},
+	// You can add other languages like jinja, etc., in the same way if needed
+	"djlint.showInstallError": true,
+	"editor.tabSize": 4,
+	"[python]": {
+		"diffEditor.ignoreTrimWhitespace": true,
+		"editor.defaultFormatter": "ms-python.black-formatter",
+		"editor.formatOnSave": true
+	},
+	"workbench.sideBar.location": "right",
+	"editor.smoothScrolling": true,
+	"workbench.list.smoothScrolling": true,
+	"terminal.integrated.smoothScrolling": true,
+	"files.autoSaveDelay": 2000,
+	"editor.minimap.renderCharacters": false,
+	"workbench.editor.autoLockGroups": {
+		"workbench.editor.chatSession": false
+	},
+	"djlint.formatAttributeTemplateTags": true,
+	"djlint.formatCss": true,
+	"djlint.formatJs": true,
+	"terminal.integrated.profiles.linux": {
+		"bash": {
+			"path": "/usr/bin/host-spawn",
+			"args": [
+				"--host",
+				"bash"
+			]
+		}
+	},
 }

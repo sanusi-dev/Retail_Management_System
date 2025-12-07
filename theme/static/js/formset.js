@@ -1,4 +1,4 @@
-// --- LOGIC FOR ADDING A NEW FORM ---
+// --- ADDING A NEW FORM ---
 document.body.addEventListener('htmx:configRequest', function (event) {
    const triggerElement = event.detail.elt;
 
@@ -21,7 +21,7 @@ document.body.addEventListener('htmx:configRequest', function (event) {
 });
 
 
-// --- LOGIC FOR REMOVING A FORM ---
+// --- REMOVING A FORM ---
 document.body.addEventListener('click', function (event) {
    const removeButton = event.target.closest('.remove-form-row');
    if (!removeButton) return;

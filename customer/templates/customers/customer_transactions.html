@@ -1,0 +1,167 @@
+{% extends "index.html" %}
+{% load static %}
+{% load humanize %}
+{% block content %}
+   {% include "partials/spinner.html" with id="body_spinner" %}
+   <div class="flex h-full flex-col" id="main_body">
+      {% if messages %}
+         <div class="px-4 pt-4">
+            {% for message in messages %}
+               <div class="p-4 mb-4 text-sm rounded-lg
+                           {% if message.tags == 'error' %}
+                              bg-red-100 text-red-700
+                           {% else %}
+                              bg-green-100 text-green-700
+                           {% endif %}"
+                    role="alert">{{ message }}</div>
+            {% endfor %}
+         </div>
+      {% endif %}
+      {% block header %}
+         <div class="h-16 flex items-center justify-between px-4">
+            {% include "partials/table_filter.html" with view_name="All Transactions" %}
+            <a href="{% url 'add_transaction' %}"
+               hx-boost="true"
+               hx-target="#main_body"
+               hx-indicator="#body_spinner"
+               class="px-3 py-2 text-sm font-medium text-center inline-flex items-center text-white bg-brand-500 rounded-md hover:bg-blue-600 focus:ring-1 focus:outline-none focus:ring-blue-200 transition-colors">
+               <svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    class="size-5 mr-1">
+                  <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+               </svg>
+               New Transaction
+            </a>
+         </div>
+      {% endblock header %}
+      {% block body %}
+         <div id="table_container"
+              class="relative flex flex-col h-[calc(100vh-8rem)]">
+            <div class="flex-1 overflow-y-auto pb-25">
+               <table class="w-full text-sm text-left text-gray-500">
+                  <thead class="text-xs text-gray-500 font-normal uppercase bg-gray-50 sticky top-0 z-10 shadow-sm">
+                     <tr class="border-t border-b">
+                        <th scope="col" class="px-6 py-3 font-medium">Date</th>
+                        <th scope="col" class="px-6 py-3 font-medium">Reference</th>
+                        <th scope="col" class="px-6 py-3 font-medium">Customer</th>
+                        <th scope="col" class="px-6 py-3 font-medium text-center">Type</th>
+                        <th scope="col" class="px-6 py-3 font-medium">Description</th>
+                        <th scope="col" class="px-6 py-3 text-right font-medium">Amount</th>
+                        <th scope="col" class="px-6 py-3 text-center font-medium">Actions</th>
+                     </tr>
+                  </thead>
+                  <tbody class="text-sm text-black font-light" id="tbody">
+                     {% if transactions %}
+                        {% for transaction in transactions %}
+                           {% block transaction_row %}
+                              <tr class="border-b border-gray-100 transition-colors
+                                         {% if transaction.status == 'voided' %}
+                                            bg-gray-50 opacity-60
+                                         {% else %}
+                                            bg-white hover:bg-blue-50
+                                         {% endif %}">
+                                 <td class="px-6 py-3 whitespace-nowrap font-mono text-gray-500 text-xs">
+                                    {{ transaction.created_at|date:"M d, Y H:i" }}
+                                 </td>
+                                 <td class="px-6 py-3 whitespace-nowrap font-mono text-xs text-gray-600">
+                                    {{ transaction.reference_number }}
+                                    {% if transaction.status == 'voided' %}
+                                       <span class="ml-2 text-[10px] uppercase font-bold text-red-500 border border-red-200 px-1 rounded">Voided</span>
+                                    {% endif %}
+                                 </td>
+                                 <td class="px-6 py-3 capitalize font-medium text-gray-800">
+                                    <a href="{% url 'customer_detail' transaction.account.customer.pk %}"
+                                       hx-boost="true"
+                                       hx-target="#main_body"
+                                       hx-indicator="#body_spinner"
+                                       class="hover:text-brand-500 hover:underline transition-colors">
+                                       {{ transaction.account.customer.full_name|upper }}
+                                    </a>
+                                 </td>
+                                 <td class="px-6 py-3 text-center">
+                                    {% if transaction.transaction_type == 'deposit' %}
+                                       <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Deposit</span>
+                                    {% elif transaction.transaction_type == 'withdrawal' %}
+                                       <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Withdrawal</span>
+                                    {% elif transaction.transaction_type == 'fulfillment' %}
+                                       <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Fulfillment</span>
+                                    {% elif transaction.transaction_type == 'refund' %}
+                                       <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Refund</span>
+                                    {% endif %}
+                                 </td>
+                                 <td class="px-6 py-3 text-gray-500 truncate max-w-xs"
+                                     title="{{ transaction.note }}">
+                                    {{ transaction.note|default:"-"|truncatechars:30 }}
+                                 </td>
+                                 <td class="px-6 py-3 text-right font-mono font-bold whitespace-nowrap
+                                            {% if transaction.status == 'voided' %}
+                                               line-through text-gray-400
+                                            {% elif transaction.transaction_type == "deposit" or transaction.transaction_type == "refund" %}
+                                               text-emerald-600
+                                            {% else %}
+                                               text-red-500
+                                            {% endif %}">
+                                    {% if transaction.transaction_type == "deposit" or transaction.transaction_type == "refund" %}
+                                       +
+                                    {% else %}
+                                       -
+                                    {% endif %}
+                                    NGN {{ transaction.amount|floatformat:2|intcomma }}
+                                 </td>
+                                 <td class="px-6 py-3 text-center flex items-center justify-center h-full">
+                                    {% if transaction.status == 'active' %}
+                                       {% if transaction.transaction_type == 'deposit' or transaction.transaction_type == 'withdrawal' %}
+                                          <button hx-post="{% url 'void_transaction' transaction.pk %}"
+                                                  hx-confirm="Are you sure you want to VOID this transaction? This action cannot be undone."
+                                                  hx-target="closest tr"
+                                                  hx-swap="outerHTML"
+                                                  class="text-gray-400 hover:text-red-600 transition-colors"
+                                                  title="Void Transaction">
+                                             <svg xmlns="http://www.w3.org/2000/svg"
+                                                  viewBox="0 0 20 20"
+                                                  fill="currentColor"
+                                                  class="size-5">
+                                                <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
+                                             </svg>
+                                          </button>
+                                       {% else %}
+                                          <span class="text-gray-300 cursor-not-allowed"
+                                                title="System transactions must be voided via the Sales module">
+                                             <svg xmlns="http://www.w3.org/2000/svg"
+                                                  viewBox="0 0 20 20"
+                                                  fill="currentColor"
+                                                  class="size-5">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clip-rule="evenodd" />
+                                             </svg>
+                                          </span>
+                                       {% endif %}
+                                    {% else %}
+                                       <span class="text-xs text-gray-400 font-medium">VOIDED</span>
+                                    {% endif %}
+                                 </td>
+                              </tr>
+                           {% endblock transaction_row %}
+                        {% endfor %}
+                     {% else %}
+                        <tr class="bg-white border-b border-gray-100">
+                           <td colspan="7" class="px-6 py-12 text-center text-gray-400">
+                              <div class="flex flex-col items-center justify-center gap-2">
+                                 <i class="fa-solid fa-money-bill-transfer text-2xl"></i>
+                                 <p>No transactions found.</p>
+                              </div>
+                           </td>
+                        </tr>
+                     {% endif %}
+                  </tbody>
+               </table>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20">
+               <div class="flex justify-end">
+                  {% include 'partials/pagination.html' with page_obj=transactions target="table_container" %}
+               </div>
+            </div>
+         </div>
+      {% endblock body %}
+   </div>
+{% endblock content %}

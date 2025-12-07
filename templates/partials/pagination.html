@@ -1,12 +1,10 @@
 {% if page_obj and page_obj.paginator.num_pages > 1 %}
    <div class="my-1 mr-3 flex justify-end">
       <div class="flex flex-col items-end">
-         <!-- Help text -->
          <span class="text-sm text-gray-700">
             Showing <span class="font-semibold text-gray-900">{{ page_obj.start_index }}</span> to <span class="font-semibold text-gray-900">{{ page_obj.end_index }}</span> of <span class="font-semibold text-gray-900">{{ page_obj.paginator.count }}</span> Entries
          </span>
          <div class="inline-flex mt-2 xs:mt-0">
-            <!-- Buttons -->
             {% if page_obj.has_previous %}
                <a href="?page={{ page_obj.previous_page_number }}"
                   hx-boost="true"
@@ -26,6 +24,7 @@
                <a href="?page={{ page_obj.next_page_number }}"
                   hx-boost="true"
                   hx-target="#{{ target }}"
+                  hx-replace-url="true"
                   class="flex items-center justify-center px-3 h-8 text-sm font-medium text-white bg-brand-600 border-0 border-s border-gray-700 rounded-e hover:bg-brand-700">
                   Next
                   <svg class="w-3.5 h-3.5 ms-2 rtl:rotate-180"

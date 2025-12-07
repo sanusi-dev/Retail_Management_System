@@ -2,9 +2,16 @@
 {% load static %}
 {% load widget_tweaks %}
 {% block content %}
-    <div class="flex h-full flex-col">
-        <form action="" method="post" class="flex flex-col h-full">
-            {% csrf_token %}
+    {% include "partials/spinner.html" with id="body_spinner" %}
+    <div class="flex h-full flex-col" id="main_body">
+        <form hx-boost="true"
+              action="{{ form_action_url }}"
+              method="post"
+              hx-push-url="true"
+              hx-target="#main_body"
+              hx-indicator="#body_spinner"
+              class="flex flex-col h-full">
+            {% comment %} {% csrf_token %} {% endcomment %}
             <!-- Header -->
             <div class="flex-none bg-white border-b py-4 px-5">
                 <div class="flex justify-between items-center">
@@ -18,8 +25,13 @@
                         </svg>
                         Record Payment
                     </h1>
-                    <a href="{% url 'payments' %}"
-                       class="p-2 text-gray-500 hover:text-gray-600 transition-colors">
+                    {% comment %} <a href="{% url 'payments' %}" class="p-2 text-gray-500 hover:text-gray-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                    </a> {% endcomment %}
+                    <button onclick="history.back()"
+                            class="text-gray-600 hover:text-gray-600 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg"
                              fill="none"
                              viewBox="0 0 24 24"
@@ -28,7 +40,7 @@
                              class="size-6">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                         </svg>
-                    </a>
+                    </button>
                 </div>
             </div>
             <!-- Error Section -->
@@ -108,7 +120,7 @@
                             <p class="inline-flex items-center border border-gray-300 font-light justify-center bg-gray-50 text-gray-900 rounded-l-md px-3 py-1.5">
                                 NGN
                             </p>
-                            {% render_field paymentform.amount_paid class="bg-white border border-gray-300 text-gray-900 text-sm rounded-r-md focus:ring-blue-500 focus:border-blue-500 focus:outline-none block w-full py-1.5 px-2.5" min="10000" step="1000" placeholder="10,000.00" %}
+                            {% render_field paymentform.amount_paid class="bg-white border border-gray-300 text-gray-900 text-sm rounded-r-md focus:ring-blue-500 focus:border-blue-500 focus:outline-none block w-full py-1.5 px-2.5" min="1000" step="1000" placeholder="10,000.00" %}
                         </div>
                     </div>
                     <!-- Payment Method -->

@@ -1,0 +1,104 @@
+{% extends "index.html" %}
+{% load static %}
+{% load humanize %}
+{% block content %}
+   {% include "partials/spinner.html" with id="body_spinner" %}
+   <div class="flex h-full flex-col" id="main_body">
+      {% block header %}
+         <div class="h-16 flex items-center justify-between px-4">
+            {% include "partials/table_filter.html" with view_name="All Customers" %}
+            <a href="{% url 'add_customer' %}"
+               hx-boost="true"
+               hx-target="#main_body"
+               hx-indicator="#body_spinner"
+               class="px-3 py-2 text-sm font-medium text-center inline-flex items-center text-white bg-brand-500 rounded-md hover:bg-blue-600 focus:ring-1 focus:outline-none focus:ring-blue-200 transition-colors">
+               <svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    class="size-5 mr-1">
+                  <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+               </svg>
+               New Customer
+            </a>
+         </div>
+      {% endblock header %}
+      {% block body %}
+         <div id="table_container"
+              class="relative flex flex-col h-[calc(100vh-8rem)]">
+            <div class="flex-1 overflow-y-auto pb-25">
+               <table class="w-full text-sm text-left text-gray-500">
+                  <thead class="text-xs text-gray-500 font-normal uppercase bg-gray-50 sticky top-0 z-10 shadow-sm">
+                     <tr class="border-t border-b">
+                        <th scope="col" class="px-6 py-3 font-medium">ID</th>
+                        <th scope="col" class="px-6 py-3 font-medium">Full Name</th>
+                        <th scope="col" class="px-6 py-3 font-medium">Phone</th>
+                        <th scope="col" class="px-6 py-3 text-right font-medium">Total Balance</th>
+                        <th scope="col" class="px-6 py-3 text-right font-medium text-amber-700">Allocated</th>
+                        <th scope="col" class="px-6 py-3 text-right font-medium text-green-700">Available Cash</th>
+                     </tr>
+                  </thead>
+                  <tbody class="text-sm text-black font-light" id="tbody">
+                     {% if customers %}
+                        {% for customer in customers %}
+                           <tr class="bg-white border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors"
+                               hx-get="{% url 'customer_detail' customer.pk %}"
+                               hx-target="#main_body"
+                               hx-indicator="#body_spinner"
+                               hx-push-url="true">
+                              <td class="px-6 py-3 whitespace-nowrap font-mono text-gray-500 text-xs">{{ customer.customer_number }}</td>
+                              <td class="px-6 py-3 capitalize font-medium text-gray-800">{{ customer.full_name|upper }}</td>
+                              <td class="px-6 py-3 whitespace-nowrap">{{ customer.phone|default:"N/A" }}</td>
+                              <td class="px-6 py-3 text-right font-mono text-gray-600">
+                                 {% if customer.deposit_account %}
+                                    NGN {{ customer.deposit_account.total_balance|floatformat:2|intcomma }}
+                                 {% else %}
+                                    -
+                                 {% endif %}
+                              </td>
+                              <td class="px-6 py-3 text-right font-mono text-amber-600 font-medium">
+                                 {% if customer.deposit_account %}
+                                    {% if customer.deposit_account.allocated_balance > 0 %}
+                                       NGN {{ customer.deposit_account.allocated_balance|floatformat:2|intcomma }}
+                                    {% else %}
+                                       <span class="text-gray-300">-</span>
+                                    {% endif %}
+                                 {% else %}
+                                    -
+                                 {% endif %}
+                              </td>
+                              <td class="px-6 py-3 text-right font-mono font-semibold
+                                         {% if customer.deposit_account.available_balance > 0 %}
+                                            text-emerald-600
+                                         {% else %}
+                                            text-gray-400
+                                         {% endif %}">
+                                 {% if customer.deposit_account %}
+                                    NGN {{ customer.deposit_account.available_balance|floatformat:2|intcomma }}
+                                 {% else %}
+                                    -
+                                 {% endif %}
+                              </td>
+                           </tr>
+                        {% endfor %}
+                     {% else %}
+                        <tr class="bg-white border-b border-gray-100">
+                           <td colspan="6" class="px-6 py-12 text-center text-gray-400">
+                              <div class="flex flex-col items-center justify-center gap-2">
+                                 <i class="fa-solid fa-users text-2xl"></i>
+                                 <p>No customers found.</p>
+                              </div>
+                           </td>
+                        </tr>
+                     {% endif %}
+                  </tbody>
+               </table>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20">
+               <div class="flex justify-end">
+                  {% include 'partials/pagination.html' with page_obj=customers target="table_container" %}
+               </div>
+            </div>
+         </div>
+      {% endblock body %}
+   </div>
+{% endblock content %}

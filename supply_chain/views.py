@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, HttpResponseBadRequest
+from django_htmx.http import replace_url, HttpResponseClientRedirect
 from django.db import transaction
 from django.contrib.auth.decorators import login_required
 from .models import *
@@ -7,14 +8,17 @@ from .forms import *
 from django.forms import modelformset_factory
 from django.db.models import Sum, F, IntegerField
 from django.db.models.functions import Coalesce
-import time
 from django.core.paginator import Paginator
 from render_block import render_block_to_string
+from django.template.loader import render_to_string
+from . import services
+from django.views.decorators.http import require_POST
+from django.contrib import messages
+from . import utils
 
 
-@login_required(login_url="/admin/login/")
 def suppliers(request):
-    PAGE_SIZE = 10
+    PAGE_SIZE = 20
     page_number = request.GET.get("page", 1)
     suppliers_list = Supplier.objects.all()
     paginator = Paginator(suppliers_list, PAGE_SIZE)
@@ -25,12 +29,11 @@ def suppliers(request):
         if request.GET.get("page"):
             supplier_list = render_block_to_string(
                 "supply_chain/suppliers/supplier_list.html",
-                "table_with_pagination",
+                "body",
                 context,
             )
             return HttpResponse(supplier_list)
         else:
-            time.sleep(0.5)
             supplier_list = render_block_to_string(
                 "supply_chain/suppliers/supplier_list.html", "content", context
             )
@@ -39,25 +42,86 @@ def suppliers(request):
     return render(request, "supply_chain/suppliers/supplier_list.html", context)
 
 
-@login_required(login_url="/admin/login/")
+def supplier_detail(request, pk):
+    PAGE_SIZE = 50
+    page_number = request.GET.get("page", 1)
+    supplier = get_object_or_404(Supplier, pk=pk)
+    supplier_list = Supplier.objects.all().order_by("created_at")
+    paginator = Paginator(supplier_list, PAGE_SIZE)
+    page_obj = paginator.get_page(page_number)
+    context = {
+        "supplier": supplier,
+        "supplier_list": page_obj,
+    }
+    if request.htmx:
+        if request.htmx.target == "main_content":
+            html = render_block_to_string(
+                "supply_chain/suppliers/supplier_detail.html",
+                "main_content",
+                {"supplier": supplier},
+            )
+            return HttpResponse(html)
+
+        elif request.htmx.target == "main_body":
+            html = render_block_to_string(
+                "supply_chain/suppliers/supplier_detail.html", "content", context
+            )
+            return HttpResponse(html)
+
+        else:
+            html = render_block_to_string(
+                "supply_chain/suppliers/supplier_detail.html", "side_bar_list", context
+            )
+
+            return HttpResponse(html)
+
+    else:
+        return render(request, "supply_chain/suppliers/supplier_detail.html", context)
+
+
+def supplier_overview(request, pk):
+    supplier = get_object_or_404(Supplier, pk=pk)
+    context = {"supplier": supplier}
+    if request.htmx:
+        html = render_block_to_string(
+            "supply_chain/suppliers/supplier_detail.html", "_content", context
+        )
+        return HttpResponse(html)
+    return redirect(supplier.get_absolute_url)
+
+
+def supplier_transaction(request, pk):
+    supplier = get_object_or_404(Supplier, pk=pk)
+
+    if request.htmx:
+        return render(
+            request,
+            "inventory/product/partials/_transaction.html",
+            {"supplier": supplier},
+        )
+    else:
+        return redirect(supplier.get_absolute_url)
+
+
 def manage_supplier(request, pk=None):
     instance = get_object_or_404(Supplier, pk=pk) if pk else None
 
     if request.method == "POST":
         form = SupplierForm(request.POST, instance=instance)
         if form.is_valid():
-            supplier = form.save()
-            if not pk and request.GET.get("next"):
-                return redirect(request.GET.get("next"))
-            return redirect("suppliers")
-    else:
-        form = SupplierForm(instance=instance)
+            new_instance = form.save()
+            back_url = request.GET.get("next") or new_instance.get_list_url()
+            return redirect(back_url)
 
-    if instance:
-        form_acion_url = reverse("edit_supplier", kwargs={"pk": instance.pk})
-    else:
-        form_acion_url = reverse("add_supplier")
+        else:
+            form = SupplierForm(instance=instance)
 
+    form = SupplierForm(instance=instance)
+    form_acion_url = (
+        reverse("edit_supplier", kwargs={"pk": instance.pk})
+        if instance
+        else reverse("add_supplier")
+    )
     context = {
         "form": form,
         "instance": instance,
@@ -65,7 +129,6 @@ def manage_supplier(request, pk=None):
     }
 
     if request.htmx:
-        time.sleep(0.5)
         html = render_block_to_string(
             "supply_chain/suppliers/form.html", "content", context
         )
@@ -73,21 +136,30 @@ def manage_supplier(request, pk=None):
     return render(request, "supply_chain/suppliers/form.html", context)
 
 
-def supplier_detail(request, pk):
-    pass
-
-
-@login_required(login_url="/admin/login/")
 def delete_supplier(request, pk):
     supplier = get_object_or_404(Supplier, pk=pk)
-    if request.method == "POST":
+
+    if request.method == "DELETE":
         supplier.delete()
-        return redirect("suppliers")
+        suppliers = Supplier.objects.all()
+        context = {"suppliers": suppliers}
+
+        supplier_list = render_block_to_string(
+            "supply_chain/suppliers/supplier_list.html", "content", context
+        )
+
+        success_toast = render_to_string(
+            "partials/success_toast.html",
+            {"message": f"{supplier.name.title()} successfully deleted."},
+        )
+
+        full_response = supplier_list + success_toast
+        response = HttpResponse(full_response)
+        return replace_url(response, reverse("suppliers"))
 
 
-@login_required(login_url="/admin/login/")
 def purchases(request):
-    PAGE_SIZE = 10
+    PAGE_SIZE = 20
     page_number = request.GET.get("page", 1)
     purchases_list = PurchaseOrder.objects.select_related("supplier")
     paginator = Paginator(purchases_list, PAGE_SIZE)
@@ -97,11 +169,10 @@ def purchases(request):
     if request.htmx:
         if request.GET.get("page"):
             primary_html = render_block_to_string(
-                "supply_chain/po/purchases.html", "table_with_pagination", context
+                "supply_chain/po/purchases.html", "body", context
             )
             return HttpResponse(primary_html)
         else:
-            time.sleep(0.5)
             html = render_block_to_string(
                 "supply_chain/po/purchases.html", "content", context
             )
@@ -110,12 +181,47 @@ def purchases(request):
     return render(request, "supply_chain/po/purchases.html", context)
 
 
+def po_detail(request, pk):
+    PAGE_SIZE = 50
+    page_number = request.GET.get("page", 1)
+    purchase = get_object_or_404(PurchaseOrder, pk=pk)
+    purchase_list = PurchaseOrder.objects.select_related("supplier")
+    paginator = Paginator(purchase_list, PAGE_SIZE)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "purchase": purchase,
+        "purchase_list": page_obj,
+    }
+
+    if request.htmx:
+        if request.htmx.target == "main_content":
+            html = render_block_to_string(
+                "supply_chain/po/purchase_detail.html",
+                "main_content",
+                context,
+            )
+            return HttpResponse(html)
+
+        elif request.htmx.target == "main_body":
+            html = render_block_to_string(
+                "supply_chain/po/purchase_detail.html", "content", context
+            )
+            return HttpResponse(html)
+
+        else:
+            html = render_block_to_string(
+                "supply_chain/po/purchase_detail.html", "side_bar_list", context
+            )
+            return HttpResponse(html)
+
+    else:
+        return render(request, "supply_chain/po/purchase_detail.html", context)
+
+
 def manage_purchases(request, pk=None):
     instance = get_object_or_404(PurchaseOrder, pk=pk) if pk else None
-    if instance:
-        queryset = instance.po_items.all()
-    else:
-        queryset = PurchaseOrderItem.objects.none()
+    queryset = instance.po_items.all() if instance else PurchaseOrderItem.objects.none()
 
     if request.method == "POST":
         form = PurchaseOrderForm(request.POST, instance=instance)
@@ -124,63 +230,36 @@ def manage_purchases(request, pk=None):
         )
 
         if form.is_valid() and formset.is_valid():
-            with transaction.atomic():
-                po = form.save(commit=False)
-                if not po.created_by_id:
-                    po.created_by = request.user
-                po.updated_by = request.user
-                po.save()
-
-                items = formset.save(commit=False)
-                for item in items:
-                    item.purchase_order = po
-                    if not item.created_by_id:
-                        item.created_by = request.user
-                    item.updated_by = request.user
-                    item.save()
-
-                formset.save()
-                return redirect("purchases")
-
+            services.process_po(form, formset, request.user)
+            return redirect("purchases")
     else:
         form = PurchaseOrderForm(instance=instance)
         formset = PurchaseOrderItemFormSet(queryset=queryset, prefix="items")
 
-    if instance:
-        form_acion_url = reverse("edit_po", kwargs={"pk": instance.pk})
-    else:
-        form_acion_url = reverse("add_po")
+    form_action_url = (
+        reverse("edit_po", kwargs={"pk": instance.pk})
+        if instance
+        else reverse("add_po")
+    )
 
     context = {
         "po_form": form,
         "item_formset": formset,
-        "form_acion_url": form_acion_url,
+        "form_action_url": form_action_url,
     }
 
     if request.htmx:
-        time.sleep(0.5)
-        html = render_block_to_string("supply_chain/po/form.html", "content", context)
-        return HttpResponse(html)
+        return HttpResponse(
+            render_block_to_string("supply_chain/po/form.html", "content", context)
+        )
 
     return render(request, "supply_chain/po/form.html", context)
 
 
-def po_detail(request, pk):
-    pass
-
-
-def delete_po(request, pk):
-    po = get_object_or_404(PurchaseOrder, pk=pk)
-    if request.method == "POST":
-        po.delete()
-        return redirect("purchases")
-
-
-def htmx_add_po_item(request):
-    # Get the index for the new form from the request parameters
+def manage_po_item(request):
     try:
         current_index = int(request.GET.get("index", "0"))
-    except (ValueError, TypeError):
+    except ValueError:
         current_index = 0
 
     formset = PurchaseOrderItemFormSet(prefix="items")
@@ -191,8 +270,29 @@ def htmx_add_po_item(request):
     return render(request, "supply_chain/po/partials/po_item_form_row.html", context)
 
 
+def delete_po(request, pk):
+    purchase = get_object_or_404(PurchaseOrder, pk=pk)
+
+    if request.method == "DELETE":
+        purchase.delete()
+        purchases = PurchaseOrder.objects.select_related("supplier")
+        context = {"purchases": purchases}
+
+        purchase_list = render_block_to_string(
+            "supply_chain/po/purchases.html", "content", context
+        )
+
+        success_toast = render_to_string(
+            "partials/success_toast.html",
+            {"message": f"{purchase.po_number} successfully deleted."},
+        )
+
+        response = HttpResponse(purchase_list + success_toast)
+        return replace_url(response, reverse("purchases"))
+
+
 def payments(request):
-    PAGE_SIZE = 10
+    PAGE_SIZE = 50
     page_number = request.GET.get("page", 1)
     payments_list = Payment.objects.select_related("purchase_order__supplier")
     paginator = Paginator(payments_list, PAGE_SIZE)
@@ -203,12 +303,11 @@ def payments(request):
         if request.GET.get("page"):
             primary_html = render_block_to_string(
                 "supply_chain/payment_made/payment_list.html",
-                "table_with_pagination",
+                "body",
                 context,
             )
             return HttpResponse(primary_html)
         else:
-            time.sleep(0.5)
             html = render_block_to_string(
                 "supply_chain/payment_made/payment_list.html", "content", context
             )
@@ -217,13 +316,53 @@ def payments(request):
     return render(request, "supply_chain/payment_made/payment_list.html", context)
 
 
-def payments_detail(request):
-    pass
+def payments_detail(request, pk):
+    PAGE_SIZE = 50
+    page_number = request.GET.get("page", 1)
+    payment = get_object_or_404(Payment, pk=pk)
+    payment_list = Payment.objects.select_related("purchase_order")
+    paginator = Paginator(payment_list, PAGE_SIZE)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "payment": payment,
+        "payment_list": page_obj,
+    }
+
+    if request.htmx:
+        if request.htmx.target == "main_content":
+            html = render_block_to_string(
+                "supply_chain/payment_made/payment_detail.html",
+                "main_content",
+                context,
+            )
+            return HttpResponse(html)
+
+        elif request.htmx.target == "main_body":
+            html = render_block_to_string(
+                "supply_chain/payment_made/payment_detail.html", "content", context
+            )
+            return HttpResponse(html)
+
+        else:
+            html = render_block_to_string(
+                "supply_chain/payment_made/payment_detail.html",
+                "side_bar_list",
+                context,
+            )
+            return HttpResponse(html)
+
+    else:
+        return render(request, "supply_chain/payment_made/payment_detail.html", context)
 
 
-def payments_create(request):
+def manage_payments(request):
+    purchase_order, initial_data = utils.get_initial_purchase_order(request)
+
     if request.method == "POST":
         paymentform = PaymentForm(request.POST)
+        print(request.POST)
+        print(paymentform.is_valid())
         if paymentform.is_valid():
             with transaction.atomic():
                 paymentform = paymentform.save(commit=False)
@@ -231,21 +370,55 @@ def payments_create(request):
                 paymentform.updated_by = request.user
                 paymentform.save()
 
-                return redirect("payments")
+                return (
+                    redirect(purchase_order.get_absolute_url)
+                    if purchase_order
+                    else redirect("payments")
+                )
     else:
-        paymentform = PaymentForm()
+        paymentform = PaymentForm(initial=initial_data)
 
-    context = {"paymentform": paymentform}
+    context = {
+        "paymentform": paymentform,
+        "form_action_url": request.get_full_path(),
+    }
+
+    if request.htmx:
+        html = render_block_to_string(
+            "supply_chain/payment_made/form.html", "content", context
+        )
+        return HttpResponse(html)
+
     return render(request, "supply_chain/payment_made/form.html", context)
 
 
-def payments_void(request):
-    pass
+def payments_void(request, pk):
+    payment = get_object_or_404(Payment, pk=pk)
+    if request.method == "POST":
+        if payment.can_void:
+            payment.mark_as_void()
+            message = f"Payment {payment.trxn_ref} has been voided"
+        else:
+            message = f"{payment.trxn_ref} can not be voided"
+
+        context = {"payment": payment}
+
+        void_partial = render_block_to_string(
+            "supply_chain/payment_made/payment_detail.html",
+            "void",
+            context,
+        )
+        success_toast = render_to_string(
+            "partials/success_toast.html",
+            {"message": message},
+        )
+
+        response = void_partial + success_toast
+        return HttpResponse(response)
 
 
-@login_required(login_url="/admin/login/")
 def good_receipts(request):
-    PAGE_SIZE = 10
+    PAGE_SIZE = 20
     page_number = request.GET.get("page", 1)
     receipts_list = GoodsReceipt.objects.select_related("purchase_order")
     paginator = Paginator(receipts_list, PAGE_SIZE)
@@ -256,12 +429,11 @@ def good_receipts(request):
         if request.GET.get("page"):
             primary_html = render_block_to_string(
                 "supply_chain/goods_receipts/receipts.html",
-                "table_with_pagination",
+                "body",
                 context,
             )
             return HttpResponse(primary_html)
         else:
-            time.sleep(0.5)
             html = render_block_to_string(
                 "supply_chain/goods_receipts/receipts.html", "content", context
             )
@@ -270,131 +442,158 @@ def good_receipts(request):
     return render(request, "supply_chain/goods_receipts/receipts.html", context)
 
 
-def manage_goods_receipts(request, pk=None):
-    instance = get_object_or_404(GoodsReceipt, pk=pk) if pk else None
+def receipt_detail(request, pk):
+    PAGE_SIZE = 50
+    page_number = request.GET.get("page", 1)
+    receipt = get_object_or_404(
+        GoodsReceipt.objects.prefetch_related("receipt_items__product__inventory"),
+        pk=pk,
+    )
+    receipt_list = GoodsReceipt.objects.select_related("purchase_order__supplier")
+    paginator = Paginator(receipt_list, PAGE_SIZE)
+    page_obj = paginator.get_page(page_number)
 
-    formset = None
+    context = {
+        "receipt": receipt,
+        "can_void": services.can_void_receipt(receipt),
+        "receipt_list": page_obj,
+    }
+
+    if request.htmx:
+        if request.htmx.target == "main_content":
+            html = render_block_to_string(
+                "supply_chain/goods_receipts/receipt_detail.html",
+                "main_content",
+                context,
+            )
+            return HttpResponse(html)
+
+        elif request.htmx.target == "main_body":
+            html = render_block_to_string(
+                "supply_chain/goods_receipts/receipt_detail.html", "content", context
+            )
+            return HttpResponse(html)
+
+        else:
+            html = render_block_to_string(
+                "supply_chain/goods_receipts/receipt_detail.html",
+                "side_bar_list",
+                context,
+            )
+            return HttpResponse(html)
+
+    else:
+        return render(
+            request, "supply_chain/goods_receipts/receipt_detail.html", context
+        )
+
+
+def manage_receipts(request):
     zipped_data = None
+    formset = None
+    purchase_order, initial_data = utils.get_initial_purchase_order(request)
 
     if request.method == "POST":
-        form = GoodsReceiptForm(request.POST, instance=instance)
+        form = GoodsReceiptForm(request.POST)
+        formset = GoodsReceiptItemFormset(request.POST, prefix="items")
 
-        if pk:
-            queryset = instance.receipt_items.all()
-            formset = GoodsReceiptItemFormset(
-                request.POST, queryset=queryset, prefix="items"
+        if form.is_valid() and formset.is_valid():
+            services.process_receipt(form, formset, request.user)
+            return (
+                redirect(purchase_order.get_absolute_url)
+                if purchase_order
+                else redirect("receipts")
             )
         else:
-            formset = GoodsReceiptItemFormset(request.POST, prefix="items")
-        if form.is_valid() and formset.is_valid():
-            with transaction.atomic():
-                receipt = form.save(commit=False)
-                if not receipt.created_by_id:
-                    receipt.created_by = request.user
-                receipt.updated_by = request.user
-                receipt.received_by = request.user
-                receipt.save()
+            po_item_ids = [
+                form["purchase_order_item"].value()
+                for form in formset.forms
+                if form["purchase_order_item"].value()
+            ]
 
-                items = formset.save(commit=False)
-                for item in items:
-                    item.goods_receipt = receipt
-                    if not item.created_by_id:
-                        item.created_by = request.user
-                    item.updated_by = request.user
-                    item.save()
-                formset.save()
-            return redirect("receipts")
-        else:
-            if pk:
-                queryset = instance.receipt_items.all()
-                po_items = [item.purchase_order_item for item in queryset]
+            if po_item_ids:
+                items_dict = (
+                    PurchaseOrderItem.objects.filter(pk__in=po_item_ids)
+                    .select_related("product")
+                    .in_bulk()
+                )
+                po_items = [
+                    items_dict.get(uuid.UUID(pk))
+                    for pk in po_item_ids
+                    if items_dict.get(uuid.UUID(pk))
+                ]
+            else:
+                po_items = []
 
-            po_id = request.POST.get("purchase_order")
-            if po_id:
-                po_items = PurchaseOrderItem.objects.filter(
-                    purchase_order_id=po_id
-                ).select_related("product")
             zipped_data = zip(formset.forms, po_items)
 
     else:
-        form = GoodsReceiptForm(instance=instance)
-        if pk and instance:
-            queryset = instance.receipt_items.all()
-            formset = GoodsReceiptItemFormset(queryset=queryset, prefix="items")
-            po_items = [item.purchase_order_item for item in queryset]
-            zipped_data = zip(formset.forms, po_items)
+        form = GoodsReceiptForm(initial=initial_data)
+        formset, po_items = utils.get_formset_data(purchase_order)
+        zipped_data = zip(formset.forms, po_items)
 
     context = {
         "form": form,
         "formset": formset,
         "zipped_data": zipped_data,
-        "has_existing_instance": instance is not None,
+        "form_action_url": reverse("add_receipt"),
+        "receipt_item_url": reverse("receipt_item_form"),
     }
+
+    if request.htmx:
+        return HttpResponse(
+            render_block_to_string(
+                "supply_chain/goods_receipts/form.html",
+                "content",
+                context,
+                request=request,
+            )
+        )
+
     return render(request, "supply_chain/goods_receipts/form.html", context)
 
 
-def receipt_detail(request, pk):
-    pass
+def manage_receipt_item(request):
+    purchase_order = None
 
+    if request.GET.get("purchase_order"):
+        purchase_order_pk = request.GET.get("purchase_order")
+        purchase_order = get_object_or_404(PurchaseOrder, pk=purchase_order_pk)
 
-def delete_receipt(request, pk):
-    receipt = get_object_or_404(GoodsReceipt, pk=pk)
-    if request.method == "POST":
-        receipt.delete()
-        return redirect("receipts")
-
-
-def htmx_get_receipt_item_form(request, pk=None):
-    instance = get_object_or_404(GoodsReceipt, pk=pk) if pk else None
-    po_id = request.GET.get("purchase_order")
-    po_items = []
-
-    if pk and instance:
-        queryset = instance.receipt_items.all()
-        formset = GoodsReceiptItemFormset(queryset=queryset, prefix="items")
-        po_items = [item.purchase_order_item for item in queryset]
-
-    elif not pk and po_id:
-        po_items = (
-            PurchaseOrderItem.objects.annotate(
-                total_received_qty=Coalesce(
-                    Sum("receipt_items__received_quantity"),
-                    0,
-                    output_field=IntegerField(),
-                )
-            )
-            .filter(
-                purchase_order_id=po_id, ordered_quantity__gt=F("total_received_qty")
-            )
-            .select_related("product")
-        )
-
-        initial_data = [
-            {"purchase_order_item": item, "product": item.product} for item in po_items
-        ]
-
-        ReceiptItemFormset_dynamic = modelformset_factory(
-            GoodsReceiptItem,
-            form=GoodsReceiptItemForm,
-            can_delete=True,
-            extra=len(po_items),
-        )
-
-        formset = ReceiptItemFormset_dynamic(
-            queryset=GoodsReceiptItem.objects.none(),
-            initial=initial_data,
-            prefix="items",
-        )
-
-    else:
-        return HttpResponse(status=204)
-
+    formset, po_items = utils.get_formset_data(purchase_order)
     zipped_data = zip(formset.forms, po_items)
+
     context = {
         "formset": formset,
         "zipped_data": zipped_data,
-        "has_existing_instance": instance is not None,
     }
+
     return render(
         request, "supply_chain/goods_receipts/partials/receipt_item_form.html", context
     )
+
+
+@require_POST
+def void_receipt(request, pk):
+    receipt = get_object_or_404(
+        GoodsReceipt.objects.prefetch_related("receipt_items__product__inventory"),
+        pk=pk,
+    )
+
+    if services.can_void_receipt(receipt):
+        services.void_and_correct(pk, request.user)
+        message = f"Receipt {receipt.gr_number} has been voided"
+    else:
+        message = f"{receipt.gr_number} can not be voided"
+
+    void_block = render_block_to_string(
+        "supply_chain/goods_receipts/receipt_detail.html",
+        "void",
+        {"receipt": receipt},
+    )
+    toast = render_to_string(
+        "partials/toast.html",
+        {"message": message},
+    )
+
+    return HttpResponse(void_block + toast)

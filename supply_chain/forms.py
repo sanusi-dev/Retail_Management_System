@@ -27,7 +27,10 @@ class SupplierForm(ModelForm):
 class PurchaseOrderForm(ModelForm):
     class Meta:
         model = PurchaseOrder
-        fields = ("supplier", "order_date", "shipping_cost")
+        fields = (
+            "supplier",
+            "order_date",
+        )
         widgets = {
             "order_date": forms.DateInput(attrs={"type": "date"}),
         }
@@ -51,7 +54,7 @@ class PurchaseOrderItemForm(ModelForm):
         )
 
 
-class PurchaseOrderItemFormset(BaseModelFormSet):
+class BasePurchaseOrderItemFormset(BaseModelFormSet):
 
     def clean(self):
         super().clean()
@@ -74,7 +77,7 @@ class PurchaseOrderItemFormset(BaseModelFormSet):
 PurchaseOrderItemFormSet = modelformset_factory(
     PurchaseOrderItem,
     form=PurchaseOrderItemForm,
-    formset=PurchaseOrderItemFormset,
+    formset=BasePurchaseOrderItemFormset,
     can_delete=True,
     extra=1,
 )
@@ -96,10 +99,17 @@ class PaymentForm(ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["purchase_order"].empty_label = "Select purchase order"
-        self.fields["purchase_order"].queryset = PurchaseOrder.objects.exclude(
-            payment_status="fulfilled"
-        )
+
+        if self.initial.get("purchase_order"):
+            target_purchase_order = self.initial.get("purchase_order")
+            self.fields["purchase_order"].empty_label = None
+            self.fields["purchase_order"].queryset = PurchaseOrder.objects.filter(
+                pk=target_purchase_order.pk
+            )
+        else:
+            self.fields["purchase_order"].queryset = PurchaseOrder.objects.exclude(
+                payment_status="fulfilled"
+            )
 
     def clean(self):
         cleaned_data = super().clean()
@@ -110,6 +120,8 @@ class PaymentForm(ModelForm):
         remaining_balance = (
             purchase_order.total_amount - purchase_order.total_payment_made
         )
+        print(amount)
+        print(purchase_order)
         if amount > remaining_balance:
             raise forms.ValidationError(
                 f"Amount exceeds the remaining balance for this PO. Remaining Bal: {remaining_balance:,.2f}"
@@ -121,19 +133,30 @@ class PaymentForm(ModelForm):
 class GoodsReceiptForm(ModelForm):
     class Meta:
         model = GoodsReceipt
-        fields = ("purchase_order", "delivery_date")
+        fields = (
+            "purchase_order",
+            "delivery_date",
+            "delivery_cost",
+        )
         widgets = {
             "delivery_date": forms.DateInput(attrs={"type": "date"}),
         }
 
     def __init__(self, *args, **kwargs):
+
         super().__init__(*args, **kwargs)
         self.fields["purchase_order"].empty_label = "Select a Purchase Order"
-        self.fields["purchase_order"].queryset = PurchaseOrder.objects.exclude(
-            delivery_status="received"
-        )
-        if self.instance and not self.instance._state.adding:
-            self.fields["purchase_order"].disabled = True
+        if self.initial.get("purchase_order"):
+            target_purchase_order = self.initial.get("purchase_order")
+            self.fields["purchase_order"].queryset = PurchaseOrder.objects.filter(
+                pk=target_purchase_order.pk
+            )
+            self.fields["purchase_order"].empty_label = None
+        else:
+            self.fields["purchase_order"].queryset = PurchaseOrder.objects.filter(
+                ~Q(delivery_status=PurchaseOrder.DeliveryStatus.RECEIVED),
+                payment_status=PurchaseOrder.PaymentStatus.FULFILLED,
+            )
 
 
 class GoodsReceiptItemForm(ModelForm):
@@ -150,8 +173,7 @@ class GoodsReceiptItemForm(ModelForm):
         po_item = cleaned_data.get("purchase_order_item")
         received_quantity = cleaned_data.get("received_quantity")
 
-        original_received = self.instance.received_quantity
-
+        original_received = self.instance.received_quantity or 0
         if po_item and received_quantity is not None:
             total_remaining = po_item.remaining_qty
             if received_quantity > total_remaining + original_received:
