@@ -2,10 +2,15 @@
 {% load static %}
 {% load widget_tweaks %}
 {% block content %}
-    <div class="flex h-full flex-col">
-        <form action="" method="post" class="flex flex-col h-full">
-            {% csrf_token %}
-            <!-- Header Section - Fixed -->
+    {% include "partials/spinner.html" with id="body_spinner" %}
+    <div class="flex h-full flex-col" id="main_body">
+        <form hx-boost="true"
+              action="{{ form_action_url }}"
+              method="post"
+              hx-push-url="true"
+              hx-target="#main_body"
+              hx-indicator="#body_spinner"
+              class="flex flex-col h-full">
             <div class="flex-none bg-white py-5 px-5 h-20">
                 <div class="flex justify-between items-center">
                     <h1 class="flex text-2xl font-normal text-gray-900 items-center">
@@ -19,8 +24,8 @@
                         </svg>
                         New Purchase Receive
                     </h1>
-                    <a href="{% url 'receipts' %}"
-                       class="p-2 text-gray-500 hover:text-gray-600 transition-colors">
+                    <button onclick="history.back()"
+                            class="text-gray-600 hover:text-gray-600 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg"
                              fill="none"
                              viewBox="0 0 24 24"
@@ -29,37 +34,34 @@
                              class="size-6">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                         </svg>
-                    </a>
+                    </button>
                 </div>
             </div>
-            <!-- Error Section -->
             {% include "supply_chain/po/partials/error.html" with form=form formset=formset %}
-            <div class="flex-none bg-gray-50 py-5 px-5 h-30">
+            <div class="flex-none bg-gray-50 py-5 px-5 h-45">
                 <div class="flex items-center gap-4 max-w-2xl">
                     <label for="{{ form.purchase_order.id_for_label }}"
                            class="text-sm font-normal text-red-600 w-32 flex-shrink-0">Purchase Order#*</label>
                     <div class="flex-1">
-                        {% if has_existing_instance %}
-                            {% url 'htmx_get_form_add' pk=pk as get_form_url %}
-                        {% else %}
-                            {% url 'htmx_get_form_add' as get_form_url %}
-                        {% endif %}
-                        {% if has_existing_instance %}
-                            {% render_field form.purchase_order class="cursor-not-allowed w-full font-light px-3 py-1.5 bg-white border border-gray-300 rounded-md outline-none ml-10" hx-target="#formset-container" hx-swap="innerHTML" hx-trigger="change" hx-get=get_form_url %}
-                        {% else %}
-                            {% render_field form.purchase_order class="w-full font-light px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none ml-10" hx-target="#formset-container" hx-swap="innerHTML" hx-trigger="change" hx-get=get_form_url %}
-                        {% endif %}
+                        {% url "receipt_item_form" as receipt_item_url %}
+                        {% render_field form.purchase_order class="w-full font-light px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none ml-10" hx-target="#formset-container" hx-swap="innerHTML" hx-trigger="change" hx-get=receipt_item_url hx-push-url="false" hx-indicator="#formset-container-spinner" %}
                     </div>
                 </div>
                 <div class="flex items-center gap-4 max-w-2xl mt-3">
-                    <label for="{{ form.purchase_order.id_for_label }}"
+                    <label for="{{ form.delivery_date.id_for_label }}"
                            class="text-sm font-normal text-gray-600 w-32 flex-shrink-0">Receive Date</label>
                     <div class="flex-1">
                         {% render_field form.delivery_date class="w-full font-light px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none ml-10" %}
                     </div>
                 </div>
+                <div class="flex items-center gap-4 max-w-2xl mt-3">
+                    <label for="{{ form.delivery_cost.id_for_label }}"
+                           class="text-sm font-normal text-gray-600 w-32 flex-shrink-0">Delivery Cost</label>
+                    <div class="flex-1">
+                        {% render_field form.delivery_cost class="w-full font-light px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none ml-10" %}
+                    </div>
+                </div>
             </div>
-            <!-- Scrollable Content Area -->
             <div class="flex-1 overflow-y-auto px-5 pb-20" id="formset-container">
                 {% include "supply_chain/goods_receipts/partials/receipt_item_form.html" %}
             </div>

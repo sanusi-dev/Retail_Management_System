@@ -1,6 +1,7 @@
 {% extends "index.html" %}
 {% load static %}
 {% load color_filters %}
+{% load humanize %}
 {% block content %}
     {% include "partials/spinner.html" with id="body_spinner" %}
     <div class="flex h-full flex-col" id="main_body">
@@ -23,51 +24,56 @@
             </div>
         {% endblock header %}
         {% block body %}
-            <div class="flex-1 overflow-y-auto">
-                <div class="relative overflow-x-auto" id="table_container">
-                    {% block table_with_pagination %}
-                        <!-- TABLE -->
-                        <table class="w-full text-sm text-left text-gray-500">
-                            <thead class="text-xs text-gray-500 font-normal uppercase bg-gray-50 sticky top-0 z-10">
-                                <tr class="border-t border-b">
-                                    <th scope="col" class="px-6 py-3">Date</th>
-                                    <th scope="col" class="px-6 py-3">Purchase Order#</th>
-                                    <th scope="col" class="px-6 py-3">Supplier</th>
-                                    <th scope="col" class="px-6 py-3">Delivery Status</th>
-                                    <th scope="col" class="px-6 py-3">Payment Status</th>
-                                    <th scope="col" class="px-6 py-3 text-right">Received</th>
-                                    <th scope="col" class="px-6 py-3 text-right">Amount</th>
-                                    <th scope="col" class="px-6 py-3">Delivery Date</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-sm text-black font-light">
-                                {% if purchases %}
-                                    {% for po in purchases %}
-                                        <tr class="bg-white border-b border-gray-100 hover:bg-gray-50">
-                                            <td class="px-6 py-3 capitalize">{{ po.order_date|date:"j F Y g:i A" }}</td>
-                                            <td class="px-6 py-3 capitalize">
-                                                <a href="">{{ po.po_number }}</a>
-                                            </td>
-                                            <td class="px-6 py-3 capitalize">{{ po.supplier.name }}</td>
-                                            <td class="px-6 py-3 capitalize {{ po.delivery_status|status_color }}">{{ po.delivery_status|upper }}</td>
-                                            <td class="px-6 py-3 capitalize {{ po.payment_status|status_color }}">{{ po.payment_status|upper }}</td>
-                                            <td class="px-6 py-3 text-right">{{ po.total_recieved|default:"-" }}</td>
-                                            <td class="px-6 py-3 text-right">NGN{{ po.total_amount|floatformat:"2g" }}</td>
-                                            <td class="px-6 py-3 capitalize">{{ po.delivery_date|default_if_none:"N/A" }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                {% else %}
-                                    <tr class="bg-white border-b border-gray-100 hover:bg-gray-50">
-                                        <td colspan="8" class="px-6 py-3 text-center">
-                                            <p>No purchase orders available.</p>
-                                        </td>
+            <div id="table_container"
+                 class="relative flex flex-col h-[calc(100vh-8rem)]">
+                <div class="flex-1 overflow-y-auto pb-25">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-500 font-normal uppercase bg-gray-50 sticky top-0 z-10">
+                            <tr class="border-t border-b">
+                                <th scope="col" class="px-6 py-3">Date</th>
+                                <th scope="col" class="px-6 py-3">Purchase Order #</th>
+                                <th scope="col" class="px-6 py-3">Supplier</th>
+                                <th scope="col" class="px-6 py-3">Status</th>
+                                <th scope="col" class="px-6 py-3">Delivery Status</th>
+                                <th scope="col" class="px-6 py-3">Payment Status</th>
+                                <th scope="col" class="px-6 py-3 text-right">Received</th>
+                                <th scope="col" class="px-6 py-3 text-right">Total Amount</th>
+                                <th scope="col" class="px-6 py-3 text-right">Total Payment Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm text-black font-light" id="tbody">
+                            {% if purchases %}
+                                {% for po in purchases %}
+                                    <tr class="bg-white border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                                        hx-get="{{ po.get_absolute_url }}"
+                                        hx-target="#main_body"
+                                        hx-indicator="#body_spinner"
+                                        hx-push-url="true">
+                                        <td class="px-6 py-3 capitalize">{{ po.order_date|date:"j M Y" }}</td>
+                                        <td class="px-6 py-3 capitalize">{{ po.po_number|upper }}</td>
+                                        <td class="px-6 py-3 capitalize">{{ po.supplier.name|upper }}</td>
+                                        <td class="px-6 py-3 capitalize {{ po.status|status_color }}">{{ po.status|upper }}</td>
+                                        <td class="px-6 py-3 capitalize {{ po.delivery_status|status_color }}">{{ po.delivery_status|upper }}</td>
+                                        <td class="px-6 py-3 capitalize {{ po.payment_status|status_color }}">{{ po.payment_status|upper }}</td>
+                                        <td class="px-6 py-3 text-right">{{ po.total_recieved|default:"—" }}</td>
+                                        <td class="px-6 py-3 text-right">NGN{{ po.total_amount|floatformat:2|intcomma }}</td>
+                                        <td class="px-6 py-3 text-right">NGN{{ po.total_payment_made|floatformat:2|intcomma }}</td>
                                     </tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
-                        <!-- PAGINATION -->
-                        <div id="pagination">{% include 'partials/pagination.html' with page_obj=purchases target="table_container" %}</div>
-                    {% endblock table_with_pagination %}
+                                {% endfor %}
+                            {% else %}
+                                <tr class="bg-white border-b border-gray-100 hover:bg-gray-50">
+                                    <td colspan="9" class="px-6 py-3 text-center">
+                                        <p>No purchase orders available.</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20">
+                    <div class="flex justify-end">
+                        {% include 'partials/pagination.html' with page_obj=purchases target="table_container" %}
+                    </div>
                 </div>
             </div>
         {% endblock body %}

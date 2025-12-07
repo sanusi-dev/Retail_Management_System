@@ -1,0 +1,104 @@
+{% extends 'index.html' %}
+{% load static %}
+{% load widget_tweaks %}
+{% load humanize %}
+{% block content %}
+    {% include "partials/spinner.html" with id="body_spinner" %}
+    <div class="flex h-full flex-col" id="main_body">
+        <form hx-post="{{ form_action_url }}"
+              hx-push-url="true"
+              hx-target="#main_body"
+              hx-indicator="#body_spinner"
+              class="flex flex-col flex-1">
+            {% csrf_token %}
+            <!-- Header -->
+            <div class="flex-none bg-gray-50 border-b py-5 px-5 h-20">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-normal text-gray-900">Record Disbursement</h1>
+                    </div>
+                    <a href="{{ form.initial.cfa_agreement.account.customer.get_absolute_url }}"
+                       hx-boost="true"
+                       hx-target="#main_body"
+                       hx-indicator="#body_spinner"
+                       class="p-2 text-gray-500 hover:text-gray-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="1.5"
+                             stroke="currentColor"
+                             class="size-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+            <!-- Form Body -->
+            <div class="flex-1 overflow-y-auto px-5 bg-gray-50">
+                <div class="mt-5 py-5 max-w-4xl">
+                    <!-- Global Errors -->
+                    {% if form.non_field_errors %}
+                        <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                            {% for error in form.non_field_errors %}<p class="font-bold">{{ error }}</p>{% endfor %}
+                        </div>
+                    {% endif %}
+                    {% with WIDGET_ERROR_CLASS='bg-red-100 border-red-500 focus:ring-red-500 focus:border-red-500' %}
+                        <div class="space-y-6">
+                            <!-- Agreement (Locked) -->
+                            <div class="flex items-center max-w-lg">
+                                <label class="text-sm font-normal text-gray-700 mr-8 whitespace-nowrap w-40">Agreement</label>
+                                <div class="flex-1">
+                                    {% render_field form.cfa_agreement class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full py-1.5 px-2.5" %}
+                                </div>
+                            </div>
+                            <!-- Date -->
+                            <div class="flex items-center max-w-lg">
+                                <label class="text-sm font-normal text-gray-700 mr-8 whitespace-nowrap w-40">Date</label>
+                                <div class="flex-1">
+                                    {% render_field form.date class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full py-1.5 px-2.5" %}
+                                    {% if form.date.errors %}
+                                        {% for error in form.date.errors %}<p class="text-red-500 text-sm mt-1">{{ error }}</p>{% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <!-- Context Card (Rate Info) -->
+                            <div class="max-w-lg ml-[12rem] bg-purple-50 border border-purple-200 rounded p-3 text-xs text-purple-800 flex justify-between">
+                                <span>Applied Rate:</span>
+                                <span class="font-bold font-mono">
+                                    {{ form.cfa_amount_disbursed.field.widget.attrs.data_rate|default:form.initial.cfa_agreement.exchange_rate|floatformat:2 }}
+                                    NGN / 1,000 CFA
+                                </span>
+                            </div>
+                            <!-- CFA Amount (Input) -->
+                            <div class="flex items-center max-w-lg">
+                                <label class="text-sm font-normal text-purple-700 mr-8 whitespace-nowrap w-40 font-bold">Disburse (CFA)*</label>
+                                <div class="flex-1">
+                                    <div class="relative">
+                                        {% render_field form.cfa_amount_disbursed class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full py-1.5 px-2.5 font-mono" placeholder="0.00" %}
+                                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                            <span class="text-gray-400 text-xs">CFA</span>
+                                        </div>
+                                    </div>
+                                    {% if form.cfa_amount_disbursed.errors %}
+                                        {% for error in form.cfa_amount_disbursed.errors %}<p class="text-red-500 text-sm mt-1">{{ error }}</p>{% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <!-- Notes -->
+                            <div class="flex items-start max-w-2xl">
+                                <label class="text-sm font-normal text-gray-700 mr-8 whitespace-nowrap w-40 mt-2">Notes</label>
+                                <div class="flex-1">
+                                    {% render_field form.notes class="block py-1.5 px-2.5 w-full text-sm text-gray-900 bg-white rounded-lg border border-gray-300 focus:ring-purple-500 focus:border-purple-500 focus:outline-none" placeholder="Optional details..." %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endwith %}
+                </div>
+            </div>
+            <!-- Buttons -->
+            {% comment %} {% url 'customer_detail' pk=form.initial.cfa_agreement.account.customer.get_absolute_url as cancel_url %} {% endcomment %}
+            {% url "customers" as cancel_url %}
+            {% include 'partials/form_buttons.html' with cancel_url=cancel_url submit_text="Confirm" %}
+        </form>
+    </div>
+{% endblock content %}

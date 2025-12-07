@@ -1,24 +1,16 @@
 from django.contrib import admin
-from .models import (
-    Brand,
-    Product,
-    Inventory,
-    SerializedInventory,
-    InventoryTransformation,
-)
+from .models import *
 from django.core.exceptions import ValidationError
 
 
-class InventoryInline(admin.TabularInline):
-    model = Inventory
-    extra = 0
-    raw_id_fields = ("product",)
-
-
-class SerializedInventoryInline(admin.TabularInline):
-    model = SerializedInventory
-    extra = 0
-    raw_id_fields = ("product",)
+class TransformationItemInline(admin.TabularInline):
+    model = TransformationItem
+    fk_name = "transformation"
+    extra = 1
+    raw_id_fields = (
+        "source_product",
+        "target_product",
+    )
 
 
 @admin.register(Brand)
@@ -39,25 +31,27 @@ class ProductAdmin(admin.ModelAdmin):
     """
 
     list_display = (
-        "created_at",
         "sku",
+        "created_at",
         "brand",
         "modelname",
         "category",
     )
     list_filter = ("brand", "category", "type_variant", "created_at")
-    # list_sort = ("brand", "category", "type_variant", "created_at")
+    list_sort = ("brand", "category", "type_variant", "created_at")
     search_fields = ("sku", "modelname")
-    inlines = [InventoryInline, SerializedInventoryInline]
     raw_id_fields = ("brand", "base_product", "created_by", "updated_by")
+    readonly_fields = [
+        "sku",
+    ]
 
-    def save_model(self, request, obj, form, change):
-        if obj.type_variant == "coupled" and not obj.base_product:
-            raise ValidationError("Coupled product needs a base product")
-        elif obj.type_variant == "boxed" and obj.base_product:
-            raise ValidationError("Boxed product does not need a base product")
+    # def save_model(self, request, obj, form, change):
+    #     if obj.type_variant == "coupled" and not obj.base_product:
+    #         raise ValidationError("Coupled product needs a base product")
+    #     elif obj.type_variant == "boxed" and obj.base_product:
+    #         raise ValidationError("Boxed product does not need a base product")
 
-        super().save_model(request, obj, form, change)
+    #     super().save_model(request, obj, form, change)
 
 
 @admin.register(Inventory)
@@ -66,43 +60,69 @@ class InventoryAdmin(admin.ModelAdmin):
     Custom admin for the Inventory model.
     """
 
-    list_display = ("product", "quantity_on_hand", "last_updated_at")
-    list_filter = ("last_updated_at",)
+    list_display = (
+        "product",
+        "quantity",
+        "weighted_average_cost",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = ("updated_at",)
     search_fields = ("product__modelname", "product__sku")
     raw_id_fields = ("product",)
 
 
-@admin.register(SerializedInventory)
-class SerializedInventoryAdmin(admin.ModelAdmin):
+@admin.register(Transformation)
+class TransformationAdmin(admin.ModelAdmin):
     """
     Custom admin for the SerializedInventory model.
     """
 
     list_display = (
-        "product",
-        "engine_number",
-        "chassis_number",
-        "status",
-        "received_date",
+        "transformation_number",
+        "service_fee",
+        "transformation_date",
+        "created_at",
     )
-    list_filter = ("status",)
-    search_fields = ("engine_number", "chassis_number", "product__modelname")
-    raw_id_fields = ("product", "created_by", "updated_by")
+    inlines = [TransformationItemInline]
+    search_fields = ("transformation_number",)
+    raw_id_fields = ("created_by", "updated_by")
 
 
-@admin.register(InventoryTransformation)
-class InventoryTransformationAdmin(admin.ModelAdmin):
+@admin.register(TransformationItem)
+class TransformationItemAdmin(admin.ModelAdmin):
     """
     Custom admin for the InventoryTransformation model.
     """
 
     list_display = (
-        "transformation_id",
-        "boxed_product",
-        "coupled_product",
+        "item_number",
+        "transformation",
+        "source_product",
+        "target_product",
         "engine_number",
         "chassis_number",
-        "transformation_date",
+        "status",
+        "created_at",
+        "updated_at",
     )
     search_fields = ("engine_number", "chassis_number")
-    raw_id_fields = ("boxed_product", "coupled_product", "created_by", "updated_by")
+    raw_id_fields = (
+        "source_product",
+        "target_product",
+        "created_by",
+        "updated_by",
+    )
+
+
+@admin.register(InventoryTransaction)
+class InventoryTransactionAdmin(admin.ModelAdmin):
+    list_display = (
+        "inventory",
+        "transaction_type",
+        "source_content_type",
+        "source_object_id",
+        "source",
+        "quantity_change",
+        "cost_impact",
+    )

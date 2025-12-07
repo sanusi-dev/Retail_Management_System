@@ -1,0 +1,246 @@
+{% load humanize %}
+<div class="space-y-4" id="cfa-agreements-list">
+    {% for cfa in cfas %}
+        {% block cfa_agreement_row %}
+            <!-- CFA Card -->
+            <div x-data="{ expanded: false }"
+                 class="border rounded-lg transition-all duration-200"
+                 id="cfa_agreement_row-{{ cfa.pk }}"
+                 {% if oob_swap_enabled %}hx-swap-oob="true"{% endif %}
+                 {% if cfa.status == 'CANCELLED' %}
+                     bg-gray-50 border-gray-200 opacity-75
+                 {% else %}
+                     bg-white border-gray-200 shadow-sm hover:border-purple-300
+                 {% endif %}>
+                <!-- CARD HEADER -->
+                <div @click="expanded = !expanded" class="p-5 cursor-pointer select-none">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="h-10 w-10 rounded-full flex items-center justify-center
+                                        {% if cfa.status == 'FULFILLED' %}
+                                            bg-green-100 text-green-600
+                                        {% elif cfa.status == 'CANCELLED' %}
+                                            bg-gray-200 text-gray-500
+                                        {% else %}
+                                            bg-purple-100 text-purple-600
+                                        {% endif %}">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-base flex items-center gap-2
+                                           {% if cfa.status == 'CANCELLED' %}
+                                               text-gray-600 line-through
+                                           {% else %}
+                                               text-gray-900
+                                           {% endif %}">
+                                    {{ cfa.cfa_agreement_number }}
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide font-bold no-underline
+                                                 {% if cfa.status == 'FULFILLED' %}
+                                                     bg-green-100 text-green-700
+                                                 {% elif cfa.status == 'PARTIALLY_FULFILLED' %}
+                                                     bg-amber-100 text-amber-700
+                                                 {% elif cfa.status == 'CANCELLED' %}
+                                                     bg-red-100 text-red-600
+                                                 {% else %}
+                                                     bg-purple-100 text-purple-700
+                                                 {% endif %}">{{ cfa.get_status_display }}</span>
+                                </h3>
+                                <p class="text-xs text-gray-500 mt-0.5">
+                                    Rate: <span class="font-mono font-medium text-gray-700">@ NGN {{ cfa.exchange_rate|floatformat:2|intcomma }} / 1,000 CFA</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-500 uppercase font-medium">Allocated (NGN)</p>
+                            <p class="text-sm font-bold font-mono
+                                      {% if cfa.status == 'CANCELLED' %}
+                                          text-gray-500 line-through
+                                      {% else %}
+                                          text-gray-900
+                                      {% endif %}">NGN {{ cfa.amount_allocated|floatformat:2|intcomma }}</p>
+                            <p class="text-xs text-purple-600 font-medium mt-1">≈ {{ cfa.expected_cfa_amount|floatformat:2|intcomma }} CFA</p>
+                        </div>
+                    </div>
+                    <!-- Progress Bar -->
+                    {% if cfa.status != 'CANCELLED' %}
+                        <div class="flex items-center gap-4">
+                            <div class="flex-1">
+                                <div class="flex justify-between text-xs text-gray-600 mb-1">
+                                    <span>Disbursed: <strong>{{ cfa.total_fulfilled_cfa|intcomma }} CFA</strong></span>
+                                    <span>{{ cfa.total_cfa_disbursed_percent|default:"0" }}%</span>
+                                </div>
+                                <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                    <div class="h-2 rounded-full transition-all duration-500
+                                                {% if cfa.status == 'FULFILLED' %}
+                                                    bg-green-500
+                                                {% else %}
+                                                    bg-purple-500
+                                                {% endif %}"
+                                         style="width: {{ cfa.total_cfa_disbursed_percent|floatformat:0 }}%"></div>
+                                </div>
+                            </div>
+                            <div class="text-gray-400 transition-transform duration-200"
+                                 :class="{'rotate-180': expanded}">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
+                    {% else %}
+                        <!-- Cancelled Footer -->
+                        <div class="flex justify-between items-center pt-2 border-t border-gray-200 border-dashed mt-2">
+                            <span class="text-xs font-mono text-red-500 uppercase">Voided Agreement</span>
+                            <div class="text-gray-400 transition-transform duration-200"
+                                 :class="{'rotate-180': expanded}">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                <!-- CARD BODY -->
+                <div x-show="expanded"
+                     class="border-t border-gray-100 p-5 rounded-b-lg
+                            {% if cfa.status == 'CANCELLED' %}
+                                bg-gray-100
+                            {% else %}
+                                bg-purple-50/30
+                            {% endif %}">
+                    <!-- Toolbar -->
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Disbursement History</h4>
+                        {% if cfa.status != "FULFILLED" and cfa.status != 'CANCELLED' %}
+                            <a href="{% url 'add_cfa_fulfillment' %}?agreement={{ cfa.pk }}"
+                               hx-boost="true"
+                               hx-target="#main_body"
+                               hx-indicator="#body_spinner"
+                               class="text-xs bg-white border border-purple-200 text-purple-700 px-3 py-1.5 rounded-md hover:bg-purple-50 transition-colors shadow-sm font-medium flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Record Disbursement
+                            </a>
+                        {% endif %}
+                    </div>
+                    <!-- Table -->
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-medium">
+                                <tr>
+                                    <th class="px-4 py-3">Date</th>
+                                    <th class="px-4 py-3">Ref #</th>
+                                    <th class="px-4 py-3 text-right">Disbursed (CFA)</th>
+                                    <th class="px-4 py-3 text-right">Equiv (NGN)</th>
+                                    <th class="px-4 py-3">Notes</th>
+                                    <th class="px-4 py-3 text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                {% for fulfillment in cfa.cfa_fulfillments.all %}
+                                    {% block fulfillment_row %}
+                                        <tr id="fulfillment-row-{{ fulfillment.pk }}"
+                                            class="{% if fulfillment.status == 'VOIDED' %}
+                                                       bg-gray-50/50 text-gray-500 hover:bg-gray-100/70 line-through
+                                                   {% else %}
+                                                       hover:bg-gray-50
+                                                   {% endif %}">
+                                            <td class="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">{{ fulfillment.date|date:"M d, Y" }}</td>
+                                            <td class="px-4 py-3 font-mono text-xs text-gray-500">{{ fulfillment.fulfillment_number }}</td>
+                                            <td class="px-4 py-3 text-right font-mono font-bold
+                                                       {% if fulfillment.status == 'VOIDED' %}
+                                                           text-gray-400
+                                                       {% else %}
+                                                           text-gray-800
+                                                       {% endif %}">
+                                                {{ fulfillment.cfa_amount_disbursed|floatformat:2|intcomma }}
+                                            </td>
+                                            <td class="px-4 py-3 text-right font-mono text-xs
+                                                       {% if fulfillment.status == 'VOIDED' %}
+                                                           text-gray-400
+                                                       {% else %}
+                                                           text-gray-500
+                                                       {% endif %}">
+                                                NGN {{ fulfillment.cfa_amount_disbursed_to_naira|floatformat:2|intcomma }}
+                                            </td>
+                                            <td class="px-4 py-3 text-xs text-gray-500 italic truncate max-w-[150px]"
+                                                title="{{ fulfillment.notes }}">
+                                                {{ fulfillment.notes|default:"-" }}
+                                            </td>
+                                            <td class="px-4 py-3 text-center">
+                                                {% if fulfillment.status == 'ACTIVE' %}
+                                                    <button hx-post="{% url 'void_cfa_fulfillment' pk=fulfillment.pk %}"
+                                                            hx-confirm="Are you sure you want to VOID fulfillment {{ fulfillment.fulfillment_number }}? This will reverse the transaction."
+                                                            hx-target="#fulfillment-row-{{ fulfillment.pk }}"
+                                                            hx-swap="delete"
+                                                            class="text-[10px] text-red-500 border border-red-500 px-2 py-0.5 rounded hover:bg-red-50 transition-colors">
+                                                        Void
+                                                    </button>
+                                                {% elif fulfillment.status == 'VOIDED' %}
+                                                    <span class="text-[10px] font-bold text-white bg-red-400 px-2 py-0.5 rounded uppercase">Voided</span>
+                                                {% else %}
+                                                    <span class="text-[10px] text-gray-400 cursor-not-allowed">-</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endblock fulfillment_row %}
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-6 text-gray-400 text-xs">No disbursements recorded yet.</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Footer Actions -->
+                    <div class="mt-4 pt-4 border-t border-purple-200 flex justify-between items-center text-xs">
+                        <div class="text-gray-400">Created by: {{ cfa.created_by.get_full_name|default:cfa.created_by.username }}</div>
+                        {% if cfa.status == 'ACTIVE' or cfa.status == 'PARTIALLY_FULFILLED' %}
+                            <div class="flex items-center gap-4">
+                                <a href="{% url 'edit_cfa_agreement' cfa.pk %}?customer={{ customer.pk }}"
+                                   hx-boost="true"
+                                   hx-target="#main_body"
+                                   hx-indicator="#body_spinner"
+                                   class="text-gray-600 hover:text-purple-700 font-medium flex items-center gap-1 transition-colors">
+                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                    Edit
+                                </a>
+                                <button hx-post="{% url 'cancel_cfa_agreement' cfa.pk %}"
+                                        hx-confirm="Are you sure you want to CANCEL this CFA Agreement?"
+                                        hx-target="#cfa_agreement_row-{{ cfa.pk }}"
+                                        hx-swap="delete"
+                                        class="text-red-400 hover:text-red-600 font-medium flex items-center gap-1 transition-colors">
+                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    Cancel Agreement
+                                </button>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endblock cfa_agreement_row %}
+    {% empty %}
+        <!-- Empty State -->
+        <div class="text-center py-16 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4"
+                 fill="none"
+                 viewBox="0 0 24 24"
+                 stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            <h3 class="text-sm font-medium text-gray-900">No CFA allocations found</h3>
+            <div class="mt-6">
+                <a href="{% url 'add_cfa_agreement' %}?customer={{ customer.pk }}"
+                   class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    Create Allocation
+                </a>
+            </div>
+        </div>
+    {% endfor %}
+</div>

@@ -1,0 +1,182 @@
+{% extends 'index.html' %}
+{% load static %}
+{% load field_name %}
+{% block content %}
+   {% include "partials/spinner.html" with id="body_spinner" %}
+   <div class="flex flex-col h-full" id="main_body">
+      <div class="flex flex-row h-full">
+         {% block _side_bar %}
+            <div x-data="{ activeSupplier: '{{ supplier.pk }}' }"
+                 class="flex-none w-[360px] h-screen bg-white border-r flex flex-col">
+               <div class="flex-none border-b">
+                  <div class="h-16 flex items-center justify-between px-2 py-2">
+                     <h4 class="text-gray-900 text-lg font-medium">All Items</h4>
+                     <a href="{% url 'add_supplier' %}"
+                        hx-boost="true"
+                        hx-target="#main_body"
+                        hx-indicator="#body_spinner"
+                        class="px-1 py-1 text-md font-medium text-center text-white bg-blue-500 rounded-md hover:bg-blue-600 focus:ring-1 focus:outline-none focus:ring-blue-200">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             viewBox="0 0 20 20"
+                             fill="currentColor"
+                             class="size-6">
+                           <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+                        </svg>
+                     </a>
+                  </div>
+               </div>
+               {% block side_bar_list %}
+                  <div id="sidebar_pagination" class="flex-1 flex flex-col min-h-0">
+                     <div id="side_bar" class="flex-1 overflow-y-auto min-h-0">
+                        {% for supplier in supplier_list %}
+                           <a href="{% url 'supplier_detail' pk=supplier.pk %}"
+                              class="h-10 flex items-center justify-between px-5 border-b hover:bg-gray-100 transition-colors duration-150"
+                              hx-boost="true"
+                              hx-target="#main_content"
+                              hx-indicator="#side_bar_spinner"
+                              @click="activeSupplier = '{{ supplier.pk }}'"
+                              x-bind:class="{'bg-blue-50 border-r-2 border-r-blue-500': activeSupplier === '{{ supplier.pk }}' }">
+                              <h4 class="text-gray-800 font-medium text-sm">{{ supplier.name|upper }}</h4>
+                              <h4 class="text-gray-600 font-medium text-sm">NGN {{ supplier.supp_total_undelivered_value | floatformat:"2g" }}</h4>
+                           </a>
+                        {% endfor %}
+                     </div>
+                     <div class="flex-none sticky bottom-0 bg-white border-t border-gray-200 p-2 z-10">
+                        <div class="flex justify-end">
+                           {% include "partials/pagination.html" with page_obj=supplier_list target="sidebar_pagination" %}
+                        </div>
+                     </div>
+                  </div>
+               {% endblock side_bar_list %}
+            </div>
+         {% endblock _side_bar %}
+         <div class="flex-1 flex flex-col relative" id="content-wrapper">
+            {% include "partials/spinner.html" with id="side_bar_spinner" %}
+            <div id="main_content">
+               {% block main_content %}
+                  {% block _header %}
+                     <div class="flex-none bg-white py-3 px-5 h-16">
+                        <div class="flex justify-between items-start">
+                           <h1 class="text-lg font-medium text-gray-900">{{ supplier.name|upper }}</h1>
+                           <div class="flex inline-items items-center gap-2">
+                              <a href="{{ supplier.get_edit_url }}"
+                                 hx-boost="true"
+                                 hx-target="#main_body"
+                                 hx-indicator="#body_spinner"
+                                 class="text-gray-600 bg-gray-100 px-1 py-1 border border-gray-300 rounded-md">
+                                 <svg xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 16 16"
+                                      fill="currentColor"
+                                      class="size-6">
+                                    <path d="M13.488 2.513a1.75 1.75 0 0 0-2.475 0L6.75 6.774a2.75 2.75 0 0 0-.596.892l-.848 2.047a.75.75 0 0 0 .98.98l2.047-.848a2.75 2.75 0 0 0 .892-.596l4.261-4.262a1.75 1.75 0 0 0 0-2.474Z" />
+                                    <path d="M4.75 3.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h6.5c.69 0 1.25-.56 1.25-1.25V9A.75.75 0 0 1 14 9v2.25A2.75 2.75 0 0 1 11.25 14h-6.5A2.75 2.75 0 0 1 2 11.25v-6.5A2.75 2.75 0 0 1 4.75 2H7a.75.75 0 0 1 0 1.5H4.75Z" />
+                                 </svg>
+                              </a>
+                              <button onclick="history.back()"
+                                      class="text-gray-600 hover:text-gray-600 transition-colors">
+                                 <svg xmlns="http://www.w3.org/2000/svg"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke-width="1.5"
+                                      stroke="currentColor"
+                                      class="size-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                 </svg>
+                              </button>
+                           </div>
+                        </div>
+                     </div>
+                     <div x-data="{activeTab: 'overview'}"
+                          class="flex-none text-sm font-medium text-center text-gray-500 border-b border-gray-200">
+                        <ul class="flex flex-wrap -mb-px">
+                           <li class="me-2">
+                              <a href="{{ supplier.overview_url }}"
+                                 hx-boost="true"
+                                 hx-target="#_content"
+                                 @click="activeTab = 'overview'"
+                                 x-bind:class="{ 'inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg hover:text-gray-600 hover:border-gray-300': activeTab === 'overview', 'inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300': activeTab !== 'overview' }">
+                                 Overview
+                              </a>
+                           </li>
+                           <li class="me-2">
+                              <a href="{{ supplier.transaction_url }}"
+                                 hx-boost="true"
+                                 hx-target="#_content"
+                                 @click="activeTab = 'transactions'"
+                                 x-bind:class="{ 'inline-block p-4 text-blue-600 border-b-2 border-blue-600 rounded-t-lg hover:text-gray-600 hover:border-gray-300': activeTab === 'transactions', 'inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300': activeTab !== 'transactions' }"
+                                 aria-current="page">Transactions</a>
+                           </li>
+                        </ul>
+                     </div>
+                  {% endblock _header %}
+                  {% block _content %}
+                     <div id="_content" class="flex-1 h-screen overflow-y-auto">
+                        <div class="flex-1 pt-5 pb-10 px-5">
+                           <div class="flex flex-row h-full gap-10">
+                              <div class="flex-none w-1/4 flex flex-col gap-4 border-r h-full">
+                                 <!-- Contact Card -->
+                                 <div class="flex items-center justify-between">
+                                    <div>
+                                       <h3 class="font-medium text-gray-900">{{ supplier.name|upper }}</h3>
+                                       <p class="text-sm text-gray-600">{{ supplier.company_name }}</p>
+                                       <p class="text-sm text-gray-600">Phone: {{ supplier.work_phone }}</p>
+                                    </div>
+                                 </div>
+                                 <div class="flex items-center justify-between">
+                                    <div>
+                                       <h3 class="font-medium text-gray-900">Address</h3>
+                                       <p class="text-sm text-gray-600">{{ supplier.address }}</p>
+                                    </div>
+                                 </div>
+                              </div>
+                              <div class="flex-1">
+                                 <ol class="relative border-l border-blue-500 ml-10 mt-10">
+                                    {% for log in supplier.all_logs %}
+                                       {% if log.content_type.model == 'purchaseorder' %}
+                                          <li class="mb-10 ml-8 border rounded-lg p-3">
+                                             <span class="absolute -left-4 flex items-center border border-gray-200 justify-center w-8 h-8 bg-white text-blue-500 rounded-full ring-4 ring-white">
+                                                <svg xmlns="http://www.w3.org/2000/svg"
+                                                     fill="none"
+                                                     viewBox="0 0 24 24"
+                                                     stroke-width="1.5"
+                                                     stroke="currentColor"
+                                                     class="size-5">
+                                                   <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                                                </svg>
+                                             </span>
+                                             {% if log.is_create %}
+                                                <h3 class="font-light leading-tight mb-3">Purchase Order created</h3>
+                                                <p class="text-sm text-gray-500">Purchase Order {{ log | get_field:'po_number' }} created</p>
+                                                <p class="text-sm text-gray-500 font-semibold">
+                                                   by {{ log.user }} on {{ log.datetime }} - <a href="{% url 'po_detail' pk=log|get_field:'pk' %}"
+    hx-boost="true"
+    hx-target="#main_body"
+    hx-indicator="#body_spinner"
+    class="text-blue-500 font-light">view details</a>
+                                                </p>
+                                             {% elif log.is_update %}
+                                                <h3 class="font-light leading-tight mb-3">Purchase Order updated</h3>
+                                                <p class="text-sm text-gray-500">Purchase Order {{ log | get_field:'po_number' }} has been updated</p>
+                                                <p class="text-sm text-gray-500 font-semibold">
+                                                   by {{ log.user }} on {{ log.datetime }} - <a href="{% url 'po_detail' pk=log|get_field:'pk' %}"
+    hx-boost="true"
+    hx-target="#main_body"
+    hx-indicator="#body_spinner"
+    class="text-blue-500 font-light">view details</a>
+                                                </p>
+                                             {% endif %}
+                                          </li>
+                                       {% endif %}
+                                    {% endfor %}
+                                 </ol>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  {% endblock _content %}
+               {% endblock main_content %}
+            </div>
+         </div>
+      </div>
+   </div>
+{% endblock content %}

@@ -1,5 +1,6 @@
 {% extends "index.html" %}
 {% load static %}
+{% load humanize %}
 {% block content %}
     {% include "partials/spinner.html" with id="body_spinner" %}
     <div class="flex h-full flex-col" id="main_body">
@@ -22,43 +23,50 @@
             </div>
         {% endblock header %}
         {% block body %}
-            <div class="flex-1 overflow-y-auto">
-                <div class="relative overflow-x-auto" id="table_container">
-                    {% block table_with_pagination %}
-                        <!-- TABLE -->
-                        <table class="w-full text-sm text-left rtl:text-right text-gray-500">
-                            <thead class="text-xs text-gray-500 font-normal uppercase bg-gray-50 sticky top-0 z-10">
-                                <tr class="border-t border-b">
-                                    <th scope="col" class="px-6 py-3">Name</th>
-                                    <th scope="col" class="px-6 py-3">Company Name</th>
-                                    <th scope="col" class="px-6 py-3">Email</th>
-                                    <th scope="col" class="px-6 py-3">Work Phone</th>
-                                    <th scope="col" class="px-6 py-3 text-right">Undelivered Value</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-sm text-black font-light">
-                                {% if suppliers %}
-                                    {% for supplier in suppliers %}
-                                        <tr class="bg-white border-b border-gray-100 hover:bg-gray-50">
-                                            <td class="px-6 py-3 capitalize text-blue-600">{{ supplier.salutation }}. {{ supplier.display_name }}</td>
-                                            <td class="px-6 py-3 capitalize">{{ supplier.company_name }}</td>
-                                            <td class="px-6 py-3 capitalize">{{ supplier.email | default:"N/A" }}</td>
-                                            <td class="px-6 py-3 capitalize">{{ supplier.work_phone }}</td>
-                                            <td class="px-6 py-3 text-right">NGN{{ supplier.supp_total_undelivered_value|floatformat:"2g" }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                {% else %}
-                                    <tr class="bg-white border-b border-gray-100 hover:bg-gray-50">
-                                        <td colspan="5" class="px-6 py-3 text-center">
-                                            <p>No suppliers available.</p>
-                                        </td>
+            <div id="table_container"
+                 class="relative flex flex-col h-[calc(100vh-8rem)]">
+                <!-- Scrollable area -->
+                <div class="flex-1 overflow-y-auto pb-25">
+                    <!-- pb = pagination height -->
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-500 font-normal uppercase bg-gray-50 sticky top-0 z-10">
+                            <tr class="border-t border-b">
+                                <th scope="col" class="px-6 py-3">Name</th>
+                                <th scope="col" class="px-6 py-3">Company Name</th>
+                                <th scope="col" class="px-6 py-3">Email</th>
+                                <th scope="col" class="px-6 py-3">Work Phone</th>
+                                <th scope="col" class="px-6 py-3 text-right">Undelivered Value</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm text-black font-light" id="tbody">
+                            {% if suppliers %}
+                                {% for supplier in suppliers %}
+                                    <tr class="bg-white border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                                        hx-get="{{ supplier.get_absolute_url }}"
+                                        hx-target="#main_body"
+                                        hx-indicator="#body_spinner"
+                                        hx-push-url="true">
+                                        <td class="px-6 py-3 capitalize text-blue-600">{{ supplier.salutation }}. {{ supplier.display_name|upper }}</td>
+                                        <td class="px-6 py-3 capitalize">{{ supplier.company_name|upper }}</td>
+                                        <td class="px-6 py-3 capitalize">{{ supplier.email|default:"N/A"|upper }}</td>
+                                        <td class="px-6 py-3 capitalize">{{ supplier.work_phone|default:"N/A"|upper }}</td>
+                                        <td class="px-6 py-3 text-right">NGN{{ supplier.supp_total_undelivered_value|floatformat:2|intcomma }}</td>
                                     </tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
-                        <!-- PAGINATION -->
-                        <div id="pagination">{% include 'partials/pagination.html' with page_obj=suppliers target="table_container" %}</div>
-                    {% endblock table_with_pagination %}
+                                {% endfor %}
+                            {% else %}
+                                <tr class="bg-white border-b border-gray-100 hover:bg-gray-50">
+                                    <td colspan="5" class="px-6 py-3 text-center">
+                                        <p>No suppliers available.</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20">
+                    <div class="flex justify-end">
+                        {% include 'partials/pagination.html' with page_obj=suppliers target="table_container" %}
+                    </div>
                 </div>
             </div>
         {% endblock body %}

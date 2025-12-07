@@ -36,7 +36,6 @@ class PurchaseOrderAdmin(admin.ModelAdmin):
         "supplier",
         "po_number",
         "order_date",
-        "delivery_date",
         "delivery_status",
         "payment_status",
         "total_amount",

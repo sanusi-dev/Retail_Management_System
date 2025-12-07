@@ -1,7 +1,27 @@
 from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
-from .models import Product, Inventory
-from account.models import CustomUser
+from .models import *
+from . import services
+from django.db import transaction
+
+
+@receiver(post_save, sender=Product)
+def create_coupled_product(sender, instance, created, **kwargs):
+    """Create coupled product after boxed product is created"""
+    if (
+        created
+        and not instance.base_product
+        and instance.category == Product.Category.MOTORCYCLE
+    ):
+        Product.objects.create(
+            brand=instance.brand,
+            modelname=instance.modelname,
+            category=instance.category,
+            type_variant=instance.TypeVariant.COUPLED,
+            base_product=instance,
+            created_by=instance.created_by,
+            updated_by=instance.updated_by,
+        )
 
 
 @receiver(post_save, sender=Product)
@@ -12,31 +32,28 @@ def create_product_inventory(sender, instance, created, **kwargs):
             product=instance,
             created_by=instance.created_by,
             updated_by=instance.updated_by,
-            quantity_on_hand=0,
         )
 
 
-# @receiver(pre_save, sender=Product)
-# def product_pre_save(sender, instance, **kwargs):
-#     """Do something before product is saved"""
-#     # Example: Auto-generate SKU or slug
-#     if not instance.sku:
-#         instance.sku = f"PRD-{instance.modelname[:3].upper()}-{instance.pk or 'NEW'}"
+@receiver(post_save, sender=TransformationItem)
+def update_inventory_and_create_transaction(sender, instance, created, **kwargs):
+    if not created:
+        return
 
+    with transaction.atomic():
+        inventory = Inventory.objects.select_for_update().get(
+            product=instance.source_product
+        )
+        if inventory.quantity < 1:
+            raise ValueError("Insufficient Stock")
 
-# @receiver(post_delete, sender=Product)
-# def product_deleted(sender, instance, **kwargs):
-#     """Clean up when product is deleted"""
-#     # Log the deletion or perform cleanup
-#     print(f"Product {instance.modelname} was deleted")
+        inventory.quantity -= 1
+        inventory.save(update_fields=["quantity"])
 
-
-# @receiver(post_save, sender=PurchaseOrder)
-# def update_inventory_on_delivery(sender, instance, created, **kwargs):
-#     """Update inventory when purchase order status changes"""
-#     if instance.status == "delivered" and not created:
-#         # Update inventory quantities
-#         for item in instance.items.all():
-#             inventory = item.product.inventory
-#             inventory.quantity_on_hand += item.quantity
-#             inventory.save()
+        services.create_inventory_transaction(
+            inventory=inventory,
+            source=instance,
+            transaction_type=InventoryTransaction.TransactionType.TRANSFORMATION,
+            quantity_change=-1,
+            cost_impact=inventory.weighted_average_cost,
+        )

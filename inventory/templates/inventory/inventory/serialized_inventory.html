@@ -1,0 +1,73 @@
+{% extends "index.html" %}
+{% load static %}
+{% load color_filters %}
+{% load humanize %}
+{% block content %}
+   {% include "partials/spinner.html" with id="body_spinner" %}
+   <div class="flex h-full flex-col" id="main_body">
+      {% block header %}
+         <div class="h-16 flex items-center justify-between px-4">
+            {% include "partials/table_filter.html" with view_name="All Serialized Inventories" %}
+            <a href=""
+               hx-boost="true"
+               hx-target="#main_body"
+               hx-indicator="#body_spinner"
+               class="px-3 py-2 text-sm font-medium text-center inline-flex items-center text-white bg-brand-500 rounded-md hover:bg-blue-600 focus:ring-1 focus:outline-none focus:ring-blue-200">
+               <svg xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    class="size-5">
+                  <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+               </svg>
+               New
+            </a>
+         </div>
+      {% endblock header %}
+      {% block body %}
+         <div id="table_container"
+              class="relative flex flex-col h-[calc(100vh-8rem)]">
+            <div class="flex-1 overflow-y-auto pb-25">
+               <table class="w-full text-sm text-left text-gray-500">
+                  <thead class="text-xs text-gray-500 font-normal uppercase bg-gray-50 sticky top-0 z-10">
+                     <tr class="border-t border-b">
+                        <th scope="col" class="px-6 py-3">Date</th>
+                        <th scope="col" class="px-6 py-3">Item No</th>
+                        <th scope="col" class="px-6 py-3">Product</th>
+                        <th scope="col" class="px-6 py-3">Engine No</th>
+                        <th scope="col" class="px-6 py-3">Chassis No</th>
+                        <th scope="col" class="px-6 py-3">Transformed Cost</th>
+                        <th scope="col" class="px-6 py-3">status</th>
+                     </tr>
+                  </thead>
+                  <tbody class="text-sm text-black font-light" id="tbody">
+                     {% if serialized_inventories %}
+                        {% for item in serialized_inventories %}
+                           <tr class="bg-white border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                              <td class="px-6 py-3 capitalize">{{ item.created_at|date:"j M Y" }}</td>
+                              <td class="px-6 py-3 capitalize">{{ item.item_number|upper }}</td>
+                              <td class="px-6 py-3 capitalize">{{ item.target_product|upper }}</td>
+                              <td class="px-6 py-3 capitalize">{{ item.engine_number|upper }}</td>
+                              <td class="px-6 py-3 capitalize">{{ item.chassis_number|upper }}</td>
+                              <td class="px-6 py-3 capitalize">NGN {{ item.unit_cost_at_transformation|floatformat:2|intcomma }}</td>
+                              <td class="px-6 py-3 uppercase {{ item.status|status_color }}">{{ item.status }}</td>
+                           </tr>
+                        {% endfor %}
+                     {% else %}
+                        <tr class="bg-white border-b border-gray-100 hover:bg-gray-50">
+                           <td colspan="6" class="px-6 py-3 text-center">
+                              <p>No items have been recorded yet.</p>
+                           </td>
+                        </tr>
+                     {% endif %}
+                  </tbody>
+               </table>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20">
+               <div class="flex justify-end">
+                  {% include 'partials/pagination.html' with page_obj=serial_items target="table_container" %}
+               </div>
+            </div>
+         </div>
+      {% endblock body %}
+   </div>
+{% endblock content %}

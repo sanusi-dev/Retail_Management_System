@@ -6,6 +6,7 @@
     <div class="flex h-full flex-col" id="main_body">
         <form hx-post="{{ form_action_url }}"
               hx-push-url="true"
+              hx-target="#main_body"
               hx-indicator="#body_spinner"
               class="flex flex-col flex-1">
             {% csrf_token %}

@@ -1,0 +1,95 @@
+{% extends 'index.html' %}
+{% load static %}
+{% load widget_tweaks %}
+{% block content %}
+   {% include "partials/spinner.html" with id="body_spinner" %}
+   <div class="flex h-full flex-col" id="main_body">
+      <form hx-post="{{ form_action_url }}"
+            hx-push-url="true"
+            hx-target="#main_body"
+            hx-indicator="#body_spinner"
+            class="flex flex-col flex-1">
+         {% csrf_token %}
+         <!-- Header -->
+         <div class="flex-none bg-gray-50 border-b py-5 px-5 h-20">
+            <div class="flex justify-between items-center">
+               <h1 class="text-2xl font-normal text-gray-900">
+                  {% if is_editing %}
+                     Edit Customer
+                  {% else %}
+                     New Customer
+                  {% endif %}
+               </h1>
+               <a href="{% url 'customers' %}"
+                  hx-boost="true"
+                  hx-target="#main_body"
+                  hx-indicator="#body_spinner"
+                  class="p-2 text-gray-500 hover:text-gray-600 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg"
+                       fill="none"
+                       viewBox="0 0 24 24"
+                       stroke-width="1.5"
+                       stroke="currentColor"
+                       class="size-6">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+               </a>
+            </div>
+         </div>
+         <!-- Form Body -->
+         <div class="flex-1 overflow-y-auto px-5 bg-gray-50">
+            <div class="mt-5 py-5 max-w-4xl">
+               <!-- Non-field errors -->
+               {% if form.non_field_errors %}
+                  <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+                       role="alert">
+                     {% for error in form.non_field_errors %}<p class="font-bold">{{ error }}</p>{% endfor %}
+                  </div>
+               {% endif %}
+               {% with WIDGET_ERROR_CLASS='bg-red-100' %}
+                  <div class="space-y-6">
+                     <!-- Full Name -->
+                     <div class="flex items-center max-w-lg">
+                        <label for="{{ form.full_name.id_for_label }}"
+                               class="text-sm font-normal text-red-600 mr-8 whitespace-nowrap w-32">Full Name*</label>
+                        <div class="flex-1">
+                           {% render_field form.full_name class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 focus:outline-none block w-full py-1.5 px-2.5" placeholder="e.g. Dangote Cement Plc" %}
+                           {% if form.full_name.errors %}
+                              {% for error in form.full_name.errors %}<p class="text-red-500 text-sm mt-1">{{ error }}</p>{% endfor %}
+                           {% endif %}
+                        </div>
+                     </div>
+                     <!-- Phone Number -->
+                     <div class="flex items-center max-w-lg">
+                        <label for="{{ form.phone.id_for_label }}"
+                               class="text-sm font-normal text-red-600 mr-8 whitespace-nowrap w-32">
+                           Phone Number*
+                        </label>
+                        <div class="flex-1">
+                           <div class="relative">
+                              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                 <!-- Phone Icon -->
+                                 <svg xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 20 20"
+                                      fill="currentColor"
+                                      class="size-5 text-gray-400">
+                                    <path fill-rule="evenodd" d="M2 3.5A1.5 1.5 0 0 1 3.5 2h1.148a1.5 1.5 0 0 1 1.465 1.175l.716 3.223a1.5 1.5 0 0 1-1.052 1.767l-.933.267c-.41.117-.643.555-.48.95a11.542 11.542 0 0 0 6.254 6.254c.395.163.833-.07.95-.48l.267-.933a1.5 1.5 0 0 1 1.767-1.052l3.223.716A1.5 1.5 0 0 1 18 15.352V16.5a1.5 1.5 0 0 1-1.5 1.5H15c-1.149 0-2.263-.15-3.326-.43A13.022 13.022 0 0 1 2.43 8.326 13.019 13.019 0 0 1 2 5V3.5Z" clip-rule="evenodd" />
+                                 </svg>
+                              </div>
+                              {% render_field form.phone class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 focus:outline-none block w-full py-1.5 pl-10 pr-2.5" placeholder="e.g. 08012345678" %}
+                           </div>
+                           {% if form.phone.errors %}
+                              {% for error in form.phone.errors %}<p class="text-red-500 text-sm mt-1">{{ error }}</p>{% endfor %}
+                           {% endif %}
+                        </div>
+                     </div>
+                  </div>
+               {% endwith %}
+            </div>
+         </div>
+         <!-- Footer Buttons -->
+         {% url 'customers' as cancel_url %}
+         {% include 'partials/form_buttons.html' with cancel_url=cancel_url %}
+      </form>
+   </div>
+{% endblock content %}

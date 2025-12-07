@@ -35,6 +35,7 @@ def status_color(status_string):
         "bank transfer": "text-gray-700",
         "cash": "text-gray-700",
         "check": "text-gray-700",
+        "paid": "text-green-700",
         "other": "text-gray-700",
         # Default fallback
         "default": "text-gray-700",
