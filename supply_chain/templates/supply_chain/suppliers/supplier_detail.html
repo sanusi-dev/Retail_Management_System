@@ -10,7 +10,7 @@
                  class="flex-none w-[360px] h-screen bg-white border-r flex flex-col">
                <div class="flex-none border-b">
                   <div class="h-16 flex items-center justify-between px-2 py-2">
-                     <h4 class="text-gray-900 text-lg font-medium">All Items</h4>
+                     <h4 class="text-gray-900 text-lg font-medium">All Suppliers</h4>
                      <a href="{% url 'add_supplier' %}"
                         hx-boost="true"
                         hx-target="#main_body"
@@ -22,6 +22,7 @@
                              class="size-6">
                            <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
                         </svg>
+                        {# Updated text for clarity #}
                      </a>
                   </div>
                </div>
@@ -36,6 +37,7 @@
                               hx-indicator="#side_bar_spinner"
                               @click="activeSupplier = '{{ supplier.pk }}'"
                               x-bind:class="{'bg-blue-50 border-r-2 border-r-blue-500': activeSupplier === '{{ supplier.pk }}' }">
+                              {# CORRECTED: Using the 'name' property #}
                               <h4 class="text-gray-800 font-medium text-sm">{{ supplier.name|upper }}</h4>
                               <h4 class="text-gray-600 font-medium text-sm">NGN {{ supplier.supp_total_undelivered_value | floatformat:"2g" }}</h4>
                            </a>
@@ -57,6 +59,7 @@
                   {% block _header %}
                      <div class="flex-none bg-white py-3 px-5 h-16">
                         <div class="flex justify-between items-start">
+                           {# CORRECTED: Using the 'name' property #}
                            <h1 class="text-lg font-medium text-gray-900">{{ supplier.name|upper }}</h1>
                            <div class="flex inline-items items-center gap-2">
                               <a href="{{ supplier.get_edit_url }}"
@@ -114,18 +117,19 @@
                         <div class="flex-1 pt-5 pb-10 px-5">
                            <div class="flex flex-row h-full gap-10">
                               <div class="flex-none w-1/4 flex flex-col gap-4 border-r h-full">
-                                 <!-- Contact Card -->
                                  <div class="flex items-center justify-between">
                                     <div>
-                                       <h3 class="font-medium text-gray-900">{{ supplier.name|upper }}</h3>
+                                       {# CORRECTED: Using full_name and company_name #}
+                                       <h3 class="font-medium text-gray-900">{{ supplier.full_name|upper|default:"N/A" }}</h3>
                                        <p class="text-sm text-gray-600">{{ supplier.company_name }}</p>
-                                       <p class="text-sm text-gray-600">Phone: {{ supplier.work_phone }}</p>
+                                       {# CORRECTED: Using phone #}
+                                       <p class="text-sm text-gray-600">Phone: {{ supplier.phone|default:"N/A" }}</p>
                                     </div>
                                  </div>
                                  <div class="flex items-center justify-between">
                                     <div>
                                        <h3 class="font-medium text-gray-900">Address</h3>
-                                       <p class="text-sm text-gray-600">{{ supplier.address }}</p>
+                                       <p class="text-sm text-gray-600">{{ supplier.address|default:"N/A" }}</p>
                                     </div>
                                  </div>
                               </div>

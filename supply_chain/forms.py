@@ -12,14 +12,9 @@ class SupplierForm(ModelForm):
     class Meta:
         model = Supplier
         fields = (
-            "salutation",
-            "firstname",
-            "lastname",
+            "full_name",
             "company_name",
-            "display_name",
-            "email",
-            "work_phone",
-            "mobile",
+            "phone",
             "address",
         )
 

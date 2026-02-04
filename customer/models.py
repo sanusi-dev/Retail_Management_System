@@ -27,8 +27,8 @@ from django.urls import reverse
 class Customer(models.Model):
     customer_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     customer_number = models.CharField(max_length=20, unique=True, editable=False)
-    full_name = models.CharField(max_length=200)
-    phone = models.CharField(max_length=20)
+    full_name = models.CharField(max_length=200, unique=True)
+    phone = models.CharField(max_length=20, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
@@ -47,7 +47,6 @@ class Customer(models.Model):
     )
 
     class Meta:
-        ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["customer_number"]),
             models.Index(fields=["phone"]),
@@ -67,12 +66,193 @@ class Customer(models.Model):
         super().save(*args, **kwargs)
 
 
+# class DepositAccount(models.Model):
+#     account_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+#     customer = models.OneToOneField(
+#         Customer, on_delete=models.PROTECT, related_name="deposit_account"
+#     )
+#     account_number = models.CharField(max_length=30, unique=True, editable=False)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
+#     created_by = models.ForeignKey(
+#         CustomUser,
+#         on_delete=models.SET_NULL,
+#         blank=True,
+#         null=True,
+#         related_name="created_%(class)s_set",
+#     )
+#     updated_by = models.ForeignKey(
+#         CustomUser,
+#         on_delete=models.SET_NULL,
+#         blank=True,
+#         null=True,
+#         related_name="updated_%(class)s_set",
+#     )
+
+#     class Meta:
+#         indexes = [
+#             models.Index(fields=["account_number"]),
+#         ]
+
+#     def __str__(self):
+#         return f"{self.account_number} - {self.customer.full_name}"
+
+#     def save(self, *args, **kwargs):
+#         if not self.account_number:
+#             self.account_number = f"ACCT-{uuid.uuid4().hex[:8].upper()}"
+#         super().save(*args, **kwargs)
+
+#     @property
+#     def total_balance(self):
+#         result = self.transactions.filter(status=Transaction.Status.ACTIVE).aggregate(
+#             deposits=Coalesce(
+#                 Sum(
+#                     "amount",
+#                     filter=Q(transaction_type=Transaction.TransactionType.DEPOSIT),
+#                 ),
+#                 Decimal("0.00"),
+#             ),
+#             withdrawals=Coalesce(
+#                 Sum(
+#                     "amount",
+#                     filter=Q(
+#                         transaction_type__in=[
+#                             Transaction.TransactionType.FULFILLMENT_WITHDRAWAL,
+#                             Transaction.TransactionType.WITHDRAWAL,
+#                         ]
+#                     ),
+#                 ),
+#                 Decimal("0.00"),
+#             ),
+#         )
+
+#         deposits = result["deposits"]
+#         withdrawals = result["withdrawals"]
+
+#         return deposits - withdrawals
+
+#     @property
+#     def purchase_allocated_balance(self):
+
+#         total_boxed_and_coupled_delivered_subquery = (
+#             PurchaseAgreementLineItem.objects.filter(
+#                 line_number=OuterRef("line_number"),
+#                 purchase_agreement__in=self.purchase_agreements.all(),
+#             )
+#             .annotate(
+#                 active_boxed_sales=Coalesce(
+#                     Sum(
+#                         "boxed_sales__quantity",
+#                         filter=Q(boxed_sales__sale__status=Sale.Status.ACTIVE),
+#                     ),
+#                     0,
+#                 ),
+#                 active_coupled_sales=Coalesce(
+#                     Count(
+#                         "coupled_sales",
+#                         filter=Q(coupled_sales__sale__status=Sale.Status.ACTIVE),
+#                     ),
+#                     0,
+#                 ),
+#             )
+#             .annotate(
+#                 total_valid_delivery=F("active_boxed_sales") + F("active_coupled_sales")
+#             )
+#             .values("total_valid_delivery")
+#         )
+
+#         annotated_items = (
+#             PurchaseAgreementLineItem.objects.filter(
+#                 purchase_agreement__in=self.purchase_agreements.all(),
+#                 is_current_version=True,
+#             )
+#             .exclude(purchase_agreement__status=PurchaseAgreement.Status.CANCELLED)
+#             .annotate(
+#                 total_delivered=Coalesce(
+#                     Subquery(
+#                         total_boxed_and_coupled_delivered_subquery,
+#                         output_field=DecimalField(),
+#                     ),
+#                     Decimal("0.00"),
+#                 )
+#             )
+#         )
+
+#         purchase_total_allocated = annotated_items.aggregate(
+#             total=Sum(
+#                 (F("quantity_ordered") - F("total_delivered")) * F("price_per_unit")
+#             )
+#         )["total"] or Decimal("0.00")
+
+#         return purchase_total_allocated
+
+#     @property
+#     def cfa_allocated_balance(self):
+#         annotated_agreements = self.cfa_agreements.exclude(
+#             status=CfaAgreement.Status.CANCELLED
+#         ).annotate(
+#             fulfilled_value_naira=Coalesce(
+#                 Sum(
+#                     F("cfa_fulfillments__cfa_amount_disbursed")
+#                     * (F("exchange_rate") / 1000),
+#                     filter=Q(cfa_fulfillments__status="ACTIVE"),
+#                     output_field=DecimalField(),
+#                 ),
+#                 Decimal("0.00"),
+#             )
+#         )
+
+#         total_remaining = annotated_agreements.aggregate(
+#             total=Sum(F("amount_allocated") - F("fulfilled_value_naira"))
+#         )["total"]
+
+#         return total_remaining or Decimal("0.00")
+
+#     @property
+#     def allocated_balance(self):
+#         return self.purchase_allocated_balance + self.cfa_allocated_balance
+
+#     @property
+#     def available_balance(self):
+#         return self.total_balance - self.allocated_balance
+
+
 class DepositAccount(models.Model):
     account_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     customer = models.OneToOneField(
         Customer, on_delete=models.PROTECT, related_name="deposit_account"
     )
     account_number = models.CharField(max_length=30, unique=True, editable=False)
+
+    # CACHED BALANCES - New fields
+    cached_total_balance = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Cached total balance for performance",
+    )
+    cached_allocated_balance = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Cached allocated balance for performance",
+    )
+    cached_available_balance = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Cached available balance for performance",
+    )
+    balances_last_updated = models.DateTimeField(
+        null=True, blank=True, help_text="When balances were last recalculated"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
@@ -103,8 +283,31 @@ class DepositAccount(models.Model):
             self.account_number = f"ACCT-{uuid.uuid4().hex[:8].upper()}"
         super().save(*args, **kwargs)
 
+    # Use cache if available, otherwise calculate
     @property
     def total_balance(self):
+        """Use cached value if available, otherwise calculate on-the-fly"""
+        if self.cached_total_balance is not None:
+            return self.cached_total_balance
+        return self._calculate_total_balance()
+
+    @property
+    def allocated_balance(self):
+        """Use cached value if available, otherwise calculate on-the-fly"""
+        if self.cached_allocated_balance is not None:
+            return self.cached_allocated_balance
+        return self._calculate_allocated_balance()
+
+    @property
+    def available_balance(self):
+        """Use cached value if available, otherwise calculate on-the-fly"""
+        if self.cached_available_balance is not None:
+            return self.cached_available_balance
+        return self._calculate_available_balance()
+
+    # CALCULATION METHODS
+    def _calculate_total_balance(self):
+        """Calculate total balance from transactions"""
         result = self.transactions.filter(status=Transaction.Status.ACTIVE).aggregate(
             deposits=Coalesce(
                 Sum(
@@ -126,15 +329,12 @@ class DepositAccount(models.Model):
                 Decimal("0.00"),
             ),
         )
-
         deposits = result["deposits"]
         withdrawals = result["withdrawals"]
-
         return deposits - withdrawals
 
-    @property
-    def purchase_allocated_balance(self):
-
+    def _calculate_purchase_allocated_balance(self):
+        """Calculate allocated balance from purchase agreements"""
         total_boxed_and_coupled_delivered_subquery = (
             PurchaseAgreementLineItem.objects.filter(
                 line_number=OuterRef("line_number"),
@@ -187,8 +387,8 @@ class DepositAccount(models.Model):
 
         return purchase_total_allocated
 
-    @property
-    def cfa_allocated_balance(self):
+    def _calculate_cfa_allocated_balance(self):
+        """Calculate allocated balance from CFA agreements"""
         annotated_agreements = self.cfa_agreements.exclude(
             status=CfaAgreement.Status.CANCELLED
         ).annotate(
@@ -209,13 +409,38 @@ class DepositAccount(models.Model):
 
         return total_remaining or Decimal("0.00")
 
-    @property
-    def allocated_balance(self):
-        return self.purchase_allocated_balance + self.cfa_allocated_balance
+    def _calculate_allocated_balance(self):
+        """Calculate total allocated balance"""
+        return (
+            self._calculate_purchase_allocated_balance()
+            + self._calculate_cfa_allocated_balance()
+        )
 
-    @property
-    def available_balance(self):
-        return self.total_balance - self.allocated_balance
+    def _calculate_available_balance(self):
+        """Calculate available balance"""
+        return self._calculate_total_balance() - self._calculate_allocated_balance()
+
+    # CACHE UPDATE METHOD
+    def update_cached_balances(self):
+        """
+        Recalculate and store all balances in cache fields.
+        Call this whenever transactions or agreements change.
+        """
+        from django.utils import timezone
+
+        self.cached_total_balance = self._calculate_total_balance()
+        self.cached_allocated_balance = self._calculate_allocated_balance()
+        self.cached_available_balance = self._calculate_available_balance()
+        self.balances_last_updated = timezone.now()
+
+        self.save(
+            update_fields=[
+                "cached_total_balance",
+                "cached_allocated_balance",
+                "cached_available_balance",
+                "balances_last_updated",
+            ]
+        )
 
 
 class Transaction(models.Model):
@@ -818,7 +1043,7 @@ class Sale(models.Model):
         ),
     )
 
-    sale_date = models.DateTimeField(auto_now_add=True)
+    sale_date = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=20, choices=Status, default=Status.ACTIVE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -857,8 +1082,10 @@ class Sale(models.Model):
 
     @property
     def sales_items_count(self):
-        coupled_sale_total = self.coupled_sales.count()
-        boxed_sale_total = self.boxed_sales.aggregate(total=Sum("quantity"))["total"]
+        coupled_sale_total = self.coupled_sales.count() or 0
+        boxed_sale_total = (
+            self.boxed_sales.aggregate(total=Sum("quantity"))["total"] or 0
+        )
 
         total_sales_amount = coupled_sale_total + boxed_sale_total
         return total_sales_amount

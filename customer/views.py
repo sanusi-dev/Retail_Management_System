@@ -33,21 +33,83 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.template.loader import render_to_string
 from django.db import transaction
+from django.db.models import Sum, Count, Q, F, Prefetch
+from django.db.models.functions import Coalesce
 import logging
 
 logger = logging.getLogger(__name__)
 
 
+# def customers(request):
+#     search_query = request.GET.get("q", "")
+#     sort_by = request.GET.get("sort", "name")
+#     order = request.GET.get("order", "asc")
+
+#     customers = Customer.objects.select_related("deposit_account")
+
+#     if search_query:
+#         customers = customers.filter(
+#             Q(full_name__icontains=search_query)
+#             | Q(phone__icontains=search_query)
+#             | Q(customer_number__icontains=search_query)
+#         )
+
+#     sort_fields = {
+#         "name": "full_name",
+#         "phone": "phone",
+#         "customer_number": "customer_number",
+#         "total_balance": "deposit_account__cached_total_balance",
+#         "allocated_balance": "deposit_account__cached_allocated_balance",
+#         "available_balance": "deposit_account__cached_available_balance",
+#     }
+
+#     sort_field = sort_fields.get(sort_by, "full_name")
+
+#     if order == "desc":
+#         sort_field = f"-{sort_field}"
+
+#     customers = customers.order_by(sort_field)
+
+#     # Pagination
+#     paginator = Paginator(customers, 50)
+#     page_number = request.GET.get("page", 1)
+#     customers_page = paginator.get_page(page_number)
+
+#     return render(
+#         request,
+#         "customers/customers.html",
+#         {
+#             "customers": customers_page,
+#             "search_query": search_query,
+#             "current_sort": sort_by,
+#             "current_order": order,
+#         },
+#     )
+
+
 def customers(request):
+    search_query = request.GET.get("q", "")
+    customer_list = Customer.objects.select_related("deposit_account").order_by(
+        "-deposit_account__cached_total_balance"
+    )
+
+    if search_query:
+        customer_list = customer_list.filter(
+            Q(full_name__icontains=search_query)
+            | Q(phone__icontains=search_query)
+            | Q(customer_id__icontains=search_query)
+        )
+
+    # Pagination
     PAGE_SIZE = 100
-    page_number = request.GET.get("page", 1)
-    customer_list = Customer.objects.all()
     paginator = Paginator(customer_list, PAGE_SIZE)
+    page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
-    context = {"customers": page_obj}
+
+    context = {"customers": page_obj, "search_query": search_query}
 
     if request.htmx:
-        if request.GET.get("page"):
+        if "page" in request.GET or "q" in request.GET:
             customer_list = render_block_to_string(
                 "customers/customers.html",
                 "body",
@@ -63,23 +125,405 @@ def customers(request):
     return render(request, "customers/customers.html", context)
 
 
+# def customers(request):
+#     PAGE_SIZE = 100
+#     page_number = request.GET.get("page", 1)
+#     customer_list = Customer.objects.all()
+#     paginator = Paginator(customer_list, PAGE_SIZE)
+#     page_obj = paginator.get_page(page_number)
+#     context = {"customers": page_obj}
+
+#     if request.htmx:
+#         if request.GET.get("page"):
+#             customer_list = render_block_to_string(
+#                 "customers/customers.html",
+#                 "body",
+#                 context,
+#             )
+#             return HttpResponse(customer_list)
+#         else:
+#             customer_list = render_block_to_string(
+#                 "customers/customers.html", "content", context
+#             )
+#             return HttpResponse(customer_list)
+
+#     return render(request, "customers/customers.html", context)
+
+
+# @require_GET
+# def customer_search_query(request):
+#     query = request.GET.get("q", "")
+#     customer = get_object_or_404(Customer, pk=pk)
+#     agreements = customer.deposit_account.purchase_agreements.all()
+
+#     status_filter = request.GET.get("status")
+#     if status_filter:
+#         agreements = agreements.filter(status=status_filter)
+
+#     agreements = agreements.order_by("-created_at")
+
+#     context = {
+#         "agreements": agreements,
+#     }
+
+#     return render(request, "customers/partials/purchase_agreements_list.html", context)
+
+
+# def customer_detail(request, pk):
+#     PAGE_SIZE = 50
+#     page_number = request.GET.get("page", 1)
+#     customer = get_object_or_404(Customer, pk=pk)
+#     customer_list = Customer.objects.all().order_by("created_at")
+#     paginator = Paginator(customer_list, PAGE_SIZE)
+#     page_obj = paginator.get_page(page_number)
+#     context = {
+#         "customer": customer,
+#         "customer_list": page_obj,
+#     }
+#     if request.htmx:
+#         if request.htmx.target == "main_content":
+#             html = render_block_to_string(
+#                 "customers/customer_detail.html",
+#                 "main_content",
+#                 {"customer": customer},
+#                 request=request,
+#             )
+#             return HttpResponse(html)
+
+#         elif request.htmx.target == "main_body":
+#             html = render_block_to_string(
+#                 "customers/customer_detail.html",
+#                 "content",
+#                 context,
+#                 request=request,
+#             )
+#             return HttpResponse(html)
+
+#         else:
+#             html = render_block_to_string(
+#                 "customers/customer_detail.html",
+#                 "side_bar_list",
+#                 context,
+#                 request=request,
+#             )
+#             return HttpResponse(html)
+#     else:
+#         return render(request, "customers/customer_detail.html", context)
+
+# views.py
+
+
+# def customer_detail(request, pk):
+#     customer = get_object_or_404(Customer, pk=pk)
+#     customer_list = Customer.objects.select_related("deposit_account").order_by(
+#         "-deposit_account__cached_total_balance"
+#     )
+
+#     # Pagination
+#     PAGE_SIZE = 50
+#     page_number = request.GET.get("page", 1)
+#     paginator = Paginator(customer_list, PAGE_SIZE)
+#     page_obj = paginator.get_page(page_number)
+
+#     # --- NEW LOGIC START: Calculate Product Summary ---
+#     product_summary = {}
+
+#     # Get all line items for this customer's active agreements
+#     # We exclude Cancelled agreements and Voided line items
+#     line_items = (
+#         PurchaseAgreementLineItem.objects.filter(
+#             purchase_agreement__account__customer=customer, is_current_version=True
+#         )
+#         .exclude(purchase_agreement__status=PurchaseAgreement.Status.CANCELLED)
+#         .exclude(status=PurchaseAgreementLineItem.Status.VOIDED)
+#         .select_related("product")
+#     )
+
+#     for item in line_items:
+#         # Get Model Name (handle potential None)
+#         model_name = (
+#             item.product.modelname.upper()
+#             if item.product and item.product.modelname
+#             else "UNKNOWN PRODUCT"
+#         )
+
+#         if model_name not in product_summary:
+#             product_summary[model_name] = {
+#                 "ordered": 0,
+#                 "fulfilled": 0,
+#                 "unfulfilled": 0,
+#             }
+
+#         # Calculate quantities
+#         ordered = item.quantity_ordered
+#         # Note: This property hits the DB. For high volume, consider prefetching or annotating.
+#         fulfilled = item.quantity_fulfilled_accross_all_versions
+
+#         product_summary[model_name]["ordered"] += ordered
+#         product_summary[model_name]["fulfilled"] += fulfilled
+
+#     # Final pass to calculate 'unfulfilled' based on the sums
+#     for model, data in product_summary.items():
+#         data["unfulfilled"] = max(0, data["ordered"] - data["fulfilled"])
+
+#         # Calculate percentage for the progress bar (avoid division by zero)
+#         if data["ordered"] > 0:
+#             data["percent"] = int((data["fulfilled"] / data["ordered"]) * 100)
+#         else:
+#             data["percent"] = 0
+
+#     # --- NEW LOGIC END ---
+
+#     context = {
+#         "customer": customer,
+#         "customer_list": page_obj,
+#         "product_summary": product_summary,  # Add this to context
+#     }
+
+#     if request.htmx:
+#         if request.htmx.target == "main_content":
+#             html = render_block_to_string(
+#                 "customers/customer_detail.html",
+#                 "main_content",
+#                 # Pass the context (including product_summary) instead of creating a new dict
+#                 context,
+#                 request=request,
+#             )
+#             return HttpResponse(html)
+
+#         elif request.htmx.target == "main_body":
+#             html = render_block_to_string(
+#                 "customers/customer_detail.html",
+#                 "content",
+#                 context,
+#                 request=request,
+#             )
+#             return HttpResponse(html)
+
+#         else:
+#             html = render_block_to_string(
+#                 "customers/customer_detail.html",
+#                 "side_bar_list",
+#                 context,
+#                 request=request,
+#             )
+#             return HttpResponse(html)
+#     else:
+#         return render(request, "customers/customer_detail.html", context)
+
+
+# def customer_detail(request, pk):
+#     PAGE_SIZE = 50
+#     page_number = request.GET.get("page", 1)
+#     customer = get_object_or_404(Customer, pk=pk)
+#     customer_list = Customer.objects.all().order_by("created_at")
+#     paginator = Paginator(customer_list, PAGE_SIZE)
+#     page_obj = paginator.get_page(page_number)
+
+#     # Product Summary Logic
+#     product_summary = {}
+#     line_items = (
+#         PurchaseAgreementLineItem.objects.filter(
+#             purchase_agreement__account__customer=customer, is_current_version=True
+#         )
+#         .exclude(purchase_agreement__status=PurchaseAgreement.Status.CANCELLED)
+#         .exclude(status=PurchaseAgreementLineItem.Status.VOIDED)
+#         .select_related("product")
+#     )
+
+#     for item in line_items:
+#         model_name = (
+#             item.product.modelname.upper()
+#             if item.product and item.product.modelname
+#             else "UNKNOWN PRODUCT"
+#         )
+
+#         if model_name not in product_summary:
+#             product_summary[model_name] = {
+#                 "ordered": 0,
+#                 "fulfilled": 0,
+#                 "unfulfilled": 0,
+#             }
+
+#         ordered = item.quantity_ordered
+#         fulfilled = item.quantity_fulfilled_accross_all_versions
+
+#         product_summary[model_name]["ordered"] += ordered
+#         product_summary[model_name]["fulfilled"] += fulfilled
+
+#     for model, data in product_summary.items():
+#         data["unfulfilled"] = max(0, data["ordered"] - data["fulfilled"])
+#         if data["ordered"] > 0:
+#             data["percent"] = int((data["fulfilled"] / data["ordered"]) * 100)
+#         else:
+#             data["percent"] = 0
+
+#     context = {
+#         "customer": customer,
+#         "customer_list": page_obj,
+#         "product_summary": product_summary,
+#     }
+
+#     if request.htmx:
+#         if request.htmx.target == "main_content":
+#             html = render_block_to_string(
+#                 "customers/customer_detail.html",
+#                 "main_content",
+#                 context,
+#                 request=request,
+#             )
+#             return HttpResponse(html)
+
+#         elif request.htmx.target == "main_body":
+#             # Changed from "content" to existing block name
+#             html = render_block_to_string(
+#                 "customers/customer_detail.html",
+#                 "_content",  # ← Use the actual block name
+#                 context,
+#                 request=request,
+#             )
+#             return HttpResponse(html)
+
+#         elif request.htmx.target == "sidebar_pagination":
+#             html = render_block_to_string(
+#                 "customers/customer_detail.html",
+#                 "side_bar_list",
+#                 context,
+#                 request=request,
+#             )
+#             return HttpResponse(html)
+
+#         else:
+#             # Default fallback
+#             return render(request, "customers/customer_detail.html", context)
+#     else:
+#         return render(request, "customers/customer_detail.html", context)
+
+
+# def customer_detail(request, pk):
+#     customer = get_object_or_404(
+#         Customer.objects.select_related("deposit_account"), pk=pk
+#     )
+
+
 def customer_detail(request, pk):
+    customer = get_object_or_404(
+        Customer.objects.select_related("deposit_account").prefetch_related(
+            Prefetch(
+                "deposit_account__purchase_agreements",
+                queryset=PurchaseAgreement.objects.select_related(
+                    "account"
+                ).prefetch_related(
+                    Prefetch(
+                        "agreement_line_items",
+                        queryset=PurchaseAgreementLineItem.objects.filter(
+                            is_current_version=True
+                        ).select_related("product"),
+                    )
+                ),
+            ),
+            Prefetch(
+                "deposit_account__cfa_agreements",
+                queryset=CfaAgreement.objects.select_related("account"),
+            ),
+            Prefetch(
+                "deposit_account__transactions",
+                queryset=Transaction.objects.order_by("-created_at"),
+            ),
+            Prefetch("customer_sales", queryset=Sale.objects.order_by("-sale_date")),
+        ),
+        pk=pk,
+    )
+
+    customer_list = (
+        Customer.objects.select_related("deposit_account")
+        .only(
+            "customer_id",
+            "customer_number",
+            "full_name",
+            "deposit_account__cached_total_balance",
+        )
+        .order_by("-deposit_account__cached_total_balance")
+    )
+
+    # Pagination
     PAGE_SIZE = 50
     page_number = request.GET.get("page", 1)
-    customer = get_object_or_404(Customer, pk=pk)
-    customer_list = Customer.objects.all().order_by("created_at")
     paginator = Paginator(customer_list, PAGE_SIZE)
     page_obj = paginator.get_page(page_number)
+
+    product_summary = {}
+
+    line_items = (
+        PurchaseAgreementLineItem.objects.filter(
+            purchase_agreement__account__customer=customer,
+            is_current_version=True,
+        )
+        .exclude(purchase_agreement__status=PurchaseAgreement.Status.CANCELLED)
+        .exclude(status=PurchaseAgreementLineItem.Status.VOIDED)
+        .select_related("product")
+        .annotate(
+            total_boxed_fulfilled=Coalesce(
+                Sum(
+                    "boxed_sales__quantity",
+                    filter=Q(boxed_sales__sale__status=Sale.Status.ACTIVE),
+                ),
+                0,
+            ),
+            total_coupled_fulfilled=Coalesce(
+                Count(
+                    "coupled_sales",
+                    filter=Q(coupled_sales__sale__status=Sale.Status.ACTIVE),
+                    distinct=True,
+                ),
+                0,
+            ),
+        )
+    )
+
+    for item in line_items:
+        # Get Model Name
+        model_name = (
+            item.product.modelname.upper()
+            if item.product and item.product.modelname
+            else "UNKNOWN PRODUCT"
+        )
+
+        if model_name not in product_summary:
+            product_summary[model_name] = {
+                "ordered": 0,
+                "fulfilled": 0,
+                "unfulfilled": 0,
+            }
+
+        # Calculate quantities using the annotated values
+        ordered = item.quantity_ordered
+        fulfilled = item.total_boxed_fulfilled + item.total_coupled_fulfilled
+
+        product_summary[model_name]["ordered"] += ordered
+        product_summary[model_name]["fulfilled"] += fulfilled
+
+    # Calculate 'unfulfilled' and percentage
+    for model, data in product_summary.items():
+        data["unfulfilled"] = max(0, data["ordered"] - data["fulfilled"])
+
+        if data["ordered"] > 0:
+            data["percent"] = int((data["fulfilled"] / data["ordered"]) * 100)
+        else:
+            data["percent"] = 0
+
     context = {
         "customer": customer,
         "customer_list": page_obj,
+        "product_summary": product_summary,
     }
+
     if request.htmx:
         if request.htmx.target == "main_content":
             html = render_block_to_string(
                 "customers/customer_detail.html",
                 "main_content",
-                {"customer": customer},
+                context,
                 request=request,
             )
             return HttpResponse(html)

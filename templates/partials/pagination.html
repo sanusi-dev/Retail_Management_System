@@ -6,7 +6,7 @@
          </span>
          <div class="inline-flex mt-2 xs:mt-0">
             {% if page_obj.has_previous %}
-               <a href="?page={{ page_obj.previous_page_number }}"
+               <a href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}"
                   hx-boost="true"
                   hx-target="#{{ target }}"
                   class="flex items-center justify-center px-3 h-8 text-sm font-medium text-white bg-brand-600 rounded-s hover:bg-brand-700">
@@ -21,7 +21,7 @@
                </a>
             {% endif %}
             {% if page_obj.has_next %}
-               <a href="?page={{ page_obj.next_page_number }}"
+               <a href="?page={{ page_obj.next_page_number }}&q={{ search_query }}"
                   hx-boost="true"
                   hx-target="#{{ target }}"
                   hx-replace-url="true"

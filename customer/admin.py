@@ -14,6 +14,7 @@ from .models import (
     CfaAgreement,
     CfaFulfillment,
 )
+from django.contrib.admin import DateFieldListFilter
 
 
 class AuditLogAdminMixin:
@@ -142,7 +143,7 @@ class CustomerAdmin(AuditLogAdminMixin, admin.ModelAdmin):
         "deposit_account_link",
         "created_at",
     ]
-    search_fields = ["customer_number", "full_name", "phone", "email"]
+    search_fields = ["customer_number", "full_name", "phone"]
     list_filter = ["created_at"]
     readonly_fields = AuditLogAdminMixin.readonly_fields + [
         "customer_id",
@@ -304,8 +305,8 @@ class PurchaseAgreementLineItemAdmin(AuditLogAdminMixin, admin.ModelAdmin):
 @admin.register(Sale)
 class SaleAdmin(AuditLogAdminMixin, admin.ModelAdmin):
     list_display = [
-        "sale_date",
         "sale_number",
+        "sale_date",
         "customer",
         "payment_method",
         "status",
@@ -323,6 +324,134 @@ class SaleAdmin(AuditLogAdminMixin, admin.ModelAdmin):
     ]
     inlines = [BoxedSaleInline, CoupledSaleInline]
     autocomplete_fields = ["customer", "agreement"]
+
+
+@admin.register(BoxedSale)
+class BoxedSaleAdmin(AuditLogAdminMixin, admin.ModelAdmin):
+    list_display = [
+        "boxed_sale_number",
+        "get_parent_sale_number",
+        "sale__customer",
+        "product",
+        "quantity",
+        "price",
+        "sale__sale_date",
+    ]
+    list_filter = ["product__modelname", "sale__sale_date"]
+    search_fields = [
+        "boxed_sale_number",
+        "sale__sale_number",
+        "product__modelname",
+        "product__skux  ",
+    ]
+    autocomplete_fields = ["sale", "product", "agreement_line_item"]
+    readonly_fields = AuditLogAdminMixin.readonly_fields + [
+        "boxed_sale_id",
+        "boxed_sale_number",
+    ]
+    # Optimizes queries by joining the foreign keys
+    list_select_related = ["sale", "product"]
+
+    fieldsets = (
+        ("Identification", {"fields": ("boxed_sale_number", "sale")}),
+        ("Product Details", {"fields": ("product", "quantity", "price")}),
+        ("Agreement", {"fields": ("agreement_line_item",)}),
+        (
+            "Audit",
+            {"fields": AuditLogAdminMixin.readonly_fields, "classes": ("collapse",)},
+        ),
+    )
+
+    def get_parent_sale_number(self, obj):
+        return obj.sale.sale_number
+
+    get_parent_sale_number.short_description = "Sale #"
+
+    def get_sale_date(self, obj):
+        return obj.sale.sale_date
+
+    get_sale_date.short_description = "Date"
+
+
+@admin.register(CoupledSale)
+class CoupledSaleAdmin(AuditLogAdminMixin, admin.ModelAdmin):
+    list_display = [
+        "get_product",
+        "coupled_sale_number",
+        "sale__customer",
+        "get_parent_sale_number",
+        "get_engine_number_upper",
+        "get_chassis_number_upper",
+        "price",
+        "sale__sale_date",
+    ]
+
+    list_filter = [
+        ("sale__sale_date", DateFieldListFilter),
+        "transformation_item__target_product__modelname",
+    ]
+    search_fields = [
+        # "sale__customer__fullname",
+        "coupled_sale_number",
+        "sale__sale_number",
+        "transformation_item__engine_number",
+        "transformation_item__chassis_number",
+    ]
+    autocomplete_fields = ["sale", "transformation_item", "agreement_line_item"]
+    readonly_fields = AuditLogAdminMixin.readonly_fields + [
+        "coupled_sale_id",
+        "coupled_sale_number",
+    ]
+
+    list_select_related = [
+        "sale",
+        "transformation_item",
+        "transformation_item__target_product",
+    ]
+
+    fieldsets = (
+        ("Identification", {"fields": ("coupled_sale_number", "sale")}),
+        ("Item Details", {"fields": ("transformation_item", "price")}),
+        ("Agreement", {"fields": ("agreement_line_item",)}),
+        (
+            "Audit",
+            {"fields": AuditLogAdminMixin.readonly_fields, "classes": ("collapse",)},
+        ),
+    )
+
+    def get_parent_sale_number(self, obj):
+        return obj.sale.sale_number
+
+    get_parent_sale_number.short_description = "Sale #"
+
+    def get_sale_date(self, obj):
+        return obj.sale.sale_date
+
+    get_sale_date.short_description = "Date"
+
+    def get_engine_number_upper(self, obj):
+        try:
+            return obj.transformation_item.engine_number.upper()
+        except AttributeError:
+            return "(N/A)"
+
+    get_engine_number_upper.short_description = "ENGINE NUMBER"
+
+    def get_chassis_number_upper(self, obj):
+        try:
+            return obj.transformation_item.chassis_number.upper()
+        except AttributeError:
+            return "(N/A)"
+
+    get_chassis_number_upper.short_description = "CHASSIS NUMBER"
+
+    def get_product(self, obj):
+        try:
+            return obj.transformation_item.target_product.modelname.upper()
+        except AttributeError:
+            return "(N/A)"
+
+    get_product.short_description = "PRODUCT"
 
 
 @admin.register(CfaAgreement)

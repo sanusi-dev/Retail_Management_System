@@ -5,17 +5,42 @@
    {% include "partials/spinner.html" with id="body_spinner" %}
    <div class="flex h-full flex-col" id="main_body">
       {% block header %}
-         <div class="h-16 flex items-center justify-between px-4">
-            {% include "partials/table_filter.html" with view_name="All Customers" %}
+         <div class="h-16 flex items-center justify-between px-6 gap-4 bg-white border-b border-gray-200">
+            <!-- Left Side: Search Bar -->
+            <div class="flex items-center gap-4 flex-1">
+               <!-- Search Bar -->
+               <div class="relative w-full max-w-lg">
+                  <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                     <svg class="w-4 h-4 text-gray-400"
+                          aria-hidden="true"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 20 20">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
+                     </svg>
+                  </div>
+                  <input type="search"
+                         name="q"
+                         value="{{ search_query|default:'' }}"
+                         class="block w-full py-2.5 pl-10 pr-4 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all placeholder:text-gray-400"
+                         placeholder="Search by name, phone, or ID..."
+                         hx-get="{% url 'customers' %}"
+                         hx-target="#table_container"
+                         hx-indicator="#body_spinner"
+                         hx-push-url="true"
+                         hx-trigger="keyup changed delay:300ms, search">
+               </div>
+            </div>
+            <!-- Right Side: Action Button -->
             <a href="{% url 'add_customer' %}"
                hx-boost="true"
                hx-target="#main_body"
                hx-indicator="#body_spinner"
-               class="px-3 py-2 text-sm font-medium text-center inline-flex items-center text-white bg-brand-500 rounded-md hover:bg-blue-600 focus:ring-1 focus:outline-none focus:ring-blue-200 transition-colors">
+               class="px-4 py-2.5 text-sm font-medium text-center inline-flex items-center text-white bg-brand-500 rounded-lg hover:bg-brand-600 focus:ring-2 focus:outline-none focus:ring-brand-300 transition-all shadow-sm hover:shadow whitespace-nowrap">
                <svg xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 20"
                     fill="currentColor"
-                    class="size-5 mr-1">
+                    class="w-4 h-4 mr-2">
                   <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
                </svg>
                New Customer
@@ -82,10 +107,14 @@
                         {% endfor %}
                      {% else %}
                         <tr class="bg-white border-b border-gray-100">
-                           <td colspan="6" class="px-6 py-12 text-center text-gray-400">
+                           <td colspan="6" class="px-6 py-8 text-center text-gray-400">
                               <div class="flex flex-col items-center justify-center gap-2">
                                  <i class="fa-solid fa-users text-2xl"></i>
-                                 <p>No customers found.</p>
+                                 {% if search_query %}
+                                    <p>No customers found matching "{{ search_query }}".</p>
+                                 {% else %}
+                                    <p>No customers found.</p>
+                                 {% endif %}
                               </div>
                            </td>
                         </tr>
@@ -93,6 +122,7 @@
                   </tbody>
                </table>
             </div>
+            <!-- Pagination Footer -->
             <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20">
                <div class="flex justify-end">
                   {% include 'partials/pagination.html' with page_obj=customers target="table_container" %}

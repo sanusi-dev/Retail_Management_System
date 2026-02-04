@@ -3,28 +3,47 @@
 {% load humanize %}
 {% block content %}
     {% include "partials/spinner.html" with id="body_spinner" %}
-    <div class="flex flex-col h-full" id="main_body">
+    {% comment %} <div class="flex flex-col h-full" id="main_body"> {% endcomment %}
+    <div class="flex flex-col h-screen overflow-hidden" id="main_body">
         <div class="flex flex-row h-full">
             <!-- SIDEBAR: CUSTOMER LIST -->
             {% block _side_bar %}
-                <div x-data="{ activeCustomer: '{{ customer.pk }}' }"
-                     class="flex-none w-[320px] h-screen bg-white border-r flex flex-col z-20">
+                <div x-data="{ activeCustomer: '{{ customer.pk }}', searchQuery: '' }"
+                     class="flex-none w-[340px] h-screen bg-white border-r flex flex-col z-20">
                     <!-- Sidebar Header -->
-                    <div class="flex-none border-b">
-                        <div class="h-16 flex items-center justify-between px-4 py-2">
-                            <h4 class="text-gray-900 text-lg font-medium">Customers</h4>
+                    <div class="flex-none border-b bg-gradient-to-r from-blue-50 to-white">
+                        <div class="h-16 flex items-center justify-between px-5 py-2">
+                            <div>
+                                <h4 class="text-gray-900 text-lg font-semibold">Customers</h4>
+                                <p class="text-xs text-gray-500">{{ customer_list.paginator.count }} total</p>
+                            </div>
                             <a href="{% url 'add_customer' %}"
                                hx-boost="true"
                                hx-target="#main_body"
                                hx-indicator="#body_spinner"
-                               class="p-1.5 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors shadow-sm">
+                               class="p-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105">
                                 <svg xmlns="http://www.w3.org/2000/svg"
                                      viewBox="0 0 20 20"
                                      fill="currentColor"
-                                     class="size-5">
+                                     class="w-5 h-5">
                                     <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
                                 </svg>
                             </a>
+                        </div>
+                        <!-- Search Box -->
+                        <div class="px-4 pb-3">
+                            <div class="relative">
+                                <input type="text"
+                                       x-model="searchQuery"
+                                       placeholder="Search customers..."
+                                       class="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                <svg class="w-4 h-4 absolute left-3 top-2.5 text-gray-400"
+                                     fill="none"
+                                     viewBox="0 0 24 24"
+                                     stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </div>
                         </div>
                     </div>
                     <!-- Sidebar List -->
@@ -33,233 +52,412 @@
                             <div id="side_bar" class="flex-1 overflow-y-auto min-h-0">
                                 {% for cust in customer_list %}
                                     <a href="{% url 'customer_detail' pk=cust.pk %}"
-                                       class="py-3 px-5 border-b hover:bg-gray-50 transition-colors duration-150 flex flex-col gap-1 group"
+                                       x-show="searchQuery === '' || '{{ cust.full_name|lower }}'.includes(searchQuery.toLowerCase()) || '{{ cust.customer_number }}'.includes(searchQuery)"
+                                       class="block py-4 px-5 border-b hover:bg-blue-50 transition-all duration-200 group relative"
                                        hx-boost="true"
                                        hx-target="#main_content"
                                        hx-indicator="#side_bar_spinner"
                                        @click="activeCustomer = '{{ cust.pk }}'"
-                                       x-bind:class="{'bg-blue-50 border-r-4 border-r-blue-600': activeCustomer === '{{ cust.pk }}'}">
-                                        <div class="flex justify-between w-full">
-                                            <h4 class="text-gray-800 font-medium text-sm truncate w-32"
-                                                x-bind:class="{'text-blue-700': activeCustomer === '{{ cust.pk }}'}">
-                                                {{ cust.full_name|upper }}
-                                            </h4>
-                                            <span class="text-xs font-mono text-gray-400 group-hover:text-gray-500">{{ cust.customer_number }}</span>
+                                       x-bind:class="{'bg-blue-50 border-l-4 border-l-blue-600 shadow-inner': activeCustomer === '{{ cust.pk }}'}">
+                                        <!-- Active Indicator -->
+                                        <div x-show="activeCustomer === '{{ cust.pk }}'"
+                                             class="absolute right-3 top-1/2 -translate-y-1/2">
+                                            <div class="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
                                         </div>
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-xs text-gray-400">Available Cash:</span>
-                                            <span class="text-xs font-mono font-medium"
-                                                  class="{% if cust.deposit_account.available_balance > 0 %}
-                                                             text-green-600
-                                                         {% else %}
-                                                             text-gray-400
-                                                         {% endif %}">
-                                                NGN {{ cust.deposit_account.available_balance|floatformat:0|intcomma }}
-                                            </span>
+                                        <div class="flex items-start gap-3">
+                                            <!-- Avatar -->
+                                            <div class="flex-none w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-md group-hover:shadow-lg transition-shadow"
+                                                 x-bind:class="{'ring-2 ring-blue-600 ring-offset-2': activeCustomer === '{{ cust.pk }}'}">
+                                                {{ cust.full_name|slice:":2"|upper }}
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <!-- Name & ID -->
+                                                <div class="flex items-center justify-between gap-2 mb-1">
+                                                    <h4 class="text-sm font-semibold text-gray-900 truncate"
+                                                        x-bind:class="{'text-blue-700': activeCustomer === '{{ cust.pk }}'}">
+                                                        {{ cust.full_name|title }}
+                                                    </h4>
+                                                    <span class="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                                        {{ cust.customer_number|slice:"-4:" }}
+                                                    </span>
+                                                </div>
+                                                <!-- Balance Info -->
+                                                <div class="flex items-center justify-between text-xs">
+                                                    <span class="text-gray-500">Total Balance:</span>
+                                                    <span class="font-mono font-semibold
+                                                                 {% if cust.deposit_account.cached_total_balance > 0 %}
+                                                                     text-green-600
+                                                                 {% else %}
+                                                                     text-gray-400
+                                                                 {% endif %}">
+                                                        ₦{{ cust.deposit_account.cached_total_balance|floatformat:0|intcomma }}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </a>
                                 {% endfor %}
                             </div>
-                            <div class="flex-none sticky bottom-0 bg-white border-t border-gray-200 p-2 z-10">
-                                <div class="flex justify-end">
-                                    {% include "partials/pagination.html" with page_obj=customer_list target="sidebar_pagination" %}
-                                </div>
+                            <!-- Pagination Footer -->
+                            <div class="flex-none sticky bottom-0 bg-white border-t border-gray-200 p-3 z-10">
+                                {% include "partials/pagination.html" with page_obj=customer_list target="sidebar_pagination" %}
                             </div>
                         </div>
                     {% endblock side_bar_list %}
                 </div>
             {% endblock _side_bar %}
             <!-- MAIN CONTENT: THE DASHBOARD -->
-            <div class="flex-1 flex flex-col relative min-w-0" id="content-wrapper">
+            <div class="flex-1 flex flex-col relative min-w-0 bg-gray-50"
+                 id="content-wrapper">
                 {% include "partials/spinner.html" with id="side_bar_spinner" %}
                 <div id="main_content" class="h-full flex flex-col">
                     {% block main_content %}
                         <!-- Top Header -->
                         {% block _header %}
-                            <div class="flex-none bg-white border-b border-gray-200 py-3 px-6 h-16 shadow-sm z-20">
-                                <div class="flex justify-between items-center h-full">
-                                    <div class="flex items-center gap-3">
-                                        <div class="h-8 w-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs border border-blue-200">
-                                            {{ customer.full_name|slice:":2"|upper }}
+                            <div class="flex-none bg-white border-b border-gray-200 shadow-sm z-20">
+                                <div class="px-6 py-4">
+                                    <div class="flex justify-between items-center">
+                                        <!-- Left: Customer Info -->
+                                        <div class="flex items-center gap-4">
+                                            <div class="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                                                {{ customer.full_name|slice:":2"|upper }}
+                                            </div>
+                                            <div>
+                                                <h1 class="text-2xl font-bold text-gray-900">{{ customer.full_name|title }}</h1>
+                                                <p class="text-sm text-gray-500">ID: {{ customer.customer_number }}</p>
+                                            </div>
                                         </div>
-                                        <h1 class="text-xl font-bold text-gray-900 truncate">{{ customer.full_name|upper }}</h1>
-                                    </div>
-                                    <div class="flex items-center gap-3">
-                                        <a href="{% url 'edit_customer' customer.pk %}"
-                                           hx-boost="true"
-                                           hx-target="#main_body"
-                                           class="text-gray-600 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium transition-colors">
-                                            Edit Profile
-                                        </a>
+                                        <!-- Right: Actions -->
+                                        <div class="flex items-center gap-3">
+                                            <a href="{% url 'edit_customer' customer.pk %}"
+                                               hx-boost="true"
+                                               hx-target="#main_body"
+                                               class="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm hover:shadow">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                                Edit Profile
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         {% endblock _header %}
-                        <!-- Scrollable Dashboard Area -->
                         {% block _content %}
-                            <div id="_content" class="flex-1 overflow-y-auto bg-gray-50 p-6">
+                            {% comment %} <div id="_content" class="flex-1 overflow-y-auto p-6"> {% endcomment %}
+                            {% comment %} <div id="_content" class="flex-1 overflow-y-auto p-6 min-h-0"> {% endcomment %}
+                            <div id="_content" class="flex-1 overflow-hidden flex flex-col p-6">
                                 <!-- FINANCIAL WALLET -->
-                                {% include "customers/partials/customer_wallet.html" %}
-                                <!-- TABS & IDENTITY -->
-                                <div class="flex flex-col xl:flex-row gap-6 h-full">
-                                    <!-- LEFT COLUMN: TABS -->
-                                    <div class="flex-1 bg-white rounded-lg border border-gray-200 shadow-sm min-h-[600px]"
+                                <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <!-- Total Balance Card -->
+                                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-5 text-white shadow-lg">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <p class="text-blue-100 text-sm font-medium">Total Balance</p>
+                                            <svg class="w-5 h-5 text-blue-200"
+                                                 fill="none"
+                                                 viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                            </svg>
+                                        </div>
+                                        <p class="text-3xl font-bold">₦{{ customer.deposit_account.cached_total_balance|floatformat:0|intcomma }}</p>
+                                    </div>
+                                    <!-- Allocated Balance Card -->
+                                    <div class="bg-white rounded-xl p-5 shadow-md border border-amber-200">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <p class="text-gray-600 text-sm font-medium">Allocated</p>
+                                            <svg class="w-5 h-5 text-amber-500"
+                                                 fill="none"
+                                                 viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                            </svg>
+                                        </div>
+                                        <p class="text-3xl font-bold text-amber-600">
+                                            ₦{{ customer.deposit_account.cached_allocated_balance|floatformat:0|intcomma }}
+                                        </p>
+                                        <p class="text-xs text-gray-500 mt-1">Reserved for orders</p>
+                                    </div>
+                                    <!-- Available Balance Card -->
+                                    <div class="bg-white rounded-xl p-5 shadow-md border border-green-200">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <p class="text-gray-600 text-sm font-medium">Available</p>
+                                            <svg class="w-5 h-5 text-green-500"
+                                                 fill="none"
+                                                 viewBox="0 0 24 24"
+                                                 stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <p class="text-3xl font-bold text-green-600">
+                                            ₦{{ customer.deposit_account.cached_available_balance|floatformat:0|intcomma }}
+                                        </p>
+                                        <p class="text-xs text-gray-500 mt-1">Ready to use</p>
+                                    </div>
+                                </div>
+                                <!-- MAIN CONTENT AREA -->
+                                {% comment %} <div class="flex flex-col xl:flex-row gap-6"> {% endcomment %}
+                                <div class="flex flex-col xl:flex-row gap-6 flex-1 min-h-0">
+                                    <!-- LEFT: TABS SECTION -->
+                                    {% comment %} <div class="flex-1 bg-white rounded-xl shadow-sm border border-gray-200"
+      x-data="{ activeTab: 'overview' }"> {% endcomment %}
+                                    <div class="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col h-full overflow-hidden"
                                          x-data="{ activeTab: 'overview' }">
                                         <!-- Tab Headers -->
-                                        <div class="border-b border-gray-200 px-6 pt-4 flex gap-8 overflow-x-auto">
-                                            <button @click="activeTab = 'overview'"
-                                                    :class="{ 'border-blue-500 text-blue-600': activeTab === 'overview', 'border-transparent text-gray-500 hover:text-gray-700': activeTab !== 'overview' }"
-                                                    class="pb-3 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap">
-                                                Purchase Agreements
-                                            </button>
-                                            <button @click="activeTab = 'cfa'"
-                                                    :class="{ 'border-purple-500 text-purple-600': activeTab === 'cfa', 'border-transparent text-gray-500 hover:text-gray-700': activeTab !== 'cfa' }"
-                                                    class="pb-3 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap">
-                                                CFA Agreements
-                                            </button>
-                                            <button @click="activeTab = 'transactions'"
-                                                    :class="{ 'border-green-500 text-green-600': activeTab === 'transactions', 'border-transparent text-gray-500 hover:text-gray-700': activeTab !== 'transactions' }"
-                                                    class="pb-3 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap">
-                                                Transaction Ledger
-                                            </button>
-                                            <button @click="activeTab = 'sales'"
-                                                    :class="{ 'border-gray-500 text-gray-700': activeTab === 'sales', 'border-transparent text-gray-500 hover:text-gray-700': activeTab !== 'sales' }"
-                                                    class="pb-3 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap">
-                                                Sales History
-                                            </button>
+                                        <div class="border-b border-gray-200 px-6 pt-4">
+                                            <nav class="flex gap-1 -mb-px overflow-x-auto" aria-label="Tabs">
+                                                <button @click="activeTab = 'overview'"
+                                                        :class="activeTab === 'overview' ? 'border-blue-500 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                                                        class="whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm rounded-t-lg transition-all">
+                                                    <div class="flex items-center gap-2">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                        </svg>
+                                                        Purchase Agreements
+                                                    </div>
+                                                </button>
+                                                <button @click="activeTab = 'cfa'"
+                                                        :class="activeTab === 'cfa' ? 'border-purple-500 text-purple-600 bg-purple-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                                                        class="whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm rounded-t-lg transition-all">
+                                                    <div class="flex items-center gap-2">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                        CFA Exchange
+                                                    </div>
+                                                </button>
+                                                <button @click="activeTab = 'transactions'"
+                                                        :class="activeTab === 'transactions' ? 'border-green-500 text-green-600 bg-green-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                                                        class="whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm rounded-t-lg transition-all">
+                                                    <div class="flex items-center gap-2">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                        </svg>
+                                                        Transactions
+                                                    </div>
+                                                </button>
+                                                <button @click="activeTab = 'sales'"
+                                                        :class="activeTab === 'sales' ? 'border-gray-500 text-gray-700 bg-gray-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                                                        class="whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm rounded-t-lg transition-all">
+                                                    <div class="flex items-center gap-2">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                                        </svg>
+                                                        Sales
+                                                    </div>
+                                                </button>
+                                            </nav>
                                         </div>
                                         <!-- Tab Content -->
-                                        <div class="p-6 h-[600px] overflow-y-auto">
-                                            <div x-show="activeTab === 'overview'"
-                                                 class="flex flex-col h-full"
-                                                 x-cloak>
-                                                <!-- Header & Filters -->
-                                                <div class="flex flex-col gap-4 mb-4 flex-none">
-                                                    <div class="flex justify-between items-center">
-                                                        <div>
-                                                            <h3 class="font-bold text-gray-800 text-lg">Purchase Agreements</h3>
-                                                            <p class="text-sm text-gray-500">Manage allocations and fulfillment.</p>
-                                                        </div>
-                                                        <a href="{% url 'add_purchase_agreement' %}?customer={{ customer.pk }}"
-                                                           hx-boost="true"
-                                                           hx-target="#main_body"
-                                                           hx-indicator="#body_spinner"
-                                                           class="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700 shadow-sm transition-colors">
-                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                                            </svg>
-                                                            New Agreement
-                                                        </a>
+                                        <div class="p-6 flex-1 overflow-y-auto h-full mb-10">
+                                            <!-- PURCHASE AGREEMENTS TAB -->
+                                            <div x-show="activeTab === 'overview'" x-cloak>
+                                                {% if product_summary %}
+                                                    <!-- Product Summary Cards -->
+                                                    <div class="mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                        {% for model_name, stats in product_summary.items %}
+                                                            <div class="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                                                                <!-- Progress Bar -->
+                                                                <div class="absolute bottom-0 left-0 h-1 bg-gray-100 w-full">
+                                                                    <div class="h-full transition-all duration-500
+                                                                                {% if stats.unfulfilled == 0 %}
+                                                                                    bg-green-500
+                                                                                {% else %}
+                                                                                    bg-blue-500
+                                                                                {% endif %}"
+                                                                         style="width: {{ stats.percent }}%"></div>
+                                                                </div>
+                                                                <div class="flex justify-between items-start mb-4">
+                                                                    <div>
+                                                                        <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Model</p>
+                                                                        <h3 class="text-xl font-bold text-gray-900">{{ model_name }}</h3>
+                                                                    </div>
+                                                                    {% if stats.unfulfilled == 0 %}
+                                                                        <span class="bg-green-100 text-green-700 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase flex items-center gap-1">
+                                                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                                                            </svg>
+                                                                            Done
+                                                                        </span>
+                                                                    {% else %}
+                                                                        <span class="bg-orange-100 text-orange-700 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Pending</span>
+                                                                    {% endif %}
+                                                                </div>
+                                                                <!-- Stats -->
+                                                                <div class="grid grid-cols-3 gap-3">
+                                                                    <div class="text-center p-2 bg-gray-50 rounded-lg">
+                                                                        <p class="text-[10px] text-gray-500 uppercase font-semibold mb-1">Ordered</p>
+                                                                        <p class="text-lg font-bold text-gray-900">{{ stats.ordered }}</p>
+                                                                    </div>
+                                                                    <div class="text-center p-2 bg-green-50 rounded-lg">
+                                                                        <p class="text-[10px] text-green-600 uppercase font-semibold mb-1">Done</p>
+                                                                        <p class="text-lg font-bold text-green-600">{{ stats.fulfilled }}</p>
+                                                                    </div>
+                                                                    <div class="text-center p-2 bg-red-50 rounded-lg">
+                                                                        <p class="text-[10px] text-red-500 uppercase font-semibold mb-1">Pending</p>
+                                                                        <p class="text-lg font-bold text-red-500">{{ stats.unfulfilled }}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        {% endfor %}
                                                     </div>
-                                                    <!-- Filters -->
-                                                    <div class="flex gap-2">
-                                                        <!-- REMOVED EMPTY hx-get to prevent breakage -->
-                                                        <div class="relative flex-1">
-                                                            <input type="text"
-                                                                   placeholder="Search agreement number..."
-                                                                   class="pl-3 pr-4 py-2 border border-gray-300 rounded-md text-sm w-full focus:ring-blue-500 focus:border-blue-500"
-                                                                   name="search">
-                                                        </div>
-                                                        <select class="border border-gray-300 rounded-md text-sm py-2 pl-3 pr-8 focus:ring-blue-500 focus:border-blue-500"
-                                                                name="status"
-                                                                hx-get="{% url 'filter_agreements_partial' customer.pk %}"
-                                                                hx-trigger="change"
-                                                                hx-target="#purchase-agreements-list"
-                                                                hx-swap="outerHTML">
-                                                            <option value="">All Statuses</option>
-                                                            <option value="ACTIVE">Active</option>
-                                                            <option value="PARTIALLY_FULFILLED">Partial</option>
-                                                            <option value="FULFILLED">Fulfilled</option>
-                                                            <option value="CANCELLED">Cancelled</option>
-                                                        </select>
+                                                {% endif %}
+                                                <!-- Agreements List Header -->
+                                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                                                    <div>
+                                                        <h3 class="text-lg font-bold text-gray-900">Purchase Agreements</h3>
+                                                        <p class="text-sm text-gray-500">Track and manage motorcycle orders</p>
                                                     </div>
+                                                    <a href="{% url 'add_purchase_agreement' %}?customer={{ customer.pk }}"
+                                                       hx-boost="true"
+                                                       hx-target="#main_body"
+                                                       hx-indicator="#body_spinner"
+                                                       class="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 shadow-md hover:shadow-lg transition-all">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                                        </svg>
+                                                        New Agreement
+                                                    </a>
+                                                </div>
+                                                <!-- Filters -->
+                                                <div class="flex gap-3 mb-6">
+                                                    <div class="relative flex-1">
+                                                        <input type="text"
+                                                               placeholder="Search agreement number..."
+                                                               class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                        <svg class="w-4 h-4 absolute left-3 top-3 text-gray-400"
+                                                             fill="none"
+                                                             viewBox="0 0 24 24"
+                                                             stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                        </svg>
+                                                    </div>
+                                                    <select class="border border-gray-300 rounded-lg text-sm py-2.5 pl-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                            hx-get="{% url 'filter_agreements_partial' customer.pk %}"
+                                                            hx-trigger="change"
+                                                            hx-target="#purchase-agreements-list"
+                                                            hx-swap="outerHTML">
+                                                        <option value="">All Statuses</option>
+                                                        <option value="ACTIVE">Active</option>
+                                                        <option value="PARTIALLY_FULFILLED">Partial</option>
+                                                        <option value="FULFILLED">Fulfilled</option>
+                                                        <option value="CANCELLED">Cancelled</option>
+                                                    </select>
                                                 </div>
                                                 {% include "customers/partials/purchase_agreements_list.html" with agreements=customer.deposit_account.purchase_agreements.all %}
                                             </div>
-                                            <div x-show="activeTab === 'cfa'" class="flex flex-col h-full" x-cloak>
-                                                <!-- Header & Filters -->
-                                                <div class="flex flex-col gap-4 mb-4 flex-none">
-                                                    <div class="flex justify-between items-center">
-                                                        <div>
-                                                            <h3 class="font-bold text-gray-800 text-lg">CFA Agreements</h3>
-                                                            <p class="text-sm text-gray-500">Foreign exchange allocations.</p>
-                                                        </div>
-                                                        <a href="{% url 'add_cfa_agreement' %}?customer={{ customer.pk }}"
-                                                           class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 shadow-sm transition-colors">
-                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                                            </svg>
-                                                            New Allocation
-                                                        </a>
+                                            <!-- CFA TAB -->
+                                            <div x-show="activeTab === 'cfa'" x-cloak>
+                                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                                                    <div>
+                                                        <h3 class="text-lg font-bold text-gray-900">CFA Exchange Agreements</h3>
+                                                        <p class="text-sm text-gray-500">Currency exchange allocations</p>
                                                     </div>
-                                                    <!-- Filters -->
-                                                    <div class="flex gap-2">
-                                                        <div class="relative flex-1">
-                                                            <input type="text"
-                                                                   placeholder="Search CFA ref..."
-                                                                   class="pl-3 pr-4 py-2 border border-gray-300 rounded-md text-sm w-full focus:ring-purple-500 focus:border-purple-500"
-                                                                   name="search">
-                                                        </div>
-                                                        <select class="border border-gray-300 rounded-md text-sm py-2 pl-3 pr-8 focus:ring-blue-500 focus:border-blue-500"
-                                                                name="status"
-                                                                hx-get="{% url 'filter_cfa_agreements_partial' customer.pk %}"
-                                                                hx-trigger="change"
-                                                                hx-target="#cfa-agreements-list"
-                                                                hx-swap="outerHTML">
-                                                            <option value="">All Statuses</option>
-                                                            <option value="ACTIVE">Active</option>
-                                                            <option value="PARTIALLY_FULFILLED">Partial</option>
-                                                            <option value="FULFILLED">Fulfilled</option>
-                                                            <option value="CANCELLED">Cancelled</option>
-                                                        </select>
+                                                    <a href="{% url 'add_cfa_agreement' %}?customer={{ customer.pk }}"
+                                                       class="inline-flex items-center gap-2 px-4 py-2.5 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 shadow-md hover:shadow-lg transition-all">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                        </svg>
+                                                        New Allocation
+                                                    </a>
+                                                </div>
+                                                <!-- Filters -->
+                                                <div class="flex gap-3 mb-6">
+                                                    <div class="relative flex-1">
+                                                        <input type="text"
+                                                               placeholder="Search CFA reference..."
+                                                               class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                                        <svg class="w-4 h-4 absolute left-3 top-3 text-gray-400"
+                                                             fill="none"
+                                                             viewBox="0 0 24 24"
+                                                             stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                        </svg>
                                                     </div>
+                                                    <select class="border border-gray-300 rounded-lg text-sm py-2.5 pl-3 pr-10 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                                            hx-get="{% url 'filter_cfa_agreements_partial' customer.pk %}"
+                                                            hx-trigger="change"
+                                                            hx-target="#cfa-agreements-list"
+                                                            hx-swap="outerHTML">
+                                                        <option value="">All Statuses</option>
+                                                        <option value="ACTIVE">Active</option>
+                                                        <option value="PARTIALLY_FULFILLED">Partial</option>
+                                                        <option value="FULFILLED">Fulfilled</option>
+                                                        <option value="CANCELLED">Cancelled</option>
+                                                    </select>
                                                 </div>
                                                 {% include "customers/partials/cfa_agreements_list.html" with cfas=customer.deposit_account.cfa_agreements.all %}
                                             </div>
-                                            <!-- TRANSACTIONS -->
-                                            <div x-show="activeTab === 'transactions'" style="display: none;">
-                                                <div class="overflow-x-auto">
-                                                    <table class="w-full text-left border-collapse">
-                                                        <thead>
-                                                            <tr class="bg-gray-50 text-xs uppercase text-gray-500 border-b border-gray-200">
-                                                                <th class="px-4 py-3">Date</th>
-                                                                <th class="px-4 py-3">Ref</th>
-                                                                <th class="px-4 py-3">Type</th>
-                                                                <th class="px-4 py-3 text-right">Amount</th>
+                                            <!-- TRANSACTIONS TAB -->
+                                            <div x-show="activeTab === 'transactions'" x-cloak>
+                                                <div class="mb-6">
+                                                    <h3 class="text-lg font-bold text-gray-900 mb-1">Transaction History</h3>
+                                                    <p class="text-sm text-gray-500">Recent account activity</p>
+                                                </div>
+                                                <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                                                    <table class="w-full">
+                                                        <thead class="bg-gray-50 border-b border-gray-200">
+                                                            <tr>
+                                                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                                                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reference</th>
+                                                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                                                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
                                                             </tr>
                                                         </thead>
-                                                        <tbody class="text-sm divide-y divide-gray-100">
-                                                            {% for txn in customer.deposit_account.transactions.all|slice:":9" %}
-                                                                <tr>
-                                                                    <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ txn.created_at|date:"M d, Y H:i" }}</td>
-                                                                    <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ txn.reference_number }}</td>
-                                                                    <td class="px-4 py-3">
+                                                        <tbody class="divide-y divide-gray-100">
+                                                            {% for txn in customer.deposit_account.transactions.all|slice:":5" %}
+                                                                <tr class="hover:bg-gray-50 transition-colors">
+                                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ txn.created_at|date:"M d, Y" }}</td>
+                                                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-700">{{ txn.reference_number }}</td>
+                                                                    <td class="px-6 py-4 whitespace-nowrap">
                                                                         {% if txn.transaction_type == 'deposit' %}
-                                                                            <span class="text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded">DEP</span>
+                                                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                                                                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" />
+                                                                                </svg>
+                                                                                Deposit
+                                                                            </span>
                                                                         {% elif txn.transaction_type == 'withdrawal' %}
-                                                                            <span class="text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded">WTH</span>
-                                                                        {% elif txn.transaction_type == "refund" %}
-                                                                            <span class="text-blue-600 text-xs font-bold bg-blue-50 px-2 py-1 rounded">REF</span>
+                                                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                                                                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" transform="rotate(180 10 10)" />
+                                                                                </svg>
+                                                                                Withdrawal
+                                                                            </span>
                                                                         {% else %}
-                                                                            <span class="text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded">FUL</span>
+                                                                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                                                                                {{ txn.get_transaction_type_display }}
+                                                                            </span>
                                                                         {% endif %}
                                                                     </td>
-                                                                    <td class="px-4 py-3 text-right font-mono text-gray-700">NGN {{ txn.amount|floatformat:2|intcomma }}</td>
+                                                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-mono font-semibold text-gray-900">
+                                                                        ₦{{ txn.amount|floatformat:2|intcomma }}
+                                                                    </td>
                                                                 </tr>
                                                             {% empty %}
                                                                 <tr>
-                                                                    <td colspan="3" class="text-center py-4 text-gray-400">No transactions yet.</td>
+                                                                    <td colspan="4" class="px-6 py-12 text-center">
+                                                                        <div class="flex flex-col items-center gap-2">
+                                                                            <svg class="w-12 h-12 text-gray-300"
+                                                                                 fill="none"
+                                                                                 viewBox="0 0 24 24"
+                                                                                 stroke="currentColor">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                                            </svg>
+                                                                            <p class="text-gray-400">No transactions yet</p>
+                                                                        </div>
+                                                                    </td>
                                                                 </tr>
                                                             {% endfor %}
                                                         </tbody>
                                                     </table>
                                                 </div>
-                                                <div class="pt-4 flex justify-center flex-none border-t border-gray-100 mt-2">
+                                                <div class="mt-6 flex justify-center">
                                                     <a href="{% url 'customer_transactions' %}?customer={{ customer.pk }}"
                                                        hx-boost="true"
                                                        hx-target="#main_body"
                                                        hx-indicator="#body_spinner"
-                                                       class="text-sm font-medium text-green-600 hover:text-green-800 flex items-center gap-1 transition-colors px-4 py-2 hover:bg-green-50 rounded-full">
+                                                       class="inline-flex items-center gap-2 px-6 py-2.5 text-blue-600 bg-blue-50 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
                                                         View All Transactions
                                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
@@ -267,46 +465,60 @@
                                                     </a>
                                                 </div>
                                             </div>
-                                            <!-- SALES HISTORY -->
-                                            <div x-show="activeTab === 'sales'" style="display: none;">
-                                                <div class="overflow-x-auto">
-                                                    <table class="w-full text-left border-collapse">
-                                                        <thead>
-                                                            <tr class="bg-gray-50 text-xs uppercase text-gray-500 border-b border-gray-200">
-                                                                <th class="px-4 py-3">Sale No.</th>
-                                                                <th class="px-4 py-3">Date</th>
-                                                                <th class="px-4 py-3">Method</th>
-                                                                <th class="px-4 py-3 text-center">Status</th>
+                                            <!-- SALES TAB -->
+                                            <div x-show="activeTab === 'sales'" x-cloak>
+                                                <div class="mb-6">
+                                                    <h3 class="text-lg font-bold text-gray-900 mb-1">Sales History</h3>
+                                                    <p class="text-sm text-gray-500">Completed transactions</p>
+                                                </div>
+                                                <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                                                    <table class="w-full">
+                                                        <thead class="bg-gray-50 border-b border-gray-200">
+                                                            <tr>
+                                                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Sale #</th>
+                                                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                                                                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Method</th>
+                                                                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                                                             </tr>
                                                         </thead>
-                                                        <tbody class="text-sm divide-y divide-gray-100">
-                                                            {% for sale in customer.customer_sales.all|slice:":9" %}
-                                                                <tr class="hover:bg-gray-50">
-                                                                    <td class="px-4 py-3 font-mono text-xs text-gray-700 font-medium">{{ sale.sale_number }}</td>
-                                                                    <td class="px-4 py-3 text-gray-500 text-xs">{{ sale.sale_date|date:"M d, Y" }}</td>
-                                                                    <td class="px-4 py-3 text-xs capitalize text-gray-600">{{ sale.payment_method }}</td>
-                                                                    <td class="px-4 py-3 text-center">
+                                                        <tbody class="divide-y divide-gray-100">
+                                                            {% for sale in customer.customer_sales.all|slice:":5" %}
+                                                                <tr class="hover:bg-gray-50 transition-colors">
+                                                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium text-gray-900">{{ sale.sale_number }}</td>
+                                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ sale.sale_date|date:"M d, Y" }}</td>
+                                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 capitalize">{{ sale.payment_method }}</td>
+                                                                    <td class="px-6 py-4 whitespace-nowrap text-center">
                                                                         {% if sale.status == 'voided' %}
-                                                                            <span class="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Voided</span>
+                                                                            <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">Voided</span>
                                                                         {% else %}
-                                                                            <span class="bg-green-100 text-green-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Active</span>
+                                                                            <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>
                                                                         {% endif %}
                                                                     </td>
                                                                 </tr>
                                                             {% empty %}
                                                                 <tr>
-                                                                    <td colspan="4" class="text-center py-10 text-gray-400">No sales records found.</td>
+                                                                    <td colspan="4" class="px-6 py-12 text-center">
+                                                                        <div class="flex flex-col items-center gap-2">
+                                                                            <svg class="w-12 h-12 text-gray-300"
+                                                                                 fill="none"
+                                                                                 viewBox="0 0 24 24"
+                                                                                 stroke="currentColor">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                                                            </svg>
+                                                                            <p class="text-gray-400">No sales yet</p>
+                                                                        </div>
+                                                                    </td>
                                                                 </tr>
                                                             {% endfor %}
                                                         </tbody>
                                                     </table>
                                                 </div>
-                                                <div class="pt-4 flex justify-center flex-none border-t border-gray-100 mt-2">
+                                                <div class="mt-6 flex justify-center">
                                                     <a href="{% url 'sales' %}?customer={{ customer.pk }}"
                                                        hx-boost="true"
                                                        hx-target="#main_body"
                                                        hx-indicator="#body_spinner"
-                                                       class="text-sm font-medium text-green-600 hover:text-green-800 flex items-center gap-1 transition-colors px-4 py-2 hover:bg-green-50 rounded-full">
+                                                       class="inline-flex items-center gap-2 px-6 py-2.5 text-blue-600 bg-blue-50 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors">
                                                         View All Sales
                                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
@@ -316,59 +528,69 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- RIGHT COLUMN: INFO & ACTIONS -->
-                                    <div class="w-full xl:w-[300px] flex flex-col gap-6">
-                                        <!-- Info Card -->
-                                        <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                                            <h3 class="font-medium text-gray-900 mb-4 border-b pb-2">Contact Details</h3>
-                                            <div class="space-y-4 text-sm">
+                                    <!-- RIGHT SIDEBAR: ACTIONS -->
+                                    <div class="w-full xl:w-[320px] flex flex-col gap-6">
+                                        <!-- Contact Info Card -->
+                                        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                                <svg class="w-5 h-5 text-gray-400"
+                                                     fill="none"
+                                                     viewBox="0 0 24 24"
+                                                     stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                </svg>
+                                                Contact Details
+                                            </h3>
+                                            <div class="space-y-4">
                                                 <div>
-                                                    <p class="text-gray-500 text-xs mb-1">PHONE NUMBER</p>
-                                                    <p class="font-medium text-gray-800">{{ customer.phone }}</p>
+                                                    <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Phone Number</p>
+                                                    <p class="text-sm font-medium text-gray-900">{{ customer.phone|default:"Not provided" }}</p>
                                                 </div>
                                                 <div>
-                                                    <p class="text-gray-500 text-xs mb-1">CUSTOMER ID</p>
-                                                    <p class="font-mono text-gray-800">{{ customer.customer_number }}</p>
+                                                    <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Email</p>
+                                                    <p class="text-sm font-medium text-gray-900">{{ customer.email|default:"Not provided" }}</p>
                                                 </div>
-                                                {% if customer.email %}
-                                                    <div>
-                                                        <p class="text-gray-500 text-xs mb-1">EMAIL</p>
-                                                        <p class="font-medium text-gray-800">{{ customer.email }}</p>
-                                                    </div>
-                                                {% endif %}
                                             </div>
                                         </div>
-                                        <!-- Quick Actions -->
-                                        <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                                            <h3 class="font-medium text-gray-900 mb-4 border-b pb-2">Quick Actions</h3>
+                                        <!-- Quick Actions Card -->
+                                        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                                            <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                                <svg class="w-5 h-5 text-gray-400"
+                                                     fill="none"
+                                                     viewBox="0 0 24 24"
+                                                     stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                </svg>
+                                                Quick Actions
+                                            </h3>
                                             <div class="space-y-3">
-                                                <!-- Deposit Button -->
+                                                <!-- Deposit -->
                                                 <a href="{% url 'add_transaction' %}?customer={{ customer.pk }}&type=deposit"
                                                    hx-boost="true"
                                                    hx-target="#main_body"
                                                    hx-indicator="#body_spinner"
-                                                   class="flex items-center justify-center gap-2 w-full py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
+                                                   class="flex items-center justify-center gap-2 w-full py-3 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 shadow-md hover:shadow-lg transition-all">
                                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                                                     </svg>
                                                     Make Deposit
                                                 </a>
-                                                <!-- Withdrawal Button -->
+                                                <!-- Withdrawal -->
                                                 <a href="{% url 'add_transaction' %}?customer={{ customer.pk }}&type=withdrawal"
                                                    hx-boost="true"
                                                    hx-target="#main_body"
                                                    hx-indicator="#body_spinner"
-                                                   class="flex items-center justify-center gap-2 w-full py-2 bg-white border border-red-200 text-red-600 rounded-md text-sm font-medium hover:bg-red-50 hover:border-red-300 transition-colors shadow-sm">
+                                                   class="flex items-center justify-center gap-2 w-full py-3 bg-white text-red-600 border-2 border-red-600 rounded-lg text-sm font-semibold hover:bg-red-50 transition-all">
                                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
                                                     </svg>
                                                     Withdraw Funds
                                                 </a>
-                                                <!-- New Sale Button -->
+                                                <!-- Create Sale -->
                                                 <a href="{% url 'add_sale' %}?customer={{ customer.pk }}"
-                                                   class="flex items-center justify-center gap-2 w-full py-2 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm">
+                                                   class="flex items-center justify-center gap-2 w-full py-3 bg-white text-gray-700 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-all">
                                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                                                     </svg>
                                                     Create Sale
                                                 </a>

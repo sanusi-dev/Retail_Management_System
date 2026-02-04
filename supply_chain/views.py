@@ -409,7 +409,7 @@ def payments_void(request, pk):
             context,
         )
         success_toast = render_to_string(
-            "partials/success_toast.html",
+            "partials/toast.html",
             {"message": message},
         )
 

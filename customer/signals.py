@@ -12,12 +12,79 @@ from .models import (
     DepositAccount,
     Transaction,
     PurchaseAgreement,
+    PurchaseAgreementLineItem,
     CfaFulfillment,
     CfaAgreement,
     BoxedSale,
     CoupledSale,
     Sale,
 )
+
+
+@receiver([post_save, post_delete], sender=Transaction)
+def update_balance_on_transaction(sender, instance, **kwargs):
+    """Update cached balances when transaction changes"""
+    try:
+        instance.account.update_cached_balances()
+    except Exception as e:
+        # Log error but don't break the transaction
+        print(f"Error updating cache for transaction {instance.pk}: {e}")
+
+
+@receiver([post_save, post_delete], sender=PurchaseAgreement)
+def update_balance_on_purchase_agreement(sender, instance, **kwargs):
+    """Update cached balances when purchase agreement changes"""
+    try:
+        instance.account.update_cached_balances()
+    except Exception as e:
+        print(f"Error updating cache for purchase agreement {instance.pk}: {e}")
+
+
+@receiver([post_save, post_delete], sender=PurchaseAgreementLineItem)
+def update_balance_on_line_item(sender, instance, **kwargs):
+    """Update cached balances when line item changes"""
+    try:
+        instance.purchase_agreement.account.update_cached_balances()
+    except Exception as e:
+        print(f"Error updating cache for line item {instance.pk}: {e}")
+
+
+@receiver([post_save, post_delete], sender=CfaAgreement)
+def update_balance_on_cfa_agreement(sender, instance, **kwargs):
+    """Update cached balances when CFA agreement changes"""
+    try:
+        instance.account.update_cached_balances()
+    except Exception as e:
+        print(f"Error updating cache for CFA agreement {instance.pk}: {e}")
+
+
+@receiver([post_save, post_delete], sender=CfaFulfillment)
+def update_balance_on_cfa_fulfillment(sender, instance, **kwargs):
+    """Update cached balances when CFA fulfillment changes"""
+    try:
+        instance.cfa_agreement.account.update_cached_balances()
+    except Exception as e:
+        print(f"Error updating cache for CFA fulfillment {instance.pk}: {e}")
+
+
+@receiver([post_save, post_delete], sender=BoxedSale)
+def update_balance_on_boxed_sale(sender, instance, **kwargs):
+    """Update cached balances when boxed sale changes (affects allocation)"""
+    try:
+        if instance.sale.agreement:
+            instance.sale.agreement.account.update_cached_balances()
+    except Exception as e:
+        print(f"Error updating cache for boxed sale {instance.pk}: {e}")
+
+
+@receiver([post_save, post_delete], sender=CoupledSale)
+def update_balance_on_coupled_sale(sender, instance, **kwargs):
+    """Update cached balances when coupled sale changes (affects allocation)"""
+    try:
+        if instance.sale.agreement:
+            instance.sale.agreement.account.update_cached_balances()
+    except Exception as e:
+        print(f"Error updating cache for coupled sale {instance.pk}: {e}")
 
 
 # ACCOUNT & AGREEMENT LIFECYCLE

@@ -158,6 +158,10 @@
                                                 <thead>
                                                     <tr class="border-b border-gray-200">
                                                         <th class="pb-3 text-xs font-medium text-gray-600 uppercase tracking-wide w-1/2">Item Description</th>
+                                                        {% if sale.coupled_sales %}
+                                                            <th class="pb-3 text-xs font-medium text-gray-600 uppercase tracking-wide w-1/2">Engine No#</th>
+                                                            <th class="pb-3 text-xs font-medium text-gray-600 uppercase tracking-wide w-1/2">Chassis No#</th>
+                                                        {% endif %}
                                                         <th class="pb-3 text-xs font-medium text-gray-600 uppercase tracking-wide text-center">Qty</th>
                                                         <th class="pb-3 text-xs font-medium text-gray-600 uppercase tracking-wide text-right">Unit Price</th>
                                                         <th class="pb-3 text-xs font-medium text-gray-600 uppercase tracking-wide text-right">Total</th>
@@ -187,6 +191,12 @@
                                                             <td class="py-4 pr-4">
                                                                 <p class="text-sm font-medium text-blue-600">{{ item.transformation_item.target_product.modelname|upper }}</p>
                                                                 <p class="text-xs text-gray-500">{{ item.transformation_item.item_number }}</p>
+                                                            </td>
+                                                            <td class="py-4 pr-4">
+                                                                <p class="text-sm font-medium text-blue-600">{{ item.transformation_item.engine_number|upper }}</p>
+                                                            </td>
+                                                            <td class="py-4 pr-4">
+                                                                <p class="text-sm font-medium text-blue-600">{{ item.transformation_item.chassis_number|upper }}</p>
                                                             </td>
                                                             <td class="py-4 px-4 text-center">
                                                                 <span class="text-sm font-mono text-gray-800 bg-gray-100 px-2 py-0.5 rounded">-</span>

@@ -1,56 +1,36 @@
-import random
-from faker import Faker
-from supply_chain.models import PurchaseOrder, Payment
-from account.models import CustomUser
+import os
+import csv
+from django.conf import settings
+from customer.models import Customer
 
 
 def run():
-    # --- Configuration ---
-    NUMBER_OF_PAYMENTS = 50
-    # ---------------------
+    file_path = os.path.join(settings.BASE_DIR, "csv_data", "customer2.csv")
 
-    fake = Faker()
-
-    purchase_orders = list(PurchaseOrder.objects.all())
-    user = CustomUser.objects.first()
-
-    if not purchase_orders:
-        print("Cannot create payments. No purchase orders found in the database.")
+    if not os.path.exists(file_path):
+        print(f"Error: File not found at {file_path}")
         return
 
-    if not user:
-        print("Warning: No user found. 'created_by' and 'updated_by' will be None.")
-        user = None
+    with open(file_path, mode="r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
 
-    created_count = 0
-    for _ in range(NUMBER_OF_PAYMENTS):
-        po = random.choice(purchase_orders)
+        count = 0
+        skipped = 0
 
-        # Determine a realistic payment amount (e.g., between 10% and 100% of PO total)
-        po_total = po.total_amount or 1000  # Use a fallback value if total is 0 or None
-        if po_total > 0:
-            amount = round(random.uniform(float(po_total) * 0.1, float(po_total)), 2)
-        else:
-            amount = round(random.uniform(100.00, 5000.00), 2)
+        for row in reader:
+            name = row["name"].strip()
+            if not name:
+                continue
 
-        # Randomly choose from model choices
-        payment_method = random.choice(
-            [choice[0] for choice in Payment.PaymentMethod.choices]
-        )
-        status = random.choice([choice[0] for choice in Payment.Status.choices])
+            # Check for existence to avoid IntegrityError on unique field
+            if Customer.objects.filter(full_name=name).exists():
+                skipped += 1
+                continue
 
-        try:
-            Payment.objects.create(
-                purchase_order=po,
-                amount_paid=amount,
-                payment_method=payment_method,
-                status=status,
-                remark=fake.sentence(nb_words=10),
-                created_by=user,
-                updated_by=user,
-            )
-            created_count += 1
-        except Exception as e:
-            print(f"Could not create payment for PO {po.po_number}. Error: {e}")
+            try:
+                Customer.objects.create(full_name=name)
+                count += 1
+            except Exception as e:
+                print(f"Failed to import {name}: {e}")
 
-    print(f"Successfully created {created_count} supplier payments.")
+        print(f"Import complete. Created: {count}, Skipped (Duplicate): {skipped}")

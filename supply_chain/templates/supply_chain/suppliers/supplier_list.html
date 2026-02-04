@@ -25,16 +25,13 @@
         {% block body %}
             <div id="table_container"
                  class="relative flex flex-col h-[calc(100vh-8rem)]">
-                <!-- Scrollable area -->
                 <div class="flex-1 overflow-y-auto pb-25">
-                    <!-- pb = pagination height -->
                     <table class="w-full text-sm text-left text-gray-500">
                         <thead class="text-xs text-gray-500 font-normal uppercase bg-gray-50 sticky top-0 z-10">
                             <tr class="border-t border-b">
-                                <th scope="col" class="px-6 py-3">Name</th>
+                                <th scope="col" class="px-6 py-3">Full Name</th>
                                 <th scope="col" class="px-6 py-3">Company Name</th>
-                                <th scope="col" class="px-6 py-3">Email</th>
-                                <th scope="col" class="px-6 py-3">Work Phone</th>
+                                <th scope="col" class="px-6 py-3">Phone</th>
                                 <th scope="col" class="px-6 py-3 text-right">Undelivered Value</th>
                             </tr>
                         </thead>
@@ -46,16 +43,15 @@
                                         hx-target="#main_body"
                                         hx-indicator="#body_spinner"
                                         hx-push-url="true">
-                                        <td class="px-6 py-3 capitalize text-blue-600">{{ supplier.salutation }}. {{ supplier.display_name|upper }}</td>
+                                        <td class="px-6 py-3 capitalize text-blue-600">{{ supplier.full_name|default:"N/A"|upper }}</td>
                                         <td class="px-6 py-3 capitalize">{{ supplier.company_name|upper }}</td>
-                                        <td class="px-6 py-3 capitalize">{{ supplier.email|default:"N/A"|upper }}</td>
-                                        <td class="px-6 py-3 capitalize">{{ supplier.work_phone|default:"N/A"|upper }}</td>
+                                        <td class="px-6 py-3 capitalize">{{ supplier.phone|default:"N/A"|upper }}</td>
                                         <td class="px-6 py-3 text-right">NGN{{ supplier.supp_total_undelivered_value|floatformat:2|intcomma }}</td>
                                     </tr>
                                 {% endfor %}
                             {% else %}
                                 <tr class="bg-white border-b border-gray-100 hover:bg-gray-50">
-                                    <td colspan="5" class="px-6 py-3 text-center">
+                                    <td colspan="4" class="px-6 py-3 text-center">
                                         <p>No suppliers available.</p>
                                     </td>
                                 </tr>

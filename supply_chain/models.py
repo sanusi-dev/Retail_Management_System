@@ -13,29 +13,14 @@ from utils.utils import create_inventory_transaction
 
 class Supplier(models.Model):
 
-    class Salutation(models.TextChoices):
-        MR = "mr", "Mr."
-        MRS = "mrs", "Mrs."
-        MISS = "miss", "Miss"
-        MS = "ms", "Ms."
-        DR = "dr", "Dr."
-        PROF = "prof", "Prof."
-
     class Status(models.TextChoices):
         ACTIVE = "active", "Active"
         INACTIVE = "inactive", "Inactive"
 
     supplier_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    firstname = models.CharField(max_length=255, null=True, blank=True)
-    lastname = models.CharField(max_length=255, null=True, blank=True)
-    company_name = models.CharField(max_length=255, unique=True)
-    display_name = models.CharField(max_length=255)
-    salutation = models.CharField(
-        max_length=10, choices=Salutation, default=Salutation.MR
-    )
-    mobile = models.CharField(max_length=20, null=True, blank=True, unique=True)
-    work_phone = models.CharField(max_length=20, unique=True)
-    email = models.EmailField(max_length=255, null=True, blank=True)
+    full_name = models.CharField(max_length=255, null=True, blank=True)
+    company_name = models.CharField(max_length=255, null=True, blank=True, default="")
+    phone = models.CharField(max_length=20, null=True, blank=True)
     address = models.TextField(null=True, blank=True, default="")
     status = models.CharField(max_length=10, choices=Status, default=Status.ACTIVE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -56,17 +41,14 @@ class Supplier(models.Model):
     )
 
     class Meta:
-        ordering = ["display_name"]
+        ordering = ["company_name"]
 
     def __str__(self):
-        return f"{self.salutation.title()} {self.display_name.title()}"
+        return f"{self.company_name} ({self.full_name or 'No Contact'})"
 
     @property
     def name(self):
-        if self.salutation and self.display_name:
-            return f"{self.salutation}. {self.display_name}"
-        else:
-            return f"{self.firstname or ''} {self.lastname or ''}".strip()
+        return self.full_name or self.company_name
 
     @classmethod
     def get_list_url(cls):
@@ -357,7 +339,11 @@ class PurchaseOrderItem(models.Model):
 
     @property
     def total_price(self):
-        return self.ordered_quantity * self.unit_price_at_order or 0
+        qty = self.ordered_quantity
+        price = self.unit_price_at_order
+        if qty and price:
+            return qty * price
+        return 0
 
     @property
     def type_variant(self):
@@ -420,7 +406,7 @@ class Payment(models.Model):
     amount_paid = models.DecimalField(max_digits=12, decimal_places=2)
     payment_date = models.DateTimeField(default=timezone.now)
     payment_method = models.CharField(
-        max_length=20, choices=PaymentMethod, default=PaymentMethod.CASH
+        max_length=20, choices=PaymentMethod, default=PaymentMethod.TRANSFER
     )
     trxn_ref = models.CharField(max_length=50, editable=False, unique=True)
     status = models.CharField(max_length=20, choices=Status, default=Status.PAID)
@@ -464,6 +450,23 @@ class Payment(models.Model):
     def can_void(self):
         if (
             self.purchase_order.delivery_status
+            != self.purchase_order.DeliveryStatus.RECEIVED
+            and self.purchase_order.status != self.purchase_order.Status.CLOSED
+            and self.status != self.Status.VOIDED
+        ):
+            return True
+        else:
+            return False
+
+    def mark_as_void(self):
+        self.status = self.Status.VOIDED
+        self.purchase_order.update_payment_status()
+        self.save()
+
+    @property
+    def can_void(self):
+        if (
+            self.purchase_order.delivery_status
             != self.purchase_order.DeliveryStatus.PENDING
             or self.purchase_order.status == self.purchase_order.Status.CLOSED
             or self.status != self.Status.VOIDED
@@ -472,16 +475,11 @@ class Payment(models.Model):
         else:
             return True
 
-    def mark_as_void(self):
-        self.status = self.Status.VOIDED
-        self.purchase_order.update_payment_status()
-        self.save()
-
     def save(self, *args, **kwargs):
         if not self.trxn_ref:
             year = timezone.now().year
-            self.trxn_ref = f"TXN-{year}-{uuid.uuid4().hex[:3].upper()}"
-        super().save(self, *args, **kwargs)
+            self.trxn_ref = f"TXN-{year}-{uuid.uuid4().hex[:8].upper()}"
+        super().save(*args, **kwargs)
 
 
 class GoodsReceipt(models.Model):
@@ -646,7 +644,7 @@ class GoodsReceiptItem(models.Model):
             source=reversal,
             transaction_type=InventoryTransaction.TransactionType.RECEIPT_REVERSAL,
             quantity_change=-self.received_quantity,
-            cost_impact=self.received_quantity * self.unit_cost_at_receipt,
+            cost_impact=-(self.received_quantity * self.unit_cost_at_receipt),
         )
 
         return reversal
