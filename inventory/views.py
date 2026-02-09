@@ -48,7 +48,7 @@ def products(request):
     # Sorting
     sort_field = request.GET.get("sort", "created_at")
     direction = request.GET.get("direction", "desc")
-    allowed_sort_fields = ["created_at", "modelname", "brand__name", "type_variant", "base_product__modelname"]
+    allowed_sort_fields = ["created_at", "modelname", "brand__name", "type_variant", "base_product__modelname", "sku", "category"]
 
     products_list = apply_sorting(products_list, sort_field, direction, allowed_sort_fields)
 
@@ -63,7 +63,7 @@ def products(request):
     }
 
     if request.htmx:
-        if "page" in request.GET or "q" in request.GET:
+        if "page" in request.GET or "q" in request.GET or "sort" in request.GET:
             product_list = render_block_to_string(
                 "inventory/product/product_list.html",
                 "body",

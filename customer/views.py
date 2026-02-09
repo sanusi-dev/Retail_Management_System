@@ -16,7 +16,8 @@ from .models import (
     CfaAgreement,
     CfaFulfillment,
     Sale,
-    s,
+    CoupledSale,
+    BoxedSale,
 )
 from .forms import (
     CustomerForm,
