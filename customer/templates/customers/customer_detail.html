@@ -4,12 +4,12 @@
 {% block content %}
     {% include "partials/spinner.html" with id="body_spinner" %}
     {% comment %} <div class="flex flex-col h-full" id="main_body"> {% endcomment %}
-    <div class="flex flex-col h-screen overflow-hidden" id="main_body">
+    <div class="flex flex-col h-[calc(100vh-4rem)] overflow-hidden" id="main_body">
         <div class="flex flex-row h-full">
             <!-- SIDEBAR: CUSTOMER LIST -->
             {% block _side_bar %}
-                <div x-data="{ activeCustomer: '{{ customer.pk }}', searchQuery: '' }"
-                     class="flex-none w-[340px] h-screen bg-white border-r flex flex-col z-20">
+                <div x-data="{ activeCustomer: '{{ customer.pk }}' }"
+                     class="flex-none w-[340px] h-full bg-white border-r flex flex-col z-20">
                     <!-- Sidebar Header -->
                     <div class="flex-none border-b bg-gradient-to-r from-blue-50 to-white">
                         <div class="h-16 flex items-center justify-between px-5 py-2">
@@ -34,7 +34,12 @@
                         <div class="px-4 pb-3">
                             <div class="relative">
                                 <input type="text"
-                                       x-model="searchQuery"
+                                       name="q"
+                                       value="{{ search_query }}"
+                                       hx-get="{% url 'customer_detail' customer.pk %}"
+                                       hx-trigger="keyup changed delay:500ms, search"
+                                       hx-target="#sidebar_pagination"
+                                       hx-push-url="true"
                                        placeholder="Search customers..."
                                        class="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
                                 <svg class="w-4 h-4 absolute left-3 top-2.5 text-gray-400"
@@ -48,11 +53,10 @@
                     </div>
                     <!-- Sidebar List -->
                     {% block side_bar_list %}
-                        <div id="sidebar_pagination" class="flex-1 flex flex-col min-h-0">
+                        <div id="sidebar_pagination" class="flex-1 flex flex-col min-h-0 overflow-hidden">
                             <div id="side_bar" class="flex-1 overflow-y-auto min-h-0">
                                 {% for cust in customer_list %}
                                     <a href="{% url 'customer_detail' pk=cust.pk %}"
-                                       x-show="searchQuery === '' || '{{ cust.full_name|lower }}'.includes(searchQuery.toLowerCase()) || '{{ cust.customer_number }}'.includes(searchQuery)"
                                        class="block py-4 px-5 border-b hover:bg-blue-50 transition-all duration-200 group relative"
                                        hx-boost="true"
                                        hx-target="#main_content"
@@ -99,7 +103,7 @@
                                 {% endfor %}
                             </div>
                             <!-- Pagination Footer -->
-                            <div class="flex-none sticky bottom-0 bg-white border-t border-gray-200 p-3 z-10">
+                            <div class="flex-shrink-0 bg-white border-t border-gray-200 p-3">
                                 {% include "partials/pagination.html" with page_obj=customer_list target="sidebar_pagination" %}
                             </div>
                         </div>
@@ -320,11 +324,17 @@
                                                     </a>
                                                 </div>
                                                 <!-- Filters -->
-                                                <div class="flex gap-3 mb-6">
+                                                <div class="flex w-full gap-3 mb-6" id="pa-filters">
                                                     <div class="relative flex-1">
                                                         <input type="text"
+                                                               name="q"
                                                                placeholder="Search agreement number..."
-                                                               class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                               class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                               hx-get="{% url 'filter_agreements_partial' customer.pk %}"
+                                                               hx-trigger="keyup changed delay:500ms"
+                                                               hx-target="#purchase-agreements-list"
+                                                               hx-include="#pa-filters input, #pa-filters select"
+                                                               hx-swap="outerHTML">
                                                         <svg class="w-4 h-4 absolute left-3 top-3 text-gray-400"
                                                              fill="none"
                                                              viewBox="0 0 24 24"
@@ -333,15 +343,38 @@
                                                         </svg>
                                                     </div>
                                                     <select class="border border-gray-300 rounded-lg text-sm py-2.5 pl-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                            name="status"
                                                             hx-get="{% url 'filter_agreements_partial' customer.pk %}"
                                                             hx-trigger="change"
                                                             hx-target="#purchase-agreements-list"
+                                                            hx-include="#pa-filters input, #pa-filters select"
                                                             hx-swap="outerHTML">
                                                         <option value="">All Statuses</option>
                                                         <option value="ACTIVE">Active</option>
                                                         <option value="PARTIALLY_FULFILLED">Partial</option>
                                                         <option value="FULFILLED">Fulfilled</option>
                                                         <option value="CANCELLED">Cancelled</option>
+                                                    </select>
+                                                    <select class="border border-gray-300 rounded-lg text-sm py-2.5 pl-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                            name="sort"
+                                                            hx-get="{% url 'filter_agreements_partial' customer.pk %}"
+                                                            hx-trigger="change"
+                                                            hx-target="#purchase-agreements-list"
+                                                            hx-include="#pa-filters input, #pa-filters select"
+                                                            hx-swap="outerHTML">
+                                                        <option value="created_at">Date Created</option>
+                                                        <option value="status">Status</option>
+                                                        <option value="purchase_agreement_number">Agreement #</option>
+                                                    </select>
+                                                    <select class="border border-gray-300 rounded-lg text-sm py-2.5 pl-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                            name="direction"
+                                                            hx-get="{% url 'filter_agreements_partial' customer.pk %}"
+                                                            hx-trigger="change"
+                                                            hx-target="#purchase-agreements-list"
+                                                            hx-include="#pa-filters input, #pa-filters select"
+                                                            hx-swap="outerHTML">
+                                                        <option value="desc">Descending</option>
+                                                        <option value="asc">Ascending</option>
                                                     </select>
                                                 </div>
                                                 {% include "customers/partials/purchase_agreements_list.html" with agreements=customer.deposit_account.purchase_agreements.all %}
@@ -362,11 +395,17 @@
                                                     </a>
                                                 </div>
                                                 <!-- Filters -->
-                                                <div class="flex gap-3 mb-6">
+                                                <div class="flex w-full gap-3 mb-6" id="cfa-filters">
                                                     <div class="relative flex-1">
                                                         <input type="text"
+                                                               name="q"
                                                                placeholder="Search CFA reference..."
-                                                               class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                                               class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                                               hx-get="{% url 'filter_cfa_agreements_partial' customer.pk %}"
+                                                               hx-trigger="keyup changed delay:500ms"
+                                                               hx-target="#cfa-agreements-list"
+                                                               hx-include="#cfa-filters input, #cfa-filters select"
+                                                               hx-swap="outerHTML">
                                                         <svg class="w-4 h-4 absolute left-3 top-3 text-gray-400"
                                                              fill="none"
                                                              viewBox="0 0 24 24"
@@ -375,15 +414,39 @@
                                                         </svg>
                                                     </div>
                                                     <select class="border border-gray-300 rounded-lg text-sm py-2.5 pl-3 pr-10 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                                            name="status"
                                                             hx-get="{% url 'filter_cfa_agreements_partial' customer.pk %}"
                                                             hx-trigger="change"
                                                             hx-target="#cfa-agreements-list"
+                                                            hx-include="#cfa-filters input, #cfa-filters select"
                                                             hx-swap="outerHTML">
                                                         <option value="">All Statuses</option>
                                                         <option value="ACTIVE">Active</option>
                                                         <option value="PARTIALLY_FULFILLED">Partial</option>
                                                         <option value="FULFILLED">Fulfilled</option>
                                                         <option value="CANCELLED">Cancelled</option>
+                                                    </select>
+                                                    <select class="border border-gray-300 rounded-lg text-sm py-2.5 pl-3 pr-10 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                                            name="sort"
+                                                            hx-get="{% url 'filter_cfa_agreements_partial' customer.pk %}"
+                                                            hx-trigger="change"
+                                                            hx-target="#cfa-agreements-list"
+                                                            hx-include="#cfa-filters input, #cfa-filters select"
+                                                            hx-swap="outerHTML">
+                                                        <option value="created_at">Date Created</option>
+                                                        <option value="status">Status</option>
+                                                        <option value="cfa_agreement_number">Agreement #</option>
+                                                        <option value="amount_allocated">Amount</option>
+                                                    </select>
+                                                    <select class="border border-gray-300 rounded-lg text-sm py-2.5 pl-3 pr-10 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                                            name="direction"
+                                                            hx-get="{% url 'filter_cfa_agreements_partial' customer.pk %}"
+                                                            hx-trigger="change"
+                                                            hx-target="#cfa-agreements-list"
+                                                            hx-include="#cfa-filters input, #cfa-filters select"
+                                                            hx-swap="outerHTML">
+                                                        <option value="desc">Descending</option>
+                                                        <option value="asc">Ascending</option>
                                                     </select>
                                                 </div>
                                                 {% include "customers/partials/cfa_agreements_list.html" with cfas=customer.deposit_account.cfa_agreements.all %}
@@ -587,7 +650,7 @@
                                                     Withdraw Funds
                                                 </a>
                                                 <!-- Create Sale -->
-                                                <a href="{% url 'add_sale' %}?customer={{ customer.pk }}"
+                                                <a href="{% url 'record_sale' %}?customer={{ customer.pk }}"
                                                    class="flex items-center justify-center gap-2 w-full py-3 bg-white text-gray-700 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-all">
                                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />

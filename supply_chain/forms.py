@@ -115,8 +115,7 @@ class PaymentForm(ModelForm):
         remaining_balance = (
             purchase_order.total_amount - purchase_order.total_payment_made
         )
-        print(amount)
-        print(purchase_order)
+
         if amount > remaining_balance:
             raise forms.ValidationError(
                 f"Amount exceeds the remaining balance for this PO. Remaining Bal: {remaining_balance:,.2f}"

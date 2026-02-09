@@ -17,9 +17,8 @@ class PurchaseOrderViewTests(TestCase):
         )
         cls.brand = Brand.objects.create(name="Test Brand", created_by=cls.user)
         cls.supplier = Supplier.objects.create(
-            name="Test Supplier Inc.",
+            company_name="Test Supplier Inc.",
             phone="555-123-4567",
-            email="contact@testsupplier.com",
             created_by=cls.user,
         )
         cls.product1 = Product.objects.create(
@@ -64,7 +63,7 @@ class PurchaseOrderViewTests(TestCase):
 
         cls.add_po_url = reverse("add_po")
         cls.edit_po_url = reverse("edit_po", args=[cls.po.pk])
-        cls.htmx_add_item_url = reverse("htmx_add_po_item")
+        cls.htmx_add_item_url = reverse("po_item_form")
 
     def setUp(self):
         self.client = Client()
@@ -74,13 +73,13 @@ class PurchaseOrderViewTests(TestCase):
         response = self.client.get(self.add_po_url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "supply_chain/po/form.html")
-        self.assertEqual(len(response.context["item_formset"]), 2)
+        self.assertEqual(len(response.context["item_formset"]), 1)
 
     def test_edit_purchase_order_page_get_request(self):
         response = self.client.get(self.edit_po_url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "supply_chain/po/form.html")
-        self.assertEqual(len(response.context["item_formset"]), 4)
+        self.assertEqual(len(response.context["item_formset"]), 3)
         self.assertEqual(response.context["item_formset"][0].instance, self.po_item2)
         self.assertEqual(response.context["item_formset"][1].instance, self.po_item1)
 
@@ -104,6 +103,7 @@ class PurchaseOrderViewTests(TestCase):
     def test_create_purchase_order_with_items_success(self):
         form_data = {
             "supplier": self.supplier.pk,
+            "order_date": "2023-01-01",
             "items-TOTAL_FORMS": "2",
             "items-INITIAL_FORMS": "0",
             "items-MIN_NUM_FORMS": "0",
@@ -126,6 +126,7 @@ class PurchaseOrderViewTests(TestCase):
     def test_update_po_add_and_delete_items(self):
         form_data = {
             "supplier": self.supplier.pk,
+            "order_date": "2023-01-01",
             "items-TOTAL_FORMS": "3",
             "items-INITIAL_FORMS": "2",
             "items-MIN_NUM_FORMS": "0",

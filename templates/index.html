@@ -11,7 +11,7 @@
         <meta name="htmx-config" content='{"scrollIntoViewOnBoost": false}'>
         {% tailwind_css %}
     </head>
-    <body x-data="{ page: 'dashboard', 'loaded': true, 'sidebarToggle': false }"
+    <body x-data="{ page: '{{ request.resolver_match.url_name|default:'dashboard' }}', 'loaded': true, 'sidebarToggle': false }"
           hx-headers='{"x-csrftoken": "{{ csrf_token }}"}'>
         {% include "partials/preloader.html" %}
         <div class="flex h-screen overflow-hidden">
@@ -21,7 +21,7 @@
                 {% include "partials/header.html" %}
                 <div id="message-container"
                      class="fixed top-20 left-0 right-0 flex justify-center z-50"></div>
-                <main class="flex-1">
+                <main id="main_body" class="flex-1 overflow-y-auto">
                     {% block content %}
                     {% endblock content %}
                 </main>

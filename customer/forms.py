@@ -271,6 +271,30 @@ class BoxedSaleForm(BaseSaleItemForm):
         model = BoxedSale
         fields = ["product", "quantity", "price", "agreement_line_item"]
 
+    def __init__(self, *args, **kwargs):
+        self.is_from_deposit = kwargs.pop("is_from_deposit", False)
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        product = cleaned_data.get("product")
+        agreement_line_item = cleaned_data.get("agreement_line_item")
+
+        # If payment is from deposit, agreement_line_item is required
+        if self.is_from_deposit:
+            if not agreement_line_item:
+                self.add_error(
+                    "agreement_line_item",
+                    "Line item is required for sales from deposit."
+                )
+            elif product and agreement_line_item.product != product:
+                self.add_error(
+                    "product",
+                    f"Product must match the line item product ({agreement_line_item.product.modelname})."
+                )
+
+        return cleaned_data
+
 
 class CoupledSaleForm(BaseSaleItemForm):
     class Meta:
@@ -278,6 +302,7 @@ class CoupledSaleForm(BaseSaleItemForm):
         fields = ["transformation_item", "price", "agreement_line_item"]
 
     def __init__(self, *args, **kwargs):
+        self.is_from_deposit = kwargs.pop("is_from_deposit", False)
         super().__init__(*args, **kwargs)
         if self.agreement_line_item:
             self.fields["transformation_item"].queryset = (
@@ -287,6 +312,35 @@ class CoupledSaleForm(BaseSaleItemForm):
                     )
                 )
             )
+        else:
+             self.fields["transformation_item"].queryset = TransformationItem.objects.filter(status=TransformationItem.Status.AVAILABLE)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        transformation_item = cleaned_data.get("transformation_item")
+        agreement_line_item = cleaned_data.get("agreement_line_item")
+
+        # If payment is from deposit, agreement_line_item is required
+        if self.is_from_deposit:
+            if not agreement_line_item:
+                self.add_error(
+                    "agreement_line_item",
+                    "Line item is required for sales from deposit."
+                )
+            elif transformation_item and agreement_line_item:
+                # Check that transformation_item's target_product matches line item's product
+                # The line item's product is a BOXED product, the transformation_item has a COUPLED product
+                # They should share the same base_product
+                line_item_base = agreement_line_item.product.base_product if agreement_line_item.product.base_product else agreement_line_item.product
+                trans_item_base = transformation_item.target_product.base_product if transformation_item.target_product.base_product else transformation_item.target_product
+                
+                if line_item_base != trans_item_base:
+                    self.add_error(
+                        "transformation_item",
+                        f"Transformation item must match the line item product ({agreement_line_item.product.modelname})."
+                    )
+
+        return cleaned_data
 
 
 class NormalSaleForm(forms.ModelForm):
@@ -343,6 +397,75 @@ class NormalSaleForm(forms.ModelForm):
         return super().save(commit)
 
 
+class RecordSaleForm(forms.ModelForm):
+    # Field for non-system customers
+    new_customer_name = forms.CharField(
+        max_length=200,
+        required=False,
+        help_text="Enter full name if customer is not in the list.",
+    )
+
+    class Meta:
+        model = Sale
+        fields = ["customer", "payment_method", "agreement", "new_customer_name"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Make customer optional (since we might use new_customer_name)
+        self.fields["customer"].required = False
+        self.fields["customer"].help_text = (
+            "Select existing or leave blank and fill 'New Customer Name'."
+        )
+        
+        # Agreement is optional, but we might want to filter it based on customer if instance exists?
+        # For now, standard behavior. View will handle errors if Agreement is missing when 'From Deposit' is selected.
+        self.fields["agreement"].queryset = PurchaseAgreement.objects.none()
+        
+        if 'customer' in self.data:
+            try:
+                customer_id = self.data.get('customer')
+                if customer_id:
+                    self.fields['agreement'].queryset = PurchaseAgreement.objects.filter(account__customer_id=customer_id)
+                else:
+                    self.fields['agreement'].queryset = PurchaseAgreement.objects.none()
+            except (ValueError, TypeError):
+                pass 
+        elif self.instance.pk and self.instance.customer_id:
+             self.fields['agreement'].queryset = self.instance.customer.deposit_account.purchase_agreements.all()
+
+
+    def clean(self):
+        cleaned_data = super().clean()
+        customer = cleaned_data.get("customer")
+        new_name = cleaned_data.get("new_customer_name")
+        payment_method = cleaned_data.get("payment_method")
+        agreement = cleaned_data.get("agreement")
+
+        if not customer and not new_name:
+            raise forms.ValidationError(
+                "You must either select a Customer or enter a New Customer Name."
+            )
+            
+        if payment_method == Sale.PaymentMethod.FROM_DEPOSIT and not agreement:
+            self.add_error('agreement', "Agreement is required when paying from deposit.")
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        # Handle dynamic customer creation
+        new_name = self.cleaned_data.get("new_customer_name")
+        if not self.cleaned_data.get("customer") and new_name:
+            # Create the customer on the fly
+            customer = Customer.objects.create(
+                full_name=new_name,
+                phone="0000000000",  # Default or add phone field to form
+            )
+            self.instance.customer = customer
+
+        return super().save(commit)
+
+
 class AgreementSaleForm(forms.ModelForm):
     class Meta:
         model = Sale
@@ -368,12 +491,27 @@ class AgreementSaleForm(forms.ModelForm):
             self.fields["payment_method"].initial = Sale.PaymentMethod.FROM_DEPOSIT
             self.fields["payment_method"].disabled = True
 
-
 # FormSets
+from django.forms import BaseInlineFormSet
+
+
+class BaseSaleItemFormSet(BaseInlineFormSet):
+    """Base formset that passes is_from_deposit to each form."""
+    
+    def __init__(self, *args, **kwargs):
+        self.is_from_deposit = kwargs.pop("is_from_deposit", False)
+        super().__init__(*args, **kwargs)
+
+    def get_form_kwargs(self, index):
+        kwargs = super().get_form_kwargs(index)
+        kwargs["is_from_deposit"] = self.is_from_deposit
+        return kwargs
+
+
 BoxedSaleFormSet = inlineformset_factory(
-    Sale, BoxedSale, form=BoxedSaleForm, extra=1, can_delete=True
+    Sale, BoxedSale, form=BoxedSaleForm, formset=BaseSaleItemFormSet, extra=1, can_delete=True
 )
 
 CoupledSaleFormSet = inlineformset_factory(
-    Sale, CoupledSale, form=CoupledSaleForm, extra=1, can_delete=True
+    Sale, CoupledSale, form=CoupledSaleForm, formset=BaseSaleItemFormSet, extra=1, can_delete=True
 )

@@ -1,57 +1,133 @@
 {% extends "index.html" %}
-{% load static %}
+{% load static humanize %}
 {% block content %}
     {% include "partials/spinner.html" with id="body_spinner" %}
     <div class="flex h-full flex-col" id="main_body">
         {% block header %}
-            <div class="h-16 flex items-center justify-between px-4">
-                {% include "partials/table_filter.html" with view_name="All Products" %}
+            <div class="h-16 flex items-center justify-between px-6 gap-4 bg-white border-b border-gray-200">
+                <div class="flex items-center gap-4 flex-1">
+                    <!-- Search Bar -->
+                    <div class="relative w-full max-w-lg">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                            <svg class="w-4 h-4 text-gray-400"
+                                 aria-hidden="true"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 fill="none"
+                                 viewBox="0 0 20 20">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
+                            </svg>
+                        </div>
+                        <input type="search"
+                               name="q"
+                               value="{{ search_query|default:'' }}"
+                               class="block w-full py-2.5 pl-10 pr-4 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all placeholder:text-gray-400 focus:bg-white"
+                               placeholder="Search products..."
+                               hx-get="{% url 'products' %}"
+                               hx-target="#table_container"
+                               hx-indicator="#body_spinner"
+                               hx-push-url="true"
+                               hx-trigger="keyup changed delay:300ms, search">
+                    </div>
+                </div>
                 <a href="{% url 'add_product' %}"
                    hx-boost="true"
                    hx-target="#main_body"
                    hx-indicator="#body_spinner"
-                   class="px-3 py-2 text-sm font-medium text-center inline-flex items-center text-white bg-brand-500 rounded-md hover:bg-blue-600 focus:ring-1 focus:outline-none focus:ring-blue-200">
+                   class="px-4 py-2.5 text-sm font-medium text-center inline-flex items-center text-white bg-brand-600 rounded-lg hover:bg-brand-700 focus:ring-4 focus:outline-none focus:ring-brand-300 transition-all shadow-md hover:shadow-lg whitespace-nowrap">
                     <svg xmlns="http://www.w3.org/2000/svg"
                          viewBox="0 0 20 20"
                          fill="currentColor"
-                         class="size-5">
+                         class="w-4 h-4 mr-2">
                         <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
                     </svg>
-                    New
+                    New Product
                 </a>
             </div>
         {% endblock header %}
         {% block body %}
             <div id="table_container"
-                 class="relative flex flex-col h-[calc(100vh-8rem)]">
+                 class="relative flex flex-col h-[calc(100vh-8rem)] bg-gray-50/50">
                 <div class="flex-1 overflow-y-auto pb-25">
                     <table class="w-full text-sm text-left text-gray-500">
-                        <thead class="text-xs text-gray-500 font-normal uppercase bg-gray-50 sticky top-0 z-10">
-                            <tr class="border-t border-b">
-                                <th scope="col" class="px-6 py-3">SKU</th>
-                                <th scope="col" class="px-6 py-3">Brand</th>
-                                <th scope="col" class="px-6 py-3">Category</th>
-                                <th scope="col" class="px-6 py-3">Created at</th>
+                        <thead class="text-xs text-gray-500 font-semibold uppercase bg-gray-50/50 border-b border-gray-200 sticky top-0 z-10 backdrop-blur-sm">
+                            <tr>
+                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider">SKU</th>
+                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                                    hx-get="{% url 'products' %}?sort=modelname&direction={% if sort_field == 'modelname' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
+                                    hx-target="#table_container"
+                                    hx-indicator="#body_spinner"
+                                    hx-push-url="true">
+                                    <div class="flex items-center gap-1">
+                                        Brand/Model
+                                        {% if sort_field == 'modelname' %}
+                                            {% if direction == 'asc' %}
+                                                <i class="fa-solid fa-sort-up"></i>
+                                            {% else %}
+                                                <i class="fa-solid fa-sort-down"></i>
+                                            {% endif %}
+                                        {% else %}
+                                            <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                        {% endif %}
+                                    </div>
+                                </th>
+                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Category</th>
+                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Cost Price</th>
+                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Sales Price</th>
+                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Stock</th>
+                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider">Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="text-sm text-black font-light" id="tbody">
+                        <tbody class="text-sm font-light divide-y divide-gray-100" id="tbody">
                             {% if products %}
                                 {% for product in products %}
-                                    <tr class="bg-white border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                                        hx-get="{{ product.get_absolute_url }}"
-                                        hx-target="#main_body"
-                                        hx-indicator="#body_spinner"
-                                        hx-push-url="true">
-                                        <td class="px-6 py-3 capitalize">{{ product.sku }}</td>
-                                        <td class="px-6 py-3 capitalize">{{ product.brand }}</td>
-                                        <td class="px-6 py-3 capitalize">{{ product.category }}</td>
-                                        <td class="px-6 py-3 capitalize">{{ product.created_at|date:"j M Y" }}</td>
+                                    <tr class="bg-white hover:bg-blue-50/50 transition-colors duration-150 group">
+                                        <td class="px-6 py-4 font-mono text-xs font-medium text-gray-600 group-hover:text-blue-600 transition-colors">{{ product.sku }}</td>
+                                        <td class="px-6 py-4 capitalize">
+                                            <div class="flex flex-col">
+                                                <span class="font-bold text-gray-800">{{ product.brand.name }}</span>
+                                                <span class="text-xs text-gray-500">{{ product.modelname }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 capitalize text-gray-700">{{ product.category }}</td>
+                                        <td class="px-6 py-4 font-mono text-gray-600">NGN{{ product.average_cost_price|floatformat:2|intcomma }}</td>
+                                        <td class="px-6 py-4 font-mono font-medium text-gray-900">NGN{{ product.avg_sale_price|floatformat:2|intcomma }}</td>
+                                        <td class="px-6 py-4">
+                                            {% if product.type_variant == "boxed" %}
+                                                {{ product.stock_on_hand }}
+                                            {% elif product.type_variant == "coupled" %}
+                                                {{ product.total_coupled_available }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center gap-3">
+                                                <a href="{{ product.get_edit_url }}"
+                                                   hx-boost="true"
+                                                   hx-target="#main_body"
+                                                   hx-indicator="#body_spinner"
+                                                   class="font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors">Edit</a>
+                                                {% if product.can_delete %}
+                                                    <button hx-delete="{{ product.get_delete_url }}"
+                                                            hx-confirm="Are you sure you want to delete this product?"
+                                                            class="font-medium text-red-500 hover:text-red-700 hover:underline transition-colors">
+                                                        Delete
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
                                     </tr>
                                 {% endfor %}
                             {% else %}
-                                <tr class="bg-white border-b border-gray-100 hover:bg-gray-50">
-                                    <td colspan="4" class="px-6 py-3 text-center">
-                                        <p>No products available.</p>
+                                <tr class="bg-white border-b border-gray-100">
+                                    <td colspan="7" class="px-6 py-12 text-center text-gray-400">
+                                        <div class="flex flex-col items-center justify-center gap-3">
+                                            <div class="p-3 bg-gray-50 rounded-full">
+                                                <i class="fa-solid fa-box-open text-3xl text-gray-300"></i>
+                                            </div>
+                                            <p class="text-lg font-medium text-gray-500">No products available</p>
+                                            <p class="text-sm">Get started by adding a new product</p>
+                                        </div>
                                     </td>
                                 </tr>
                             {% endif %}
@@ -59,7 +135,7 @@
                     </table>
                 </div>
                 <!-- Pagination -->
-                <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20">
+                <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
                     <div class="flex justify-end">
                         {% include 'partials/pagination.html' with page_obj=products target="table_container" %}
                     </div>

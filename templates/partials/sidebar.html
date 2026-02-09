@@ -32,7 +32,10 @@
                 </h3>
                 <ul class="flex flex-col gap-3 mb-5">
                     <li>
-                        <a href="{% url 'sales' %}"
+                        <a href="{% url 'dashboard' %}"
+                           hx-boost="true"
+                           hx-target="#main_body"
+                           hx-indicator="#body_spinner"
                            class="menu-item group"
                            :class="page === 'dashboard' ? 'menu-item-active' : 'menu-item-inactive'">
                             <!-- Icon: Dashboard/Home -->
@@ -114,8 +117,8 @@
                                        hx-target="#main_body"
                                        hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
-                                       :class="page === 'serial_items' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
-                                       @click="page = 'serial_items'">Serial Inventory</a>
+                                       :class="page === 'serialized_inventories' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'serialized_inventories'">Serial Inventory</a>
                                 </li>
                                 <li>
                                     <a href="{% url 'inventory_transactions' %}"
@@ -132,8 +135,8 @@
                                        hx-target="#main_body"
                                        hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
-                                       :class="page === 'inventory_transformations' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
-                                       @click="page = 'inventory_transformations'">Transformations</a>
+                                       :class="page === 'transformations' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'transformations'">Transformations</a>
                                 </li>
                             </ul>
                         </div>
@@ -328,8 +331,8 @@
                                        hx-target="#main_body"
                                        hx-indicator="#body_spinner"
                                        class="menu-dropdown-item group text-xs"
-                                       :class="page === 'sales_list' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
-                                       @click="page = 'sales_list'">All Sales</a>
+                                       :class="page === 'sales' ? 'menu-dropdown-item-active' : 'menu-dropdown-item-inactive'"
+                                       @click="page = 'sales'">All Sales</a>
                                 </li>
                             </ul>
                         </div>

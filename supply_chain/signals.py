@@ -42,7 +42,7 @@ def update_inventory(sender, instance, created, **kwargs):
 
         inventory.quantity = new_qty
         inventory.weighted_average_cost = wac
-        inventory.save(update_fields=["quantity", "weighted_average_cost"])
+        inventory.save(update_fields=["quantity", "weighted_average_cost", "updated_at"])
 
 
 @receiver(post_save, sender=GoodsReceiptItem)

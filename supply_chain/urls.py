@@ -7,11 +7,6 @@ urlpatterns = [
     path("suppliers/add/", manage_supplier, name="add_supplier"),
     path("suppliers/edit/<uuid:pk>/", manage_supplier, name="edit_supplier"),
     path("suppliers/delete/<uuid:pk>", delete_supplier, name="delete_supplier"),
-    path(
-        "suppliers/supplier_detail/<uuid:pk>", supplier_detail, name="supplier_detail"
-    ),
-    path("suppliers/overview/<uuid:pk>/", supplier_overview, name="overview"),
-    path("suppliers/transaction/<uuid:pk>/", supplier_transaction, name="transaction"),
     # =============== PURCHASE ORDER (PO) VIEWS ===============
     path("po/", purchases, name="purchases"),
     path("po/add/", manage_purchases, name="add_po"),

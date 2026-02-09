@@ -55,24 +55,8 @@ class Supplier(models.Model):
         return reverse("suppliers")
 
     @property
-    def get_absolute_url(self):
-        return reverse("supplier_detail", kwargs={"pk": self.pk})
-
-    @property
     def get_edit_url(self):
         return reverse("edit_supplier", kwargs={"pk": self.pk})
-
-    @property
-    def get_delete_url(self):
-        return reverse("delete_supplier", kwargs={"pk": self.pk})
-
-    @property
-    def overview_url(self):
-        return reverse("overview", kwargs={"pk": self.pk})
-
-    @property
-    def transaction_url(self):
-        return reverse("transaction", kwargs={"pk": self.pk})
 
     @property
     def can_delete(self):
@@ -90,38 +74,7 @@ class Supplier(models.Model):
         )
         return total_value
 
-    @property
-    def all_logs(self):
-        base_qs = Q(
-            content_type=ContentType.objects.get_for_model(self),
-            object_id=self.pk,
-        )
 
-        related_qs = Q()
-        for related in self._meta.related_objects:
-            related_model = related.related_model
-            related_model_content_type = ContentType.objects.get_for_model(
-                related_model
-            )
-            try:
-                related_manager = getattr(self, related.get_accessor_name())
-                if not related.one_to_one:
-                    related_ids = related_manager.values_list("pk", flat=True)
-                    string_ids = [str(pk) for pk in related_ids]
-                    if string_ids:
-                        related_qs |= Q(
-                            content_type=related_model_content_type,
-                            object_id__in=string_ids,
-                        )
-                else:
-                    related_qs |= Q(
-                        content_type=related_model_content_type,
-                        object_id=related_manager.pk,
-                    )
-            except related.related_model.DoesNotExist:
-                pass
-
-        return CRUDEvent.objects.filter(base_qs | related_qs)
 
 
 class PurchaseOrder(models.Model):

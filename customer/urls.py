@@ -26,9 +26,13 @@ urlpatterns = [
     ),
     path("sales", sales, name="sales"),
     path("sale_detail/<uuid:pk>/", sale_detail, name="sale_detail"),
-    path("add_sale", manage_sales, name="add_sale"),
-    # path("void_sale/<uuid:pk>/", void_sale, name="void_sale"),
-    # path("purchase_agreements", purchase_agreements, name="purchase_agreements"),
+    path("record_sale", record_sale, name="record_sale"),
+    path("search/customers/", search_customers, name="search_customers"),
+    path("search/products/", search_products, name="search_products"),
+    path("search/transformation_items/", search_transformation_items, name="search_transformation_items"),
+    path("ajax/load-customer-agreements/", load_customer_agreements, name="ajax_load_customer_agreements"),
+    path("ajax/load-agreement-line-items/", load_agreement_line_items, name="ajax_load_agreement_line_items"),
+
     path(
         "add_purchase_agreement",
         manage_purchase_agreements,
@@ -64,7 +68,7 @@ urlpatterns = [
         cancel_cfa_agreement,
         name="cancel_cfa_agreement",
     ),
-    # path("cfa_fulfillments", cfa_fulfillments, name="cfa_fulfillments"),
+
     path(
         "add_cfa_fulfillment",
         manage_cfa_fulfillments,

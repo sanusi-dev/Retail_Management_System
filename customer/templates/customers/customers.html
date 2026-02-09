@@ -4,6 +4,7 @@
 {% block content %}
    {% include "partials/spinner.html" with id="body_spinner" %}
    <div class="flex h-full flex-col" id="main_body">
+
       {% block header %}
          <div class="h-16 flex items-center justify-between px-6 gap-4 bg-white border-b border-gray-200">
             <!-- Left Side: Search Bar -->
@@ -22,7 +23,7 @@
                   <input type="search"
                          name="q"
                          value="{{ search_query|default:'' }}"
-                         class="block w-full py-2.5 pl-10 pr-4 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all placeholder:text-gray-400"
+                         class="block w-full py-2.5 pl-10 pr-4 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all placeholder:text-gray-400 focus:bg-white"
                          placeholder="Search by name, phone, or ID..."
                          hx-get="{% url 'customers' %}"
                          hx-target="#table_container"
@@ -36,7 +37,7 @@
                hx-boost="true"
                hx-target="#main_body"
                hx-indicator="#body_spinner"
-               class="px-4 py-2.5 text-sm font-medium text-center inline-flex items-center text-white bg-brand-500 rounded-lg hover:bg-brand-600 focus:ring-2 focus:outline-none focus:ring-brand-300 transition-all shadow-sm hover:shadow whitespace-nowrap">
+               class="px-4 py-2.5 text-sm font-medium text-center inline-flex items-center text-white bg-brand-600 rounded-lg hover:bg-brand-700 focus:ring-4 focus:outline-none focus:ring-brand-300 transition-all shadow-md hover:shadow-lg whitespace-nowrap">
                <svg xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 20"
                     fill="currentColor"
@@ -49,38 +50,106 @@
       {% endblock header %}
       {% block body %}
          <div id="table_container"
-              class="relative flex flex-col h-[calc(100vh-8rem)]">
+              class="relative flex flex-col h-[calc(100vh-8rem)] bg-gray-50/50">
             <div class="flex-1 overflow-y-auto pb-25">
                <table class="w-full text-sm text-left text-gray-500">
-                  <thead class="text-xs text-gray-500 font-normal uppercase bg-gray-50 sticky top-0 z-10 shadow-sm">
-                     <tr class="border-t border-b">
-                        <th scope="col" class="px-6 py-3 font-medium">ID</th>
-                        <th scope="col" class="px-6 py-3 font-medium">Full Name</th>
-                        <th scope="col" class="px-6 py-3 font-medium">Phone</th>
-                        <th scope="col" class="px-6 py-3 text-right font-medium">Total Balance</th>
-                        <th scope="col" class="px-6 py-3 text-right font-medium text-amber-700">Allocated</th>
-                        <th scope="col" class="px-6 py-3 text-right font-medium text-green-700">Available Cash</th>
+                  <thead class="text-xs text-gray-500 font-semibold uppercase bg-gray-50/50 border-b border-gray-200 sticky top-0 z-10 backdrop-blur-sm">
+                     <tr>
+                        <th scope="col" class="px-6 py-4 font-semibold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                            hx-get="{% url 'customers' %}?sort=customer_id&direction={% if sort_field == 'customer_id' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
+                            hx-target="#table_container"
+                            hx-indicator="#body_spinner"
+                            hx-push-url="true">
+                           <div class="flex items-center gap-1">
+                               ID
+                               {% if sort_field == 'customer_id' %}
+                                   {% if direction == 'asc' %}
+                                       <i class="fa-solid fa-sort-up"></i>
+                                   {% else %}
+                                       <i class="fa-solid fa-sort-down"></i>
+                                   {% endif %}
+                               {% else %}
+                                   <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                               {% endif %}
+                           </div>
+                        </th>
+                        <th scope="col" class="px-6 py-4 font-semibold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                            hx-get="{% url 'customers' %}?sort=full_name&direction={% if sort_field == 'full_name' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
+                            hx-target="#table_container"
+                            hx-indicator="#body_spinner"
+                            hx-push-url="true">
+                           <div class="flex items-center gap-1">
+                               Full Name
+                               {% if sort_field == 'full_name' %}
+                                   {% if direction == 'asc' %}
+                                       <i class="fa-solid fa-sort-up"></i>
+                                   {% else %}
+                                       <i class="fa-solid fa-sort-down"></i>
+                                   {% endif %}
+                               {% else %}
+                                   <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                               {% endif %}
+                           </div>
+                        </th>
+                        <th scope="col" class="px-6 py-4 font-semibold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                            hx-get="{% url 'customers' %}?sort=phone&direction={% if sort_field == 'phone' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
+                            hx-target="#table_container"
+                            hx-indicator="#body_spinner"
+                            hx-push-url="true">
+                           <div class="flex items-center gap-1">
+                               Phone
+                               {% if sort_field == 'phone' %}
+                                   {% if direction == 'asc' %}
+                                       <i class="fa-solid fa-sort-up"></i>
+                                   {% else %}
+                                       <i class="fa-solid fa-sort-down"></i>
+                                   {% endif %}
+                               {% else %}
+                                   <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                               {% endif %}
+                           </div>
+                        </th>
+                        <th scope="col" class="px-6 py-4 text-right font-semibold tracking-wider text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors"
+                            hx-get="{% url 'customers' %}?sort=deposit_account__cached_total_balance&direction={% if sort_field == 'deposit_account__cached_total_balance' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
+                            hx-target="#table_container"
+                            hx-indicator="#body_spinner"
+                            hx-push-url="true">
+                           <div class="flex items-center justify-end gap-1">
+                               Total Balance
+                               {% if sort_field == 'deposit_account__cached_total_balance' %}
+                                   {% if direction == 'asc' %}
+                                       <i class="fa-solid fa-sort-up"></i>
+                                   {% else %}
+                                       <i class="fa-solid fa-sort-down"></i>
+                                   {% endif %}
+                               {% else %}
+                                   <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                               {% endif %}
+                           </div>
+                        </th>
+                        <th scope="col" class="px-6 py-4 text-right font-semibold tracking-wider text-amber-600">Allocated</th>
+                        <th scope="col" class="px-6 py-4 text-right font-semibold tracking-wider text-emerald-600">Available Cash</th>
                      </tr>
                   </thead>
-                  <tbody class="text-sm text-black font-light" id="tbody">
+                  <tbody class="text-sm font-light divide-y divide-gray-100" id="tbody">
                      {% if customers %}
                         {% for customer in customers %}
-                           <tr class="bg-white border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors"
+                           <tr class="bg-white hover:bg-blue-50/50 cursor-pointer transition-colors duration-150 group"
                                hx-get="{% url 'customer_detail' customer.pk %}"
                                hx-target="#main_body"
                                hx-indicator="#body_spinner"
                                hx-push-url="true">
-                              <td class="px-6 py-3 whitespace-nowrap font-mono text-gray-500 text-xs">{{ customer.customer_number }}</td>
-                              <td class="px-6 py-3 capitalize font-medium text-gray-800">{{ customer.full_name|upper }}</td>
-                              <td class="px-6 py-3 whitespace-nowrap">{{ customer.phone|default:"N/A" }}</td>
-                              <td class="px-6 py-3 text-right font-mono text-gray-600">
+                              <td class="px-6 py-4 whitespace-nowrap font-mono text-gray-500 text-xs group-hover:text-blue-600 transition-colors">{{ customer.customer_number }}</td>
+                              <td class="px-6 py-4 capitalize font-medium text-gray-900">{{ customer.full_name|upper }}</td>
+                              <td class="px-6 py-4 whitespace-nowrap text-gray-600">{{ customer.phone|default:"N/A" }}</td>
+                              <td class="px-6 py-4 text-right font-mono text-gray-700 font-medium">
                                  {% if customer.deposit_account %}
                                     NGN {{ customer.deposit_account.total_balance|floatformat:2|intcomma }}
                                  {% else %}
                                     -
                                  {% endif %}
                               </td>
-                              <td class="px-6 py-3 text-right font-mono text-amber-600 font-medium">
+                              <td class="px-6 py-4 text-right font-mono text-amber-600 font-medium">
                                  {% if customer.deposit_account %}
                                     {% if customer.deposit_account.allocated_balance > 0 %}
                                        NGN {{ customer.deposit_account.allocated_balance|floatformat:2|intcomma }}
@@ -91,7 +160,7 @@
                                     -
                                  {% endif %}
                               </td>
-                              <td class="px-6 py-3 text-right font-mono font-semibold
+                              <td class="px-6 py-4 text-right font-mono font-bold
                                          {% if customer.deposit_account.available_balance > 0 %}
                                             text-emerald-600
                                          {% else %}
@@ -107,13 +176,17 @@
                         {% endfor %}
                      {% else %}
                         <tr class="bg-white border-b border-gray-100">
-                           <td colspan="6" class="px-6 py-8 text-center text-gray-400">
-                              <div class="flex flex-col items-center justify-center gap-2">
-                                 <i class="fa-solid fa-users text-2xl"></i>
+                           <td colspan="6" class="px-6 py-12 text-center text-gray-400">
+                              <div class="flex flex-col items-center justify-center gap-3">
+                                 <div class="p-3 bg-gray-50 rounded-full">
+                                     <i class="fa-solid fa-users text-3xl text-gray-300"></i>
+                                 </div>
                                  {% if search_query %}
-                                    <p>No customers found matching "{{ search_query }}".</p>
+                                    <p class="text-lg font-medium text-gray-500">No customers found matching "{{ search_query }}"</p>
+                                    <p class="text-sm">Try adjusting your search terms</p>
                                  {% else %}
-                                    <p>No customers found.</p>
+                                    <p class="text-lg font-medium text-gray-500">No customers found</p>
+                                    <p class="text-sm">Get started by creating a new customer</p>
                                  {% endif %}
                               </div>
                            </td>
@@ -123,7 +196,7 @@
                </table>
             </div>
             <!-- Pagination Footer -->
-            <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20">
+            <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
                <div class="flex justify-end">
                   {% include 'partials/pagination.html' with page_obj=customers target="table_container" %}
                </div>

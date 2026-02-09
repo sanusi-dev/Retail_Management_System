@@ -4,5 +4,5 @@ from .views import *
 
 
 urlpatterns = [
-    # path('dashboard/', dasboard, name='dashboard'),
+
 ]

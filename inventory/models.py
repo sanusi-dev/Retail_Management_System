@@ -10,6 +10,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from easyaudit.models import CRUDEvent
 from django.utils import timezone
 from utils.utils import create_inventory_transaction
+from decimal import Decimal
 
 
 class Brand(models.Model):
@@ -115,30 +116,45 @@ class Product(models.Model):
         return reverse("delete_product", kwargs={"pk": self.pk})
 
     @property
-    def status_change_url(self):
-        return reverse("product_status_change", kwargs={"pk": self.pk})
-
-    @property
-    def overview_url(self):
-        return reverse("product_overview", kwargs={"pk": self.pk})
-
-    @property
-    def transaction_url(self):
-        return reverse("product_transaction", kwargs={"pk": self.pk})
-
-    @property
     def average_cost_price(self):
-        aggregation = self.po_items.aggregate(
-            total_sum=Sum("unit_price_at_order"), total_count=Count("pk")
+        avg_cost_price = getattr(self.inventory, "weighted_average_cost", 0.00)
+        return f"{avg_cost_price:,.0f}"
+
+    @property
+    def avg_sale_price(self):
+        from customer.models import CoupledSale, Sale
+
+        # Get coupled sales
+        coupled_sales = CoupledSale.objects.filter(
+            transformation_item__source_product=self,  # Use pk (primary key)
+            sale__status=Sale.Status.ACTIVE,
+        ).aggregate(
+            total_revenue=Coalesce(Sum("price"), Value(0), output_field=DecimalField()),
+            total_quantity=Count("coupled_sale_id"),  # Each coupled sale = 1 unit
         )
 
-        total_sum = aggregation["total_sum"] or 0
-        total_count = aggregation["total_count"] or 0
+        # Get boxed sales
+        boxed_sales = self.boxed_sales.filter(
+            sale__status=Sale.Status.ACTIVE
+        ).aggregate(
+            total_revenue=Coalesce(
+                Sum(F("price") * F("quantity")), Value(0), output_field=DecimalField()
+            ),
+            total_quantity=Coalesce(Sum("quantity"), Value(0)),
+        )
 
-        if total_count > 0:
-            avg = total_sum / total_count
-            return f"{avg:,.2f}"
-        return "0.00"
+        # Combine totals
+        total_revenue = (coupled_sales["total_revenue"] or Decimal("0.00")) + (
+            boxed_sales["total_revenue"] or Decimal("0.00")
+        )
+        total_quantity = (coupled_sales["total_quantity"] or 0) + (
+            boxed_sales["total_quantity"] or 0
+        )
+
+        if total_quantity > 0:
+            return total_revenue / total_quantity
+
+        return Decimal("0.00")
 
     @property
     def total_remaining_qty(self):
@@ -147,6 +163,15 @@ class Product(models.Model):
         ).annotate(remaining_calc=F("ordered_quantity") - F("total_received"))
         remaining_calc = annotated.aggregate(total=Sum("remaining_calc"))["total"]
         return remaining_calc or 0
+
+    @property
+    def total_coupled_qty(self):
+        return self.transform_to.count()
+
+    @property
+    def total_coupled_available(self):
+        # status 'available' is defined in TransformationItem.Status.AVAILABLE which is 'available'
+        return self.transform_to.filter(status="available").count()
 
     @property
     def can_delete(self):
@@ -159,39 +184,6 @@ class Product(models.Model):
     @property
     def stock_on_hand(self):
         return self.inventory.quantity or 0
-
-    @property
-    def all_logs(self):
-        base_qs = Q(
-            content_type=ContentType.objects.get_for_model(self),
-            object_id=self.pk,
-        )
-
-        related_qs = Q()
-        for related in self._meta.related_objects:
-            related_model = related.related_model
-            related_model_content_type = ContentType.objects.get_for_model(
-                related_model
-            )
-            try:
-                related_manager = getattr(self, related.get_accessor_name())
-                if not related.one_to_one:
-                    related_ids = related_manager.values_list("pk", flat=True)
-                    string_ids = [str(pk) for pk in related_ids]
-                    if string_ids:
-                        related_qs |= Q(
-                            content_type=related_model_content_type,
-                            object_id__in=string_ids,
-                        )
-                else:
-                    related_qs |= Q(
-                        content_type=related_model_content_type,
-                        object_id=related_manager.pk,
-                    )
-            except related.related_model.DoesNotExist:
-                pass
-
-        return CRUDEvent.objects.filter(base_qs | related_qs)
 
     def save(self, *args, **kwargs):
 

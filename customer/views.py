@@ -4,6 +4,9 @@ from render_block import render_block_to_string
 from django.urls import reverse
 from django.core.paginator import Paginator
 from django.http import HttpResponse
+from django_htmx.http import HttpResponseClientRedirect
+from django.db.models import Sum, F, DecimalField, Value, Q
+from django.db.models.functions import Coalesce
 from .models import (
     Customer,
     Transaction,
@@ -13,8 +16,7 @@ from .models import (
     CfaAgreement,
     CfaFulfillment,
     Sale,
-    CoupledSale,
-    BoxedSale,
+    s,
 )
 from .forms import (
     CustomerForm,
@@ -24,11 +26,14 @@ from .forms import (
     PurchaseAgreementLineItemFormSet,
     CfaAgreementForm,
     CfaFulfillmentForm,
+    CfaFulfillmentForm,
     NormalSaleForm,
+    RecordSaleForm,
     AgreementSaleForm,
     BoxedSaleFormSet,
     CoupledSaleFormSet,
 )
+from inventory.models import Product, TransformationItem
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.template.loader import render_to_string
@@ -38,53 +43,6 @@ from django.db.models.functions import Coalesce
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-# def customers(request):
-#     search_query = request.GET.get("q", "")
-#     sort_by = request.GET.get("sort", "name")
-#     order = request.GET.get("order", "asc")
-
-#     customers = Customer.objects.select_related("deposit_account")
-
-#     if search_query:
-#         customers = customers.filter(
-#             Q(full_name__icontains=search_query)
-#             | Q(phone__icontains=search_query)
-#             | Q(customer_number__icontains=search_query)
-#         )
-
-#     sort_fields = {
-#         "name": "full_name",
-#         "phone": "phone",
-#         "customer_number": "customer_number",
-#         "total_balance": "deposit_account__cached_total_balance",
-#         "allocated_balance": "deposit_account__cached_allocated_balance",
-#         "available_balance": "deposit_account__cached_available_balance",
-#     }
-
-#     sort_field = sort_fields.get(sort_by, "full_name")
-
-#     if order == "desc":
-#         sort_field = f"-{sort_field}"
-
-#     customers = customers.order_by(sort_field)
-
-#     # Pagination
-#     paginator = Paginator(customers, 50)
-#     page_number = request.GET.get("page", 1)
-#     customers_page = paginator.get_page(page_number)
-
-#     return render(
-#         request,
-#         "customers/customers.html",
-#         {
-#             "customers": customers_page,
-#             "search_query": search_query,
-#             "current_sort": sort_by,
-#             "current_order": order,
-#         },
-#     )
 
 
 def customers(request):
@@ -100,13 +58,36 @@ def customers(request):
             | Q(customer_id__icontains=search_query)
         )
 
+    # Sorting
+    sort_field = request.GET.get("sort", "deposit_account__cached_total_balance")
+    direction = request.GET.get("direction", "desc")
+    allowed_sort_fields = [
+        "full_name",
+        "deposit_account__cached_total_balance",
+        "phone",
+        "customer_id",
+    ]
+
+    if direction == "desc":
+        order_by_field = f"-{sort_field}"
+    else:
+        order_by_field = sort_field
+
+    if sort_field in allowed_sort_fields:
+        customer_list = customer_list.order_by(order_by_field)
+
     # Pagination
     PAGE_SIZE = 100
     paginator = Paginator(customer_list, PAGE_SIZE)
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
-    context = {"customers": page_obj, "search_query": search_query}
+    context = {
+        "customers": page_obj,
+        "search_query": search_query,
+        "sort_field": sort_field,
+        "direction": direction,
+    }
 
     if request.htmx:
         if "page" in request.GET or "q" in request.GET:
@@ -123,287 +104,6 @@ def customers(request):
             return HttpResponse(customer_list)
 
     return render(request, "customers/customers.html", context)
-
-
-# def customers(request):
-#     PAGE_SIZE = 100
-#     page_number = request.GET.get("page", 1)
-#     customer_list = Customer.objects.all()
-#     paginator = Paginator(customer_list, PAGE_SIZE)
-#     page_obj = paginator.get_page(page_number)
-#     context = {"customers": page_obj}
-
-#     if request.htmx:
-#         if request.GET.get("page"):
-#             customer_list = render_block_to_string(
-#                 "customers/customers.html",
-#                 "body",
-#                 context,
-#             )
-#             return HttpResponse(customer_list)
-#         else:
-#             customer_list = render_block_to_string(
-#                 "customers/customers.html", "content", context
-#             )
-#             return HttpResponse(customer_list)
-
-#     return render(request, "customers/customers.html", context)
-
-
-# @require_GET
-# def customer_search_query(request):
-#     query = request.GET.get("q", "")
-#     customer = get_object_or_404(Customer, pk=pk)
-#     agreements = customer.deposit_account.purchase_agreements.all()
-
-#     status_filter = request.GET.get("status")
-#     if status_filter:
-#         agreements = agreements.filter(status=status_filter)
-
-#     agreements = agreements.order_by("-created_at")
-
-#     context = {
-#         "agreements": agreements,
-#     }
-
-#     return render(request, "customers/partials/purchase_agreements_list.html", context)
-
-
-# def customer_detail(request, pk):
-#     PAGE_SIZE = 50
-#     page_number = request.GET.get("page", 1)
-#     customer = get_object_or_404(Customer, pk=pk)
-#     customer_list = Customer.objects.all().order_by("created_at")
-#     paginator = Paginator(customer_list, PAGE_SIZE)
-#     page_obj = paginator.get_page(page_number)
-#     context = {
-#         "customer": customer,
-#         "customer_list": page_obj,
-#     }
-#     if request.htmx:
-#         if request.htmx.target == "main_content":
-#             html = render_block_to_string(
-#                 "customers/customer_detail.html",
-#                 "main_content",
-#                 {"customer": customer},
-#                 request=request,
-#             )
-#             return HttpResponse(html)
-
-#         elif request.htmx.target == "main_body":
-#             html = render_block_to_string(
-#                 "customers/customer_detail.html",
-#                 "content",
-#                 context,
-#                 request=request,
-#             )
-#             return HttpResponse(html)
-
-#         else:
-#             html = render_block_to_string(
-#                 "customers/customer_detail.html",
-#                 "side_bar_list",
-#                 context,
-#                 request=request,
-#             )
-#             return HttpResponse(html)
-#     else:
-#         return render(request, "customers/customer_detail.html", context)
-
-# views.py
-
-
-# def customer_detail(request, pk):
-#     customer = get_object_or_404(Customer, pk=pk)
-#     customer_list = Customer.objects.select_related("deposit_account").order_by(
-#         "-deposit_account__cached_total_balance"
-#     )
-
-#     # Pagination
-#     PAGE_SIZE = 50
-#     page_number = request.GET.get("page", 1)
-#     paginator = Paginator(customer_list, PAGE_SIZE)
-#     page_obj = paginator.get_page(page_number)
-
-#     # --- NEW LOGIC START: Calculate Product Summary ---
-#     product_summary = {}
-
-#     # Get all line items for this customer's active agreements
-#     # We exclude Cancelled agreements and Voided line items
-#     line_items = (
-#         PurchaseAgreementLineItem.objects.filter(
-#             purchase_agreement__account__customer=customer, is_current_version=True
-#         )
-#         .exclude(purchase_agreement__status=PurchaseAgreement.Status.CANCELLED)
-#         .exclude(status=PurchaseAgreementLineItem.Status.VOIDED)
-#         .select_related("product")
-#     )
-
-#     for item in line_items:
-#         # Get Model Name (handle potential None)
-#         model_name = (
-#             item.product.modelname.upper()
-#             if item.product and item.product.modelname
-#             else "UNKNOWN PRODUCT"
-#         )
-
-#         if model_name not in product_summary:
-#             product_summary[model_name] = {
-#                 "ordered": 0,
-#                 "fulfilled": 0,
-#                 "unfulfilled": 0,
-#             }
-
-#         # Calculate quantities
-#         ordered = item.quantity_ordered
-#         # Note: This property hits the DB. For high volume, consider prefetching or annotating.
-#         fulfilled = item.quantity_fulfilled_accross_all_versions
-
-#         product_summary[model_name]["ordered"] += ordered
-#         product_summary[model_name]["fulfilled"] += fulfilled
-
-#     # Final pass to calculate 'unfulfilled' based on the sums
-#     for model, data in product_summary.items():
-#         data["unfulfilled"] = max(0, data["ordered"] - data["fulfilled"])
-
-#         # Calculate percentage for the progress bar (avoid division by zero)
-#         if data["ordered"] > 0:
-#             data["percent"] = int((data["fulfilled"] / data["ordered"]) * 100)
-#         else:
-#             data["percent"] = 0
-
-#     # --- NEW LOGIC END ---
-
-#     context = {
-#         "customer": customer,
-#         "customer_list": page_obj,
-#         "product_summary": product_summary,  # Add this to context
-#     }
-
-#     if request.htmx:
-#         if request.htmx.target == "main_content":
-#             html = render_block_to_string(
-#                 "customers/customer_detail.html",
-#                 "main_content",
-#                 # Pass the context (including product_summary) instead of creating a new dict
-#                 context,
-#                 request=request,
-#             )
-#             return HttpResponse(html)
-
-#         elif request.htmx.target == "main_body":
-#             html = render_block_to_string(
-#                 "customers/customer_detail.html",
-#                 "content",
-#                 context,
-#                 request=request,
-#             )
-#             return HttpResponse(html)
-
-#         else:
-#             html = render_block_to_string(
-#                 "customers/customer_detail.html",
-#                 "side_bar_list",
-#                 context,
-#                 request=request,
-#             )
-#             return HttpResponse(html)
-#     else:
-#         return render(request, "customers/customer_detail.html", context)
-
-
-# def customer_detail(request, pk):
-#     PAGE_SIZE = 50
-#     page_number = request.GET.get("page", 1)
-#     customer = get_object_or_404(Customer, pk=pk)
-#     customer_list = Customer.objects.all().order_by("created_at")
-#     paginator = Paginator(customer_list, PAGE_SIZE)
-#     page_obj = paginator.get_page(page_number)
-
-#     # Product Summary Logic
-#     product_summary = {}
-#     line_items = (
-#         PurchaseAgreementLineItem.objects.filter(
-#             purchase_agreement__account__customer=customer, is_current_version=True
-#         )
-#         .exclude(purchase_agreement__status=PurchaseAgreement.Status.CANCELLED)
-#         .exclude(status=PurchaseAgreementLineItem.Status.VOIDED)
-#         .select_related("product")
-#     )
-
-#     for item in line_items:
-#         model_name = (
-#             item.product.modelname.upper()
-#             if item.product and item.product.modelname
-#             else "UNKNOWN PRODUCT"
-#         )
-
-#         if model_name not in product_summary:
-#             product_summary[model_name] = {
-#                 "ordered": 0,
-#                 "fulfilled": 0,
-#                 "unfulfilled": 0,
-#             }
-
-#         ordered = item.quantity_ordered
-#         fulfilled = item.quantity_fulfilled_accross_all_versions
-
-#         product_summary[model_name]["ordered"] += ordered
-#         product_summary[model_name]["fulfilled"] += fulfilled
-
-#     for model, data in product_summary.items():
-#         data["unfulfilled"] = max(0, data["ordered"] - data["fulfilled"])
-#         if data["ordered"] > 0:
-#             data["percent"] = int((data["fulfilled"] / data["ordered"]) * 100)
-#         else:
-#             data["percent"] = 0
-
-#     context = {
-#         "customer": customer,
-#         "customer_list": page_obj,
-#         "product_summary": product_summary,
-#     }
-
-#     if request.htmx:
-#         if request.htmx.target == "main_content":
-#             html = render_block_to_string(
-#                 "customers/customer_detail.html",
-#                 "main_content",
-#                 context,
-#                 request=request,
-#             )
-#             return HttpResponse(html)
-
-#         elif request.htmx.target == "main_body":
-#             # Changed from "content" to existing block name
-#             html = render_block_to_string(
-#                 "customers/customer_detail.html",
-#                 "_content",  # ← Use the actual block name
-#                 context,
-#                 request=request,
-#             )
-#             return HttpResponse(html)
-
-#         elif request.htmx.target == "sidebar_pagination":
-#             html = render_block_to_string(
-#                 "customers/customer_detail.html",
-#                 "side_bar_list",
-#                 context,
-#                 request=request,
-#             )
-#             return HttpResponse(html)
-
-#         else:
-#             # Default fallback
-#             return render(request, "customers/customer_detail.html", context)
-#     else:
-#         return render(request, "customers/customer_detail.html", context)
-
-
-# def customer_detail(request, pk):
-#     customer = get_object_or_404(
-#         Customer.objects.select_related("deposit_account"), pk=pk
-#     )
 
 
 def customer_detail(request, pk):
@@ -445,6 +145,14 @@ def customer_detail(request, pk):
         )
         .order_by("-deposit_account__cached_total_balance")
     )
+
+    search_query = request.GET.get("q", "")
+    if search_query:
+        customer_list = customer_list.filter(
+            Q(full_name__icontains=search_query)
+            | Q(phone__icontains=search_query)
+            | Q(customer_id__icontains=search_query)
+        )
 
     # Pagination
     PAGE_SIZE = 50
@@ -516,6 +224,7 @@ def customer_detail(request, pk):
         "customer": customer,
         "customer_list": page_obj,
         "product_summary": product_summary,
+        "search_query": search_query,
     }
 
     if request.htmx:
@@ -559,10 +268,24 @@ def filter_agreements_partial(request, pk):
     if status_filter:
         agreements = agreements.filter(status=status_filter)
 
-    agreements = agreements.order_by("-created_at")
+    # Sorting
+    sort_field = request.GET.get("sort", "created_at")
+    direction = request.GET.get("direction", "desc")
+    allowed_sort_fields = ["created_at", "status", "purchase_agreement_number"]
+
+    if direction == "desc":
+        order_by_field = f"-{sort_field}"
+    else:
+        order_by_field = sort_field
+
+    if sort_field in allowed_sort_fields:
+        agreements = agreements.order_by(order_by_field)
 
     context = {
         "agreements": agreements,
+        "pk": pk,  # Pass pk for hx-get url construction
+        "sort_field": sort_field,
+        "direction": direction,
     }
 
     return render(request, "customers/partials/purchase_agreements_list.html", context)
@@ -578,10 +301,29 @@ def filter_cfa_agreements_partial(request, pk):
     if status_filter:
         agreements = agreements.filter(status=status_filter)
 
-    agreements = agreements.order_by("-created_at")
+    # Sorting
+    sort_field = request.GET.get("sort", "created_at")
+    direction = request.GET.get("direction", "desc")
+    allowed_sort_fields = [
+        "created_at",
+        "status",
+        "cfa_agreement_number",
+        "amount_allocated",
+    ]
+
+    if direction == "desc":
+        order_by_field = f"-{sort_field}"
+    else:
+        order_by_field = sort_field
+
+    if sort_field in allowed_sort_fields:
+        agreements = agreements.order_by(order_by_field)
 
     context = {
         "cfas": agreements,
+        "pk": pk,
+        "sort_field": sort_field,
+        "direction": direction,
     }
 
     return render(request, "customers/partials/cfa_agreements_list.html", context)
@@ -622,18 +364,53 @@ def manage_customers(request, pk=None):
 
 
 def customer_transactions(request):
-    PAGE_SIZE = 20
+    PAGE_SIZE = 100
     page_number = request.GET.get("page", 1)
     customer_pk = request.GET.get("customer")
-    transaction_list = Transaction.objects.all()
+    search_query = request.GET.get("q", "")
+
+    transaction_list = Transaction.objects.select_related("account__customer").all()
+
     if request.GET.get("customer"):
-        transaction_list = Transaction.objects.filter(account__customer__pk=customer_pk)
+        transaction_list = transaction_list.filter(account__customer__pk=customer_pk)
+
+    if search_query:
+        transaction_list = transaction_list.filter(
+            Q(reference_number__icontains=search_query)
+            | Q(account__customer__full_name__icontains=search_query)
+            | Q(note__icontains=search_query)
+        )
+
+    # Sorting
+    sort_field = request.GET.get("sort", "created_at")
+    direction = request.GET.get("direction", "desc")
+    allowed_sort_fields = [
+        "created_at",
+        "account__customer__full_name",
+        "amount",
+        "transaction_type",
+        "reference_number",
+    ]
+
+    if direction == "desc":
+        order_by_field = f"-{sort_field}"
+    else:
+        order_by_field = sort_field
+
+    if sort_field in allowed_sort_fields:
+        transaction_list = transaction_list.order_by(order_by_field)
+
     paginator = Paginator(transaction_list, PAGE_SIZE)
     page_obj = paginator.get_page(page_number)
-    context = {"transactions": page_obj}
+    context = {
+        "transactions": page_obj,
+        "search_query": search_query,
+        "sort_field": sort_field,
+        "direction": direction,
+    }
 
     if request.htmx:
-        if request.GET.get("page"):
+        if request.GET.get("page") or request.GET.get("q") or request.GET.get("sort"):
             transaction_list = render_block_to_string(
                 "customers/customer_transactions.html",
                 "body",
@@ -1015,18 +792,70 @@ def void_cfa_fulfillment(request, pk):
 
 
 def sales(request):
-    PAGE_SIZE = 20
+    PAGE_SIZE = 100
     page_number = request.GET.get("page", 1)
     customer_pk = request.GET.get("customer")
-    sale_list = Sale.objects.all()
-    if request.GET.get("customer"):
-        sale_list = Sale.objects.filter(customer__pk=customer_pk)
+    search_query = request.GET.get("q", "")
+    sale_list = Sale.objects.annotate(
+        total_boxed=Coalesce(
+            Sum(
+                F("boxed_sales__quantity") * F("boxed_sales__price"),
+                output_field=DecimalField(),
+            ),
+            Value(0, output_field=DecimalField()),
+        ),
+        total_coupled=Coalesce(
+            Sum("coupled_sales__price", output_field=DecimalField()),
+            Value(0, output_field=DecimalField()),
+        ),
+    ).annotate(annotated_total=F("total_boxed") + F("total_coupled"))
+
+    if customer_pk:
+        sale_list = sale_list.filter(customer__pk=customer_pk)
+
+    if search_query:
+        sale_list = sale_list.filter(
+            Q(sale_number__icontains=search_query)
+            | Q(customer__full_name__icontains=search_query)
+            | Q(customer__customer_number__icontains=search_query)
+        )
+
+    # Sorting
+    sort_field = request.GET.get("sort", "sale_date")
+    direction = request.GET.get("direction", "desc")
+    allowed_sort_fields = [
+        "sale_date",
+        "sale_number",
+        "customer__full_name",
+        "payment_method",
+        "status",
+        "sales_total",
+    ]
+
+    if direction == "desc":
+        order_by_field = f"-{sort_field}"
+    else:
+        order_by_field = sort_field
+
+    if sort_field == "sales_total":
+        if direction == "desc":
+            sale_list = sale_list.order_by("-annotated_total")
+        else:
+            sale_list = sale_list.order_by("annotated_total")
+    elif sort_field in allowed_sort_fields:
+        sale_list = sale_list.order_by(order_by_field)
+
     paginator = Paginator(sale_list, PAGE_SIZE)
     page_obj = paginator.get_page(page_number)
-    context = {"sales": page_obj}
+    context = {
+        "sales": page_obj,
+        "search_query": search_query,
+        "sort_field": sort_field,
+        "direction": direction,
+    }
 
     if request.htmx:
-        if request.GET.get("page"):
+        if "page" in request.GET or "q" in request.GET:
             sale_list = render_block_to_string(
                 "customers/sales/sales.html",
                 "body",
@@ -1043,7 +872,7 @@ def sales(request):
 
 
 def sale_detail(request, pk):
-    PAGE_SIZE = 10
+    PAGE_SIZE = 50
     page_number = request.GET.get("page", 1)
 
     sale = get_object_or_404(
@@ -1056,12 +885,22 @@ def sale_detail(request, pk):
     )
 
     all_sales = Sale.objects.select_related("customer").order_by("-sale_date")
+
+    search_query = request.GET.get("q", "")
+    if search_query:
+        all_sales = all_sales.filter(
+            Q(sale_number__icontains=search_query)
+            | Q(customer__full_name__icontains=search_query)
+            | Q(customer__customer_id__icontains=search_query)
+        )
+
     paginator = Paginator(all_sales, PAGE_SIZE)
     page_obj = paginator.get_page(page_number)
 
     context = {
         "sale": sale,
         "sale_list": page_obj,
+        "search_query": search_query,
     }
 
     if request.htmx:
@@ -1092,135 +931,236 @@ def sale_detail(request, pk):
         return render(request, "customers/sales/sale_detail.html", context)
 
 
-def manage_sales(request):
-    pass
+def search_customers(request):
+    query = request.GET.get("q", "")
+    customers = []
+    if query:
+        customers = Customer.objects.filter(
+            Q(full_name__icontains=query)
+            | Q(phone__icontains=query)
+            | Q(customer_number__icontains=query)
+        )[:10]
+    return render(
+        request, "partials/search_results_customer.html", {"customers": customers}
+    )
 
 
-# def create_normal_sale(request):
-#     if request.method == "POST":
-#         form = NormalSaleForm(request.POST)
-#         boxed_formset = BoxedSaleFormSet(request.POST, prefix="boxed")
-#         coupled_formset = CoupledSaleFormSet(request.POST, prefix="coupled")
-
-#         if form.is_valid() and boxed_formset.is_valid() and coupled_formset.is_valid():
-#             try:
-#                 with transaction.atomic():
-#                     sale = form.save()  # Customer creation happens inside form.save()
-
-#                     # Save Boxed Items
-#                     boxed_instances = boxed_formset.save(commit=False)
-#                     for item in boxed_instances:
-#                         item.sale = sale
-#                         item.save()
-
-#                     # Save Coupled Items
-#                     coupled_instances = coupled_formset.save(commit=False)
-#                     for item in coupled_instances:
-#                         item.sale = sale
-#                         item.save()
-
-#                 return redirect("sales")
-#             except Exception as e:
-#                 logging.error(e, exc_info=True)
-#     else:
-#         form = NormalSaleForm()
-#         boxed_formset = BoxedSaleFormSet(prefix="boxed")
-#         coupled_formset = CoupledSaleFormSet(prefix="coupled")
-
-#     context = {
-#         "form": form,
-#         "boxed_formset": boxed_formset,
-#         "coupled_formset": coupled_formset,
-#         "is_normal_sale": True,
-#         "title": "Record Normal Sale",
-#     }
-#     return render(request, "sales/create_sale.html", context)
+def search_products(request):
+    query = request.GET.get("q", "")
+    products = []
+    if query:
+        products = Product.objects.filter(
+            Q(modelname__icontains=query)
+            | Q(sku__icontains=query)
+            | Q(brand__name__icontains=query),
+            type_variant=Product.TypeVariant.BOXED,
+        ).select_related("brand")[:10]
+    return render(
+        request, "partials/search_results_product.html", {"products": products}
+    )
 
 
-# def create_agreement_fulfillment_sale(request, line_item_id):
-#     line_item = get_object_or_404(PurchaseAgreementLineItem, pk=line_item_id)
-
-#     # Determine which formset to prefill based on your logic (assuming Boxed for this example)
-#     # You might pass a query param ?type=coupled if you want to switch modes
-#     sale_type = request.GET.get("type", "boxed")
-
-#     if request.method == "POST":
-#         # Pass the line item to the parent form so it knows context
-#         form = AgreementSaleForm(request.POST, agreement_line_item=line_item)
-
-#         # Initialize formsets
-#         boxed_formset = BoxedSaleFormSet(
-#             request.POST, prefix="boxed", form_kwargs={"agreement_line_item": line_item}
-#         )
-#         coupled_formset = CoupledSaleFormSet(
-#             request.POST,
-#             prefix="coupled",
-#             form_kwargs={"agreement_line_item": line_item},
-#         )
-
-#         if form.is_valid():
-#             # Special check: Validate FormSets based on expected type
-#             valid_boxed = boxed_formset.is_valid()
-#             valid_coupled = coupled_formset.is_valid()
-
-#             if valid_boxed and valid_coupled:
-#                 try:
-#                     with transaction.atomic():
-#                         sale = form.save(commit=False)
-#                         # Ensure fields that were disabled in UI are forced in backend
-#                         sale.customer = line_item.purchase_agreement.account.customer
-#                         sale.agreement = line_item.purchase_agreement
-#                         sale.payment_method = Sale.PaymentMethod.FROM_DEPOSIT
-#                         sale.save()
-
-#                         # Save Boxed Items
-#                         boxed_instances = boxed_formset.save(commit=False)
-#                         for item in boxed_instances:
-#                             item.sale = sale
-#                             # Enforce the line item link
-#                             item.agreement_line_item = line_item
-#                             item.product = line_item.product
-#                             item.price = line_item.price_per_unit
-#                             item.save()
-
-#                         # Save Coupled Items
-#                         coupled_instances = coupled_formset.save(commit=False)
-#                         for item in coupled_instances:
-#                             item.sale = sale
-#                             item.agreement_line_item = line_item
-#                             item.price = line_item.price_per_unit
-#                             item.save()
+def search_transformation_items(request):
+    query = request.GET.get("q", "")
+    items = []
+    if query:
+        items = TransformationItem.objects.filter(
+            Q(item_number__icontains=query)
+            | Q(engine_number__icontains=query)
+            | Q(chassis_number__icontains=query)
+            | Q(target_product__brand__name__icontains=query)
+            | Q(target_product__modelname__icontains=query),
+            status=TransformationItem.Status.AVAILABLE,
+        ).select_related("target_product")[:10]
+    return render(
+        request, "partials/search_results_transformation_item.html", {"items": items}
+    )
 
 
-#                     return redirect("customer_detail", pk=sale.customer.pk)
-#                 except Exception as e:
-#                     logging.error(e, exc_info=True)
-#             else:
-#                 messages.error(request, "Please correct errors in the item list.")
-#     else:
-#         # GET Request: Pre-fill data
-#         form = AgreementSaleForm(agreement_line_item=line_item)
+def record_sale(request):
+    selected_customer = None  # Initialize for context
 
-#         # We pre-fill the formset with 1 extra form that has the initial data
-#         # form_kwargs passes the line_item down to the ItemForm __init__
-#         boxed_formset = BoxedSaleFormSet(
-#             prefix="boxed",
-#             form_kwargs={"agreement_line_item": line_item},
-#             queryset=BoxedSale.objects.none(),
-#         )
-#         coupled_formset = CoupledSaleFormSet(
-#             prefix="coupled",
-#             form_kwargs={"agreement_line_item": line_item},
-#             queryset=CoupledSale.objects.none(),
-#         )
+    if request.method == "POST":
+        form = RecordSaleForm(request.POST)
 
-#     context = {
-#         "form": form,
-#         "boxed_formset": boxed_formset,
-#         "coupled_formset": coupled_formset,
-#         "line_item": line_item,
-#         "is_normal_sale": False,
-#         "sale_type": sale_type,  # Use this in template to show/hide relevant formset
-#         "title": f"Fulfill: {line_item.product.modelname} - {line_item.purchase_agreement.purchase_agreement_number}",
-#     }
-#     return render(request, "sales/create_sale.html", context)
+        # Determine if this is a "from deposit" sale
+        payment_method = request.POST.get("payment_method", "")
+        is_from_deposit = payment_method == Sale.PaymentMethod.FROM_DEPOSIT
+
+        # Always create formsets with POST data for validation and re-rendering
+        boxed_formset = BoxedSaleFormSet(
+            request.POST, prefix="boxed", is_from_deposit=is_from_deposit
+        )
+        coupled_formset = CoupledSaleFormSet(
+            request.POST, prefix="coupled", is_from_deposit=is_from_deposit
+        )
+
+        # Try to get the selected customer from the POST data for re-rendering
+        customer_pk = request.POST.get("customer")
+        if customer_pk:
+            try:
+                selected_customer = Customer.objects.get(pk=customer_pk)
+            except Customer.DoesNotExist:
+                pass
+
+        # Filter agreement_line_item queryset based on selected agreement
+        agreement_pk = request.POST.get("agreement")
+        if agreement_pk:
+            line_items_qs = PurchaseAgreementLineItem.objects.filter(
+                purchase_agreement__pk=agreement_pk,
+                is_current_version=True,
+                status__in=[
+                    PurchaseAgreementLineItem.Status.ACTIVE,
+                    PurchaseAgreementLineItem.Status.PARTIALLY_FULFILLED,
+                ],
+            ).select_related("product")
+
+            # Apply the filtered queryset to each form in the formsets
+            for formset_form in boxed_formset.forms:
+                formset_form.fields["agreement_line_item"].queryset = line_items_qs
+            for formset_form in coupled_formset.forms:
+                formset_form.fields["agreement_line_item"].queryset = line_items_qs
+
+        # Validate all forms before saving anything
+        form_valid = form.is_valid()
+        boxed_valid = boxed_formset.is_valid()
+        coupled_valid = coupled_formset.is_valid()
+
+        if form_valid and boxed_valid and coupled_valid:
+            with transaction.atomic():
+                sale = form.save(commit=False)
+                sale.created_by = request.user
+                sale.updated_by = request.user
+                sale.save()
+
+                # Re-bind formsets with the saved sale instance
+                boxed_formset = BoxedSaleFormSet(
+                    request.POST,
+                    instance=sale,
+                    prefix="boxed",
+                    is_from_deposit=is_from_deposit,
+                )
+                coupled_formset = CoupledSaleFormSet(
+                    request.POST,
+                    instance=sale,
+                    prefix="coupled",
+                    is_from_deposit=is_from_deposit,
+                )
+
+                # These should still be valid since we validated above
+                boxed_formset.is_valid()
+                coupled_formset.is_valid()
+
+                boxed_items = boxed_formset.save(commit=False)
+                for item in boxed_items:
+                    item.created_by = request.user
+                    item.updated_by = request.user
+                    item.save()
+
+                coupled_items = coupled_formset.save(commit=False)
+                for item in coupled_items:
+                    item.created_by = request.user
+                    item.updated_by = request.user
+                    item.save()
+
+                messages.success(
+                    request, f"Sale {sale.sale_number} recorded successfully."
+                )
+                if request.htmx:
+                    return HttpResponseClientRedirect(reverse("sales"))
+                return redirect("sales")
+        else:
+            # Form validation failed - errors will be displayed in template
+            if not form_valid:
+                messages.error(request, "Please correct the errors in the sale form.")
+            if not boxed_valid or not coupled_valid:
+                messages.error(request, "Please correct the errors in the sale items.")
+
+    else:
+        # Check for customer query param (from customer detail page)
+        customer_pk = request.GET.get("customer")
+        initial = {}
+
+        if customer_pk:
+            try:
+                selected_customer = Customer.objects.get(pk=customer_pk)
+                initial["customer"] = customer_pk
+            except Customer.DoesNotExist:
+                pass
+
+        form = RecordSaleForm(initial=initial)
+
+        # If customer is preselected, load their agreements
+        if selected_customer:
+            form.fields["agreement"].queryset = PurchaseAgreement.objects.filter(
+                account__customer=selected_customer,
+                status__in=[
+                    PurchaseAgreement.Status.ACTIVE,
+                    PurchaseAgreement.Status.PARTIALLY_FULFILLED,
+                ],
+            )
+
+        boxed_formset = BoxedSaleFormSet(prefix="boxed")
+        coupled_formset = CoupledSaleFormSet(prefix="coupled")
+
+    context = {
+        "form": form,
+        "boxed_formset": boxed_formset,
+        "coupled_formset": coupled_formset,
+        "selected_customer": selected_customer,
+    }
+
+    if request.htmx:
+        return HttpResponse(
+            render_block_to_string(
+                "customers/sales/record_sale.html", "content", context, request=request
+            )
+        )
+
+    return render(request, "customers/sales/record_sale.html", context)
+
+
+def load_customer_agreements(request):
+    """
+    HTMX view to return options for Agreement Select based on Customer.
+    """
+    customer_pk = request.GET.get("customer")
+    agreements = PurchaseAgreement.objects.none()
+
+    if customer_pk:
+        agreements = PurchaseAgreement.objects.filter(
+            account__customer__pk=customer_pk,
+            status__in=[
+                PurchaseAgreement.Status.ACTIVE,
+                PurchaseAgreement.Status.PARTIALLY_FULFILLED,
+            ],
+        )
+
+    return render(
+        request, "customers/partials/agreement_options.html", {"agreements": agreements}
+    )
+
+
+def load_agreement_line_items(request):
+    """
+    HTMX view to return options for Agreement Line Items based on selected Agreement.
+    Returns line items that still have remaining quantity to fulfill.
+    """
+    agreement_pk = request.GET.get("agreement")
+    line_items = PurchaseAgreementLineItem.objects.none()
+
+    if agreement_pk:
+        line_items = PurchaseAgreementLineItem.objects.filter(
+            purchase_agreement__pk=agreement_pk,
+            is_current_version=True,
+            status__in=[
+                PurchaseAgreementLineItem.Status.ACTIVE,
+                PurchaseAgreementLineItem.Status.PARTIALLY_FULFILLED,
+            ],
+        ).select_related("product")
+
+    return render(
+        request,
+        "customers/partials/agreement_line_item_options.html",
+        {"line_items": line_items},
+    )

@@ -2,32 +2,72 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django_htmx.http import replace_url, HttpResponseClientRedirect
 from django_htmx.middleware import HtmxDetails
 from django.http import HttpResponse
-from .models import *
-from .forms import *
+from .models import (
+    Product,
+    Inventory,
+    TransformationItem,
+    InventoryTransaction,
+    Transformation,
+)
+from inventory.forms import ProductForm, TransformationForm, TransformationItemFormset
 from django.contrib import messages
 from render_block import render_block_to_string
 from django.template.loader import render_to_string
 from django.core.paginator import Paginator
 from django.db import transaction
+from django.db.models import Q
+from django.urls import reverse
 from . import services
 import logging
+from core.utils import apply_sorting
 
 logger = logging.getLogger(__name__)
 
 
 def products(request):
-    PAGE_SIZE = 50
+    PAGE_SIZE = 100
     page_number = request.GET.get("page", 1)
-    products_list = Product.objects.select_related("brand").order_by("-created_at")
+    search_query = request.GET.get("q", "")
+    products_list = (
+        Product.objects.select_related("brand")
+        .prefetch_related(
+            "po_items",
+            "transform_to__coupled_sales",
+            "boxed_sales",
+            "inventory",
+        )
+        .order_by("-created_at")
+    )
+
+    if search_query:
+        products_list = products_list.filter(
+            Q(modelname__icontains=search_query)
+            | Q(brand__name__icontains=search_query)
+        )
+
+    # Sorting
+    sort_field = request.GET.get("sort", "created_at")
+    direction = request.GET.get("direction", "desc")
+    allowed_sort_fields = ["created_at", "modelname", "brand__name", "type_variant", "base_product__modelname"]
+
+    products_list = apply_sorting(products_list, sort_field, direction, allowed_sort_fields)
+
     paginator = Paginator(products_list, PAGE_SIZE)
     page_obj = paginator.get_page(page_number)
 
-    context = {"products": page_obj}
+    context = {
+        "products": page_obj, 
+        "search_query": search_query,
+        "sort_field": sort_field,
+        "direction": direction,
+    }
 
     if request.htmx:
-        if request.GET.get("page"):
+        if "page" in request.GET or "q" in request.GET:
             product_list = render_block_to_string(
-                "inventory/product/product_list.html", "body", context
+                "inventory/product/product_list.html",
+                "body",
+                context,
             )
             return HttpResponse(product_list)
 
@@ -66,67 +106,6 @@ def manage_products(request, pk=None):
         )
         return HttpResponse(html)
     return render(request, "inventory/product/form.html", context)
-
-
-def product_detail(request, pk):
-    PAGE_SIZE = 50
-    page_number = request.GET.get("page", 1)
-    product = get_object_or_404(Product, pk=pk)
-    product_list = Product.objects.order_by("created_at")
-    paginator = Paginator(product_list, PAGE_SIZE)
-    page_obj = paginator.get_page(page_number)
-    context = {
-        "product": product,
-        "product_list": page_obj,
-    }
-    if request.htmx:
-        if request.htmx.target == "main_content":
-            html = render_block_to_string(
-                "inventory/product/product_detail.html",
-                "main_content",
-                {"product": product},
-            )
-            return HttpResponse(html)
-
-        elif request.htmx.target == "main_body":
-            html = render_block_to_string(
-                "inventory/product/product_detail.html", "content", context
-            )
-            return HttpResponse(html)
-
-        else:
-            html = render_block_to_string(
-                "inventory/product/product_detail.html", "side_bar_list", context
-            )
-
-            return HttpResponse(html)
-
-    else:
-        return render(request, "inventory/product/product_detail.html", context)
-
-
-def product_overview(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-    context = {"product": product}
-    if request.htmx:
-        html = render_block_to_string(
-            "inventory/product/product_detail.html", "_content", context
-        )
-        return HttpResponse(html)
-    return redirect(product.get_absolute_url)
-
-
-def product_transaction(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-
-    if request.htmx:
-        return render(
-            request,
-            "inventory/product/partials/_transaction.html",
-            {"product": product},
-        )
-    else:
-        return redirect(product.get_absolute_url)
 
 
 def delete_product(request, pk):
@@ -179,17 +158,43 @@ def product_status_change(request, pk):
 
 
 def inventories(request):
-    PAGE_SIZE = 50
+    PAGE_SIZE = 100
     page_number = request.GET.get("page", 1)
+    search_query = request.GET.get("q", "")
     inventory_list = Inventory.objects.select_related("product").order_by("-quantity")
+
+    if search_query:
+        inventory_list = inventory_list.filter(
+            Q(product__modelname__icontains=search_query)
+            | Q(product__brand__name__icontains=search_query)
+        )
+
+    # Sorting
+    sort_field = request.GET.get("sort", "quantity")
+    direction = request.GET.get("direction", "desc")
+    allowed_sort_fields = ["quantity", "product__modelname", "product__brand__name", "updated_at"]
+
+    if sort_field not in allowed_sort_fields:
+        # Default sort if invalid or missing
+        inventory_list = inventory_list.order_by("-quantity")
+    else:
+        inventory_list = apply_sorting(inventory_list, sort_field, direction, allowed_sort_fields)
+
     paginator = Paginator(inventory_list, PAGE_SIZE)
     page_obj = paginator.get_page(page_number)
-    context = {"inventories": page_obj}
+    context = {
+        "inventories": page_obj, 
+        "search_query": search_query,
+        "sort_field": sort_field,
+        "direction": direction,
+    }
 
     if request.htmx:
-        if request.GET.get("page"):
+        if "page" in request.GET or "q" in request.GET:
             inventory_list_html = render_block_to_string(
-                "inventory/inventory/inventory.html", "body", context
+                "inventory/inventory/inventory.html",
+                "body",
+                context,
             )
             return HttpResponse(inventory_list_html)
 
@@ -203,17 +208,40 @@ def inventories(request):
 
 
 def serialized_inventories(request):
-    PAGE_SIZE = 50
+    PAGE_SIZE = 100
     page_number = request.GET.get("page", 1)
+    search_query = request.GET.get("q", "")
+
     serialized_inventory_list = TransformationItem.objects.select_related(
         "target_product"
     ).order_by("-created_at")
+
+    if search_query:
+        serialized_inventory_list = serialized_inventory_list.filter(
+            Q(item_number__icontains=search_query)
+            | Q(engine_number__icontains=search_query)
+            | Q(chassis_number__icontains=search_query)
+            | Q(target_product__modelname__icontains=search_query)
+        )
+
+    # Sorting
+    sort_field = request.GET.get("sort", "created_at")
+    direction = request.GET.get("direction", "desc")
+    allowed_sort_fields = ["created_at", "item_number", "engine_number", "chassis_number", "target_product__modelname", "status"]
+
+    serialized_inventory_list = apply_sorting(serialized_inventory_list, sort_field, direction, allowed_sort_fields)
+
     paginator = Paginator(serialized_inventory_list, PAGE_SIZE)
     page_obj = paginator.get_page(page_number)
-    context = {"serialized_inventories": page_obj}
+    context = {
+        "serialized_inventories": page_obj, 
+        "search_query": search_query,
+        "sort_field": sort_field,
+        "direction": direction,
+    }
 
     if request.htmx:
-        if request.GET.get("page"):
+        if "page" in request.GET or "q" in request.GET or "sort" in request.GET:
             serialized_inventory_list_html = render_block_to_string(
                 "inventory/inventory/serialized_inventory.html", "body", context
             )
@@ -229,17 +257,40 @@ def serialized_inventories(request):
 
 
 def inventory_transactions(request):
-    PAGE_SIZE = 50
+    PAGE_SIZE = 100
     page_number = request.GET.get("page", 1)
+    search_query = request.GET.get("q", "")
     inventory_transactions = InventoryTransaction.objects.select_related(
         "inventory"
     ).order_by("-created_at")
+
+    if search_query:
+        inventory_transactions = inventory_transactions.filter(
+            Q(inventory__product__modelname__icontains=search_query)
+            | Q(transaction_type__icontains=search_query)
+        )
+
+    # Sorting
+    sort_field = request.GET.get("sort", "created_at")
+    if sort_field == "quantity":
+        sort_field = "quantity_change"
+        
+    direction = request.GET.get("direction", "desc")
+    allowed_sort_fields = ["created_at", "reference_number", "transaction_type", "inventory__product__modelname", "quantity_change", "inventory__product__brand__name"]
+
+    inventory_transactions = apply_sorting(inventory_transactions, sort_field, direction, allowed_sort_fields)
+
     paginator = Paginator(inventory_transactions, PAGE_SIZE)
     page_obj = paginator.get_page(page_number)
-    context = {"inventory_transactions": page_obj}
+    context = {
+        "inventory_transactions": page_obj, 
+        "search_query": search_query,
+        "sort_field": sort_field,
+        "direction": direction,
+    }
 
     if request.htmx:
-        if request.GET.get("page"):
+        if "page" in request.GET or "q" in request.GET or "sort" in request.GET:
             return HttpResponse(
                 render_block_to_string(
                     "inventory/inventory/inventory_transactions.html",
@@ -261,15 +312,34 @@ def inventory_transactions(request):
 
 
 def transformations(request):
-    PAGE_SIZE = 50
+    PAGE_SIZE = 100
     page_number = request.GET.get("page", 1)
+    search_query = request.GET.get("q", "")
     transformations = Transformation.objects.order_by("-created_at")
+
+    if search_query:
+        transformations = transformations.filter(
+            Q(transformation_number__icontains=search_query)
+        )
+
+    # Sorting
+    sort_field = request.GET.get("sort", "created_at")
+    direction = request.GET.get("direction", "desc")
+    allowed_sort_fields = ["created_at", "transformation_number", "status"]
+
+    transformations = apply_sorting(transformations, sort_field, direction, allowed_sort_fields)
+
     paginator = Paginator(transformations, PAGE_SIZE)
     page_obj = paginator.get_page(page_number)
-    context = {"transformations": page_obj}
+    context = {
+        "transformations": page_obj, 
+        "search_query": search_query,
+        "sort_field": sort_field,
+        "direction": direction,
+    }
 
     if request.htmx:
-        if request.GET.get("page"):
+        if "page" in request.GET or "q" in request.GET or "sort" in request.GET:
             transformations_html = render_block_to_string(
                 "inventory/inventory/inventory_transformations.html", "body", context
             )
@@ -296,7 +366,14 @@ def transformation_detail(request, pk):
         ),
         pk=pk,
     )
-    transformation_list = Transformation.objects.all()
+    transformation_list = Transformation.objects.all().order_by("-created_at")
+
+    search_query = request.GET.get("q", "")
+    if search_query:
+        transformation_list = transformation_list.filter(
+            Q(transformation_number__icontains=search_query)
+        )
+
     paginator = Paginator(transformation_list, PAGE_SIZE)
     page_obj = paginator.get_page(page_number)
 
@@ -304,6 +381,7 @@ def transformation_detail(request, pk):
         "transformation": transformation,
         "can_void": services.can_void_transformation(transformation),
         "transformation_list": page_obj,
+        "search_query": search_query,
     }
 
     if request.htmx:

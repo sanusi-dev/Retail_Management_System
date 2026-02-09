@@ -181,6 +181,11 @@ def mark_item_sold(sender, instance, created, **kwargs):
 @receiver(post_save, sender=BoxedSale)
 def create_withdrawal_for_boxed_sale(sender, instance, created, **kwargs):
     if created and instance.sale.payment_method == Sale.PaymentMethod.FROM_DEPOSIT:
+        # IMPORTANT: Update agreement status FIRST to release allocated funds
+        # This must happen before withdrawal so funds are available
+        if instance.agreement_line_item:
+            update_agreement_status_logic(instance.agreement_line_item)
+        
         total_amount = instance.price * instance.quantity
 
         ct = ContentType.objects.get_for_model(instance)
@@ -202,6 +207,11 @@ def create_withdrawal_for_boxed_sale(sender, instance, created, **kwargs):
 @receiver(post_save, sender=CoupledSale)
 def create_withdrawal_for_coupled_sale(sender, instance, created, **kwargs):
     if created and instance.sale.payment_method == Sale.PaymentMethod.FROM_DEPOSIT:
+        # IMPORTANT: Update agreement status FIRST to release allocated funds
+        # This must happen before withdrawal so funds are available
+        if instance.agreement_line_item:
+            update_agreement_status_logic(instance.agreement_line_item)
+        
         total_amount = instance.price
         ct = ContentType.objects.get_for_model(instance)
 

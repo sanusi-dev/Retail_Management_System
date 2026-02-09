@@ -191,19 +191,19 @@
 }
 
 @utility menu-item-active {
-  @apply bg-brand-50 text-brand-500 dark:bg-brand-500/[0.12] dark:text-brand-400;
+  @apply bg-brand-600 text-white dark:bg-brand-600 dark:text-white;
 }
 
 @utility menu-item-inactive {
-  @apply text-gray-700 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-300;
+  @apply text-gray-400 hover:bg-gray-800 hover:text-white dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white;
 }
 
 @utility menu-item-icon-active {
-  @apply fill-brand-500 dark:fill-brand-400;
+  @apply fill-white dark:fill-white;
 }
 
 @utility menu-item-icon-inactive {
-  @apply fill-gray-500 group-hover:fill-gray-700 dark:fill-gray-400 dark:group-hover:fill-gray-300;
+  @apply fill-gray-400 group-hover:fill-white dark:fill-gray-400 dark:group-hover:fill-white;
 }
 
 @utility menu-item-arrow {
@@ -223,11 +223,11 @@
 }
 
 @utility menu-dropdown-item-active {
-  @apply bg-brand-50 text-brand-500 dark:bg-brand-500/[0.12] dark:text-brand-400;
+  @apply bg-brand-600 text-white dark:bg-brand-600 dark:text-white;
 }
 
 @utility menu-dropdown-item-inactive {
-  @apply text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5;
+  @apply text-gray-400 hover:bg-gray-800 hover:text-white dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white;
 }
 
 @utility menu-dropdown-badge {

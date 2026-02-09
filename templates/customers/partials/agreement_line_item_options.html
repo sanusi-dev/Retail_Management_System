@@ -1,0 +1,9 @@
+<option value="">---------</option>
+{% for item in line_items %}
+    <option value="{{ item.line_item_id }}"
+            data-product-id="{{ item.product.pk }}"
+            data-price="{{ item.price_per_unit }}"
+            data-remaining="{{ item.remaining_quantity }}">
+        {{ item.line_number }} - {{ item.product.modelname }} (₦{{ item.price_per_unit }} × {{ item.remaining_quantity }} left)
+    </option>
+{% endfor %}

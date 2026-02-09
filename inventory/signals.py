@@ -48,7 +48,7 @@ def update_inventory_and_create_transaction(sender, instance, created, **kwargs)
             raise ValueError("Insufficient Stock")
 
         inventory.quantity -= 1
-        inventory.save(update_fields=["quantity"])
+        inventory.save(update_fields=["quantity", "updated_at"])
 
         services.create_inventory_transaction(
             inventory=inventory,

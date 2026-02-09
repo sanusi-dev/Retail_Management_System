@@ -4,71 +4,212 @@
 {% block content %}
    {% include "partials/spinner.html" with id="body_spinner" %}
    <div class="flex h-full flex-col" id="main_body">
-      {% block header %}
-         <div class="h-16 flex items-center justify-between px-4">
-            {% include "partials/table_filter.html" with view_name="All Purchase Receives" %}
-            <a href="{% url 'add_receipt' %}"
-               hx-boost="true"
-               hx-target="#main_body"
-               hx-indicator="#body_spinner"
-               class="px-3 py-2 text-sm font-medium text-center inline-flex items-center text-white bg-brand-500 rounded-md hover:bg-blue-600 focus:ring-1 focus:outline-none focus:ring-blue-200">
-               <svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    class="size-5">
-                  <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-               </svg>
-               New
-            </a>
-         </div>
-      {% endblock header %}
-      {% block body %}
-         <div id="table_container"
-              class="relative flex flex-col h-[calc(100vh-8rem)]">
-            <div class="flex-1 overflow-y-auto pb-25">
-               <table class="w-full text-sm text-left text-gray-500">
-                  <thead class="text-xs text-gray-500 font-normal uppercase bg-gray-50 sticky top-0 z-10">
-                     <tr class="border-t border-b">
-                        <th scope="col" class="px-6 py-3">Date</th>
-                        <th scope="col" class="px-6 py-3">Purchase Receive #</th>
-                        <th scope="col" class="px-6 py-3">Purchase Order #</th>
-                        <th scope="col" class="px-6 py-3">Supplier Name</th>
-                        <th scope="col" class="px-6 py-3">Status</th>
-                        <th scope="col" class="px-6 py-3">Quantity</th>
-                     </tr>
-                  </thead>
-                  <tbody class="text-sm text-black font-light" id="tbody">
-                     {% if receipts %}
-                        {% for receipt in receipts %}
-                           <tr class="bg-white border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                               hx-get="{{ receipt.get_absolute_url }}"
-                               hx-target="#main_body"
+        {% block header %}
+            <div class="h-16 flex items-center justify-between px-6 gap-4 bg-white border-b border-gray-200">
+                <div class="flex items-center gap-4 flex-1">
+                    <!-- Search Bar -->
+                    <div class="relative w-full max-w-lg">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                            <svg class="w-4 h-4 text-gray-400"
+                                 aria-hidden="true"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 fill="none"
+                                 viewBox="0 0 20 20">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
+                            </svg>
+                        </div>
+                        <input type="search"
+                               name="q"
+                               value="{{ search_query|default:'' }}"
+                               class="block w-full py-2.5 pl-10 pr-4 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all placeholder:text-gray-400 focus:bg-white"
+                               placeholder="Search goods receipts..."
+                               hx-get="{% url 'receipts' %}"
+                               hx-target="#table_container"
                                hx-indicator="#body_spinner"
-                               hx-push-url="true">
-                              <td class="px-6 py-3 capitalize">{{ receipt.delivery_date|date:"j M Y" }}</td>
-                              <td class="px-6 py-3 capitalize">{{ receipt.gr_number|upper }}</td>
-                              <td class="px-6 py-3 capitalize">{{ receipt.purchase_order.po_number|upper }}</td>
-                              <td class="px-6 py-3 capitalize">{{ receipt.purchase_order.supplier.name|upper }}</td>
-                              <td class="px-6 py-3 capitalize {{ receipt.status|status_color }}">{{ receipt.status|upper }}</td>
-                              <td class="px-6 py-3 capitalize">{{ receipt.received_quantity }}</td>
-                           </tr>
-                        {% endfor %}
-                     {% else %}
-                        <tr class="bg-white border-b border-gray-100 hover:bg-gray-50">
-                           <td colspan="6" class="px-6 py-3 text-center">
-                              <p>No purchase has been received yet.</p>
-                           </td>
-                        </tr>
-                     {% endif %}
-                  </tbody>
-               </table>
+                               hx-push-url="true"
+                               hx-trigger="keyup changed delay:300ms, search">
+                    </div>
+                </div>
+                <!-- New Receipt Button -->
+                <a href="{% url 'add_receipt' %}"
+                   hx-boost="true"
+                   hx-target="#main_body"
+                   hx-indicator="#body_spinner"
+                   class="px-4 py-2.5 text-sm font-medium text-center inline-flex items-center text-white bg-brand-600 rounded-lg hover:bg-brand-700 focus:ring-4 focus:outline-none focus:ring-brand-300 transition-all shadow-md hover:shadow-lg whitespace-nowrap">
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         viewBox="0 0 20 20"
+                         fill="currentColor"
+                         class="w-4 h-4 mr-2">
+                        <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+                    </svg>
+                    New Receipt
+                </a>
             </div>
-            <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20">
-               <div class="flex justify-end">
-                  {% include 'partials/pagination.html' with page_obj=receipts target="table_container" %}
-               </div>
+        {% endblock header %}
+        {% block body %}
+            <div id="table_container"
+                 class="relative flex flex-col h-[calc(100vh-8rem)] bg-gray-50/50">
+                <div class="flex-1 overflow-y-auto pb-25">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-500 font-semibold uppercase bg-gray-50/50 border-b border-gray-200 sticky top-0 z-10 backdrop-blur-sm">
+                            <tr>
+                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                                    hx-get="{% url 'receipts' %}?sort=delivery_date&direction={% if sort_field == 'delivery_date' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
+                                    hx-target="#table_container"
+                                    hx-indicator="#body_spinner"
+                                    hx-push-url="true">
+                                   <div class="flex items-center gap-1">
+                                       Date
+                                       {% if sort_field == 'delivery_date' %}
+                                           {% if direction == 'asc' %}
+                                               <i class="fa-solid fa-sort-up"></i>
+                                           {% else %}
+                                               <i class="fa-solid fa-sort-down"></i>
+                                           {% endif %}
+                                       {% else %}
+                                           <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                       {% endif %}
+                                   </div>
+                                </th>
+                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                                    hx-get="{% url 'receipts' %}?sort=gr_number&direction={% if sort_field == 'gr_number' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
+                                    hx-target="#table_container"
+                                    hx-indicator="#body_spinner"
+                                    hx-push-url="true">
+                                   <div class="flex items-center gap-1">
+                                       Purchase Receive #
+                                       {% if sort_field == 'gr_number' %}
+                                           {% if direction == 'asc' %}
+                                               <i class="fa-solid fa-sort-up"></i>
+                                           {% else %}
+                                               <i class="fa-solid fa-sort-down"></i>
+                                           {% endif %}
+                                       {% else %}
+                                           <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                       {% endif %}
+                                   </div>
+                                </th>
+                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                                    hx-get="{% url 'receipts' %}?sort=purchase_order__po_number&direction={% if sort_field == 'purchase_order__po_number' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
+                                    hx-target="#table_container"
+                                    hx-indicator="#body_spinner"
+                                    hx-push-url="true">
+                                   <div class="flex items-center gap-1">
+                                       Purchase Order #
+                                       {% if sort_field == 'purchase_order__po_number' %}
+                                           {% if direction == 'asc' %}
+                                               <i class="fa-solid fa-sort-up"></i>
+                                           {% else %}
+                                               <i class="fa-solid fa-sort-down"></i>
+                                           {% endif %}
+                                       {% else %}
+                                           <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                       {% endif %}
+                                   </div>
+                                </th>
+                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                                    hx-get="{% url 'receipts' %}?sort=purchase_order__supplier__company_name&direction={% if sort_field == 'purchase_order__supplier__company_name' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
+                                    hx-target="#table_container"
+                                    hx-indicator="#body_spinner"
+                                    hx-push-url="true">
+                                   <div class="flex items-center gap-1">
+                                       Supplier Name
+                                       {% if sort_field == 'purchase_order__supplier__company_name' %}
+                                           {% if direction == 'asc' %}
+                                               <i class="fa-solid fa-sort-up"></i>
+                                           {% else %}
+                                               <i class="fa-solid fa-sort-down"></i>
+                                           {% endif %}
+                                       {% else %}
+                                           <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                       {% endif %}
+                                   </div>
+                                </th>
+                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider text-center cursor-pointer hover:bg-gray-100 transition-colors"
+                                    hx-get="{% url 'receipts' %}?sort=status&direction={% if sort_field == 'status' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
+                                    hx-target="#table_container"
+                                    hx-indicator="#body_spinner"
+                                    hx-push-url="true">
+                                   <div class="flex items-center justify-center gap-1">
+                                       Status
+                                       {% if sort_field == 'status' %}
+                                           {% if direction == 'asc' %}
+                                               <i class="fa-solid fa-sort-up"></i>
+                                           {% else %}
+                                               <i class="fa-solid fa-sort-down"></i>
+                                           {% endif %}
+                                       {% else %}
+                                           <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                       {% endif %}
+                                   </div>
+                                </th>
+                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider text-center">Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm font-light divide-y divide-gray-100" id="tbody">
+                            {% if receipts %}
+                                {% for receipt in receipts %}
+                                    <tr class="bg-white hover:bg-blue-50/50 cursor-pointer transition-colors duration-150 group"
+                                        hx-get="{{ receipt.get_absolute_url }}"
+                                        hx-target="#main_body"
+                                        hx-indicator="#body_spinner"
+                                        hx-push-url="true">
+                                        <!-- Date -->
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex flex-col">
+                                                <span class="text-xs font-semibold text-gray-700">{{ receipt.delivery_date|date:"j M Y" }}</span>
+                                                <span class="text-xs text-gray-400">{{ receipt.delivery_date|date:"H:i" }}</span>
+                                            </div>
+                                        </td>
+                                        <!-- Receipt Number -->
+                                        <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-medium text-blue-600 group-hover:underline">
+                                            {{ receipt.gr_number|upper }}
+                                        </td>
+                                        <!-- PO Number -->
+                                        <td class="px-6 py-4 whitespace-nowrap font-mono text-xs text-gray-600">
+                                            {{ receipt.purchase_order.po_number|upper }}
+                                        </td>
+                                        <!-- Supplier -->
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="font-medium text-gray-800">{{ receipt.purchase_order.supplier.name|upper }}</span>
+                                        </td>
+                                        <!-- Status -->
+                                        <td class="px-6 py-4 text-center">
+                                            <span class="{{ receipt.status|status_color }} px-2.5 py-0.5 rounded-full text-xs font-medium uppercase border border-opacity-20">
+                                                {{ receipt.status|upper }}
+                                            </span>
+                                        </td>
+                                        <!-- Quantity -->
+                                        <td class="px-6 py-4 text-center">
+                                            <span class="inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 rounded-full bg-gray-100 text-xs font-medium text-gray-600">
+                                                {{ receipt.received_quantity }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr class="bg-white border-b border-gray-100">
+                                    <td colspan="6" class="px-6 py-16 text-center text-gray-400">
+                                        <div class="flex flex-col items-center justify-center gap-3">
+                                            <div class="p-3 bg-gray-50 rounded-full">
+                                                <i class="fa-solid fa-file-invoice text-3xl text-gray-300"></i>
+                                            </div>
+                                            <p class="text-lg font-medium text-gray-500">No goods receipts found</p>
+                                            <p class="text-sm">Create a new receipt to get started</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination -->
+                <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
+                    <div class="flex justify-end">
+                        {% include 'partials/pagination.html' with page_obj=receipts target="table_container" %}
+                    </div>
+                </div>
             </div>
-         </div>
-      {% endblock body %}
+        {% endblock body %}
    </div>
 {% endblock content %}

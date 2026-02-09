@@ -151,7 +151,7 @@
                                     <td class="px-4 py-3 text-right">
                                         {% if agreement.status != 'CANCELLED' %}
                                             {% if item.remaining_quantity > 0 %}
-                                                <a href="{% url 'add_sale' %}?customer={{ customer.pk }}&agreement={{ agreement.pk }}"
+                                                <a href="{% url 'record_sale' %}?customer={{ customer.pk }}&agreement={{ agreement.pk }}"
                                                    hx-boost="true"
                                                    hx-target="#main_body"
                                                    hx-indicator="#body_spinner"
