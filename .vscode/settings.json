@@ -21,7 +21,7 @@
 
 	"explorer.confirmDragAndDrop": false,
 	"terminal.integrated.defaultProfile.windows": "Command Prompt",
-	"workbench.colorTheme": "One Dark Pro Night Flat",
+	"workbench.colorTheme": "VS Code Dark",
 	"editor.linkedEditing": true,
 	"files.associations": {
 		"*.html": "django-html"

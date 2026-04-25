@@ -108,7 +108,7 @@
                                    <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
                                {% endif %}
                            </div>
-                        </th>
+                         </th>
                         <th scope="col" class="px-6 py-4 text-right font-semibold tracking-wider text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors"
                             hx-get="{% url 'customers' %}?sort=deposit_account__cached_total_balance&direction={% if sort_field == 'deposit_account__cached_total_balance' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
                             hx-target="#table_container"
