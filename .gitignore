@@ -61,3 +61,21 @@ celerybeat-schedule
 # SageMath parsed files
 *.sage.py
 virtualenv/
+
+# Node modules (if not committed)
+node_modules/
+
+# Virtual environments
+.venv/
+
+# Build artifacts and distributions
+dist/
+dist_build/
+Retail_Management_System_Win_Dist.zip
+
+# Logs and backups
+logs/
+backups/
+
+# Documentation
+reconstruction_document.md

@@ -9,7 +9,7 @@ from .models import (
     InventoryTransaction,
     Transformation,
 )
-from inventory.forms import ProductForm, TransformationForm, TransformationItemFormset
+from .forms import ProductForm, TransformationForm, TransformationItemFormset
 from django.contrib import messages
 from render_block import render_block_to_string
 from django.template.loader import render_to_string
