@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from account.models import CustomUser
 import uuid
 from django.db.models import (
@@ -350,20 +350,25 @@ class Transaction(models.Model):
             self.TransactionType.WITHDRAWAL,
             self.TransactionType.FULFILLMENT_WITHDRAWAL,
         ]:
-            balance = self.account.available_balance
-
-            if not self._state.adding:
-                original_txn = Transaction.objects.get(
-                    reference_number=self.reference_number
+            with transaction.atomic():
+                # Lock the deposit account to prevent race conditions
+                account = DepositAccount.objects.select_for_update().get(
+                    pk=self.account.pk
                 )
-                balance += original_txn.amount
+                balance = account.available_balance
 
-            if self.amount > balance:
-                raise ValidationError(
-                    {
-                        "amount": f"Insufficient funds. Available: {balance:,.2f}, Requested: {self.amount:,.2f}"
-                    }
-                )
+                if not self._state.adding:
+                    original_txn = Transaction.objects.get(
+                        reference_number=self.reference_number
+                    )
+                    balance += original_txn.amount
+
+                if self.amount > balance:
+                    raise ValidationError(
+                        {
+                            "amount": f"Insufficient funds. Available: {balance:,.2f}, Requested: {self.amount:,.2f}"
+                        }
+                    )
 
         if not self._state.adding:
             original = Transaction.objects.get(pk=self.pk)
@@ -390,16 +395,20 @@ class Transaction(models.Model):
 
             if original.status == self.Status.ACTIVE:
                 if self.transaction_type == self.TransactionType.DEPOSIT:
-                    current_available = self.account.available_balance
-                    projected_balance = current_available - original.amount
-
-                    if projected_balance < 0:
-                        raise ValidationError(
-                            f"Cannot void this deposit of NGN {original.amount:,.2f}. "
-                            f"The customer has active Agreements utilizing these funds. "
-                            f"Current Available: NGN {current_available:,.2f}. "
-                            "Please cancel/void the relevant Agreements first to free up allocation."
+                    with transaction.atomic():
+                        account = DepositAccount.objects.select_for_update().get(
+                            pk=self.account.pk
                         )
+                        current_available = account.available_balance
+                        projected_balance = current_available - original.amount
+
+                        if projected_balance < 0:
+                            raise ValidationError(
+                                f"Cannot void this deposit of NGN {original.amount:,.2f}. "
+                                f"The customer has active Agreements utilizing these funds. "
+                                f"Current Available: NGN {current_available:,.2f}. "
+                                "Please cancel/void the relevant Agreements first to free up allocation."
+                            )
 
     def save(self, *args, **kwargs):
         if not self.reference_number:

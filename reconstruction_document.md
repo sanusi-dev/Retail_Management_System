@@ -82,7 +82,6 @@ clean this up. Here are the confirmed decisions:
 ```
 Django>=6
 django-htmx
-django-template-partials
 django-widget-tweaks
 waitress
 python-decouple

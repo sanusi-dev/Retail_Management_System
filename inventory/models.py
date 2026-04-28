@@ -7,7 +7,6 @@ from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
-from easyaudit.models import CRUDEvent
 from django.utils import timezone
 from utils.utils import create_inventory_transaction
 from decimal import Decimal

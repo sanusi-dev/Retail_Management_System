@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "supply_chain",
     "customer",
     "inventory",
+    "core",
     "django_extensions",
     "tailwind",
     "theme",
@@ -42,14 +43,10 @@ INSTALLED_APPS = [
     "widget_tweaks",
     # 'debug_toolbar',
     "template_partials",
-    "easyaudit",
 ]
 
 TAILWIND_APP_NAME = "theme"
 NPM_BIN_PATH = shutil.which("npm")
-DJANGO_EASY_AUDIT_WATCH_AUTH_EVENTS = False
-DJANGO_EASY_AUDIT_WATCH_REQUEST_EVENTS = False
-DJANGO_EASY_AUDIT_WATCH_MODEL_EVENTS = False
 
 
 if DEBUG:
@@ -70,7 +67,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     # 'debug_toolbar.middleware.DebugToolbarMiddleware',
-    "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
 ]
 
 if DEBUG:

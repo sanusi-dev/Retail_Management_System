@@ -4,6 +4,7 @@ from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
 from decimal import Decimal
+import logging
 
 from inventory import services
 from inventory.models import Inventory, InventoryTransaction, TransformationItem
@@ -20,51 +21,149 @@ from .models import (
     Sale,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @receiver([post_save, post_delete], sender=Transaction)
 def update_balance_on_transaction(sender, instance, **kwargs):
     """Update cached balances when transaction changes"""
     try:
-        instance.account.update_cached_balances()
+        with transaction.atomic():
+            # Lock the account to prevent race conditions during balance update
+            account = DepositAccount.objects.select_for_update().get(
+                pk=instance.account.pk
+            )
+            account.cached_total_balance = account._calculate_total_balance()
+            account.cached_allocated_balance = account._calculate_allocated_balance()
+            account.cached_available_balance = account._calculate_available_balance()
+            account.balances_last_updated = timezone.now()
+            account.save(
+                update_fields=[
+                    "cached_total_balance",
+                    "cached_allocated_balance",
+                    "cached_available_balance",
+                    "balances_last_updated",
+                ]
+            )
     except Exception as e:
-        # Log error but don't break the transaction
-        print(f"Error updating cache for transaction {instance.pk}: {e}")
+        # Log error and re-raise to fail the transaction
+        logger.error(
+            f"Error updating cache for transaction {instance.pk}: {e}",
+            exc_info=True
+        )
+        raise
 
 
 @receiver([post_save, post_delete], sender=PurchaseAgreement)
 def update_balance_on_purchase_agreement(sender, instance, **kwargs):
     """Update cached balances when purchase agreement changes"""
     try:
-        instance.account.update_cached_balances()
+        with transaction.atomic():
+            account = DepositAccount.objects.select_for_update().get(
+                pk=instance.account.pk
+            )
+            account.cached_total_balance = account._calculate_total_balance()
+            account.cached_allocated_balance = account._calculate_allocated_balance()
+            account.cached_available_balance = account._calculate_available_balance()
+            account.balances_last_updated = timezone.now()
+            account.save(
+                update_fields=[
+                    "cached_total_balance",
+                    "cached_allocated_balance",
+                    "cached_available_balance",
+                    "balances_last_updated",
+                ]
+            )
     except Exception as e:
-        print(f"Error updating cache for purchase agreement {instance.pk}: {e}")
+        logger.error(
+            f"Error updating cache for purchase agreement {instance.pk}: {e}",
+            exc_info=True
+        )
+        raise
 
 
 @receiver([post_save, post_delete], sender=PurchaseAgreementLineItem)
 def update_balance_on_line_item(sender, instance, **kwargs):
     """Update cached balances when line item changes"""
     try:
-        instance.purchase_agreement.account.update_cached_balances()
+        with transaction.atomic():
+            account = DepositAccount.objects.select_for_update().get(
+                pk=instance.purchase_agreement.account.pk
+            )
+            account.cached_total_balance = account._calculate_total_balance()
+            account.cached_allocated_balance = account._calculate_allocated_balance()
+            account.cached_available_balance = account._calculate_available_balance()
+            account.balances_last_updated = timezone.now()
+            account.save(
+                update_fields=[
+                    "cached_total_balance",
+                    "cached_allocated_balance",
+                    "cached_available_balance",
+                    "balances_last_updated",
+                ]
+            )
     except Exception as e:
-        print(f"Error updating cache for line item {instance.pk}: {e}")
+        logger.error(
+            f"Error updating cache for line item {instance.pk}: {e}",
+            exc_info=True
+        )
+        raise
 
 
 @receiver([post_save, post_delete], sender=CfaAgreement)
 def update_balance_on_cfa_agreement(sender, instance, **kwargs):
     """Update cached balances when CFA agreement changes"""
     try:
-        instance.account.update_cached_balances()
+        with transaction.atomic():
+            account = DepositAccount.objects.select_for_update().get(
+                pk=instance.account.pk
+            )
+            account.cached_total_balance = account._calculate_total_balance()
+            account.cached_allocated_balance = account._calculate_allocated_balance()
+            account.cached_available_balance = account._calculate_available_balance()
+            account.balances_last_updated = timezone.now()
+            account.save(
+                update_fields=[
+                    "cached_total_balance",
+                    "cached_allocated_balance",
+                    "cached_available_balance",
+                    "balances_last_updated",
+                ]
+            )
     except Exception as e:
-        print(f"Error updating cache for CFA agreement {instance.pk}: {e}")
+        logger.error(
+            f"Error updating cache for CFA agreement {instance.pk}: {e}",
+            exc_info=True
+        )
+        raise
 
 
 @receiver([post_save, post_delete], sender=CfaFulfillment)
 def update_balance_on_cfa_fulfillment(sender, instance, **kwargs):
     """Update cached balances when CFA fulfillment changes"""
     try:
-        instance.cfa_agreement.account.update_cached_balances()
+        with transaction.atomic():
+            account = DepositAccount.objects.select_for_update().get(
+                pk=instance.cfa_agreement.account.pk
+            )
+            account.cached_total_balance = account._calculate_total_balance()
+            account.cached_allocated_balance = account._calculate_allocated_balance()
+            account.cached_available_balance = account._calculate_available_balance()
+            account.balances_last_updated = timezone.now()
+            account.save(
+                update_fields=[
+                    "cached_total_balance",
+                    "cached_allocated_balance",
+                    "cached_available_balance",
+                    "balances_last_updated",
+                ]
+            )
     except Exception as e:
-        print(f"Error updating cache for CFA fulfillment {instance.pk}: {e}")
+        logger.error(
+            f"Error updating cache for CFA fulfillment {instance.pk}: {e}",
+            exc_info=True
+        )
+        raise
 
 
 @receiver([post_save, post_delete], sender=BoxedSale)
@@ -72,9 +171,28 @@ def update_balance_on_boxed_sale(sender, instance, **kwargs):
     """Update cached balances when boxed sale changes (affects allocation)"""
     try:
         if instance.sale.agreement:
-            instance.sale.agreement.account.update_cached_balances()
+            with transaction.atomic():
+                account = DepositAccount.objects.select_for_update().get(
+                    pk=instance.sale.agreement.account.pk
+                )
+                account.cached_total_balance = account._calculate_total_balance()
+                account.cached_allocated_balance = account._calculate_allocated_balance()
+                account.cached_available_balance = account._calculate_available_balance()
+                account.balances_last_updated = timezone.now()
+                account.save(
+                    update_fields=[
+                        "cached_total_balance",
+                        "cached_allocated_balance",
+                        "cached_available_balance",
+                        "balances_last_updated",
+                    ]
+                )
     except Exception as e:
-        print(f"Error updating cache for boxed sale {instance.pk}: {e}")
+        logger.error(
+            f"Error updating cache for boxed sale {instance.pk}: {e}",
+            exc_info=True
+        )
+        raise
 
 
 @receiver([post_save, post_delete], sender=CoupledSale)
@@ -82,9 +200,28 @@ def update_balance_on_coupled_sale(sender, instance, **kwargs):
     """Update cached balances when coupled sale changes (affects allocation)"""
     try:
         if instance.sale.agreement:
-            instance.sale.agreement.account.update_cached_balances()
+            with transaction.atomic():
+                account = DepositAccount.objects.select_for_update().get(
+                    pk=instance.sale.agreement.account.pk
+                )
+                account.cached_total_balance = account._calculate_total_balance()
+                account.cached_allocated_balance = account._calculate_allocated_balance()
+                account.cached_available_balance = account._calculate_available_balance()
+                account.balances_last_updated = timezone.now()
+                account.save(
+                    update_fields=[
+                        "cached_total_balance",
+                        "cached_allocated_balance",
+                        "cached_available_balance",
+                        "balances_last_updated",
+                    ]
+                )
     except Exception as e:
-        print(f"Error updating cache for coupled sale {instance.pk}: {e}")
+        logger.error(
+            f"Error updating cache for coupled sale {instance.pk}: {e}",
+            exc_info=True
+        )
+        raise
 
 
 # ACCOUNT & AGREEMENT LIFECYCLE
@@ -253,7 +390,6 @@ def create_withdrawal_after_cfa_fulfillment(sender, instance, created, **kwargs)
 def create_refund_after_cfa_fulfillment_void(sender, instance, created, **kwargs):
     if not created:
         naira_amount = instance.cfa_amount_disbursed_to_naira
-        print(naira_amount)
         ct = ContentType.objects.get_for_model(instance)
 
         if not Transaction.objects.filter(

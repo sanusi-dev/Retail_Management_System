@@ -49,7 +49,7 @@ class Loan(models.Model):
     )
 
     def __str__(self):
-        return self.loan_id
+        return str(self.loan_id)
 
     # class Meta:
     #     constraints = [

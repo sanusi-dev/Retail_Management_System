@@ -7,7 +7,6 @@ from django.db.models import F, Sum, Q
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
-from easyaudit.models import CRUDEvent
 from utils.utils import create_inventory_transaction
 
 
@@ -401,32 +400,18 @@ class Payment(models.Model):
 
     @property
     def can_void(self):
-        if (
-            self.purchase_order.delivery_status
-            != self.purchase_order.DeliveryStatus.RECEIVED
+        """A payment can be voided if: status is PAID, AND PO has not received any goods (delivery_status == PENDING), AND PO is not CLOSED."""
+        return (
+            self.status == self.Status.PAID
+            and self.purchase_order.delivery_status
+            == self.purchase_order.DeliveryStatus.PENDING
             and self.purchase_order.status != self.purchase_order.Status.CLOSED
-            and self.status != self.Status.VOIDED
-        ):
-            return True
-        else:
-            return False
+        )
 
     def mark_as_void(self):
         self.status = self.Status.VOIDED
         self.purchase_order.update_payment_status()
         self.save()
-
-    @property
-    def can_void(self):
-        if (
-            self.purchase_order.delivery_status
-            != self.purchase_order.DeliveryStatus.PENDING
-            or self.purchase_order.status == self.purchase_order.Status.CLOSED
-            or self.status != self.Status.VOIDED
-        ):
-            return False
-        else:
-            return True
 
     def save(self, *args, **kwargs):
         if not self.trxn_ref:
