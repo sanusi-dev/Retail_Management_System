@@ -1,5 +1,20 @@
+import logging
 from django.db import transaction
 from .models import *
+from core.utils import audit
+
+logger = logging.getLogger(__name__)
+
+
+class BusinessRuleViolation(Exception):
+    pass
+
+
+def _update_po_status(po):
+    """Update PO delivery status, payment status, and overall status."""
+    po.update_po_delivery_status()
+    po.update_po_payment_status()
+    po.update_po_status()
 
 
 def process_po(form, formset, user):
@@ -23,6 +38,15 @@ def process_po(form, formset, user):
 
 
 def process_receipt(form, formset, user):
+    """
+    Process a goods receipt: save items, recalculate WAC, update inventory,
+    create inventory transactions, update PO statuses.
+    Replaces update_inventory, create_inventory_trxn, update_po_status,
+    update_po_item_status signals.
+    """
+    from inventory.models import Inventory, InventoryTransaction
+    from utils.utils import create_inventory_transaction
+
     with transaction.atomic():
         receipt = form.save(commit=False)
         receipt.created_by = user
@@ -52,6 +76,39 @@ def process_receipt(form, formset, user):
             item.updated_by = user
             item.save()
 
+            # WAC recalculation and inventory update (replaces update_inventory signal)
+            inventory = Inventory.objects.select_for_update().get(product=item.product)
+            qty = item.received_quantity
+            cost = item.unit_cost_at_receipt
+
+            new_qty = inventory.quantity + qty
+            total_value = (inventory.quantity * inventory.weighted_average_cost) + (
+                qty * cost
+            )
+            wac = total_value / new_qty if new_qty > 0 else 0
+
+            inventory.quantity = new_qty
+            inventory.weighted_average_cost = wac
+            inventory.save(update_fields=["quantity", "weighted_average_cost", "updated_at"])
+
+            # Create inventory transaction (replaces create_inventory_trxn signal)
+            if not item.reverses:
+                create_inventory_transaction(
+                    inventory=item.product.inventory,
+                    source=item,
+                    transaction_type=InventoryTransaction.TransactionType.RECEIPT,
+                    quantity_change=item.received_quantity,
+                    cost_impact=item.received_quantity * item.unit_cost_at_receipt,
+                )
+
+            # Update PO item status (replaces update_po_item_status signal)
+            po_item = item.purchase_order_item
+            po_item.update_po_item_status()
+
+        # Update PO statuses (replaces update_po_status signal)
+        po = receipt.purchase_order
+        _update_po_status(po)
+
 
 def can_void_receipt(receipt):
     if receipt.status == GoodsReceipt.Status.VOIDED:
@@ -63,15 +120,107 @@ def can_void_receipt(receipt):
     return True
 
 
-def void_and_correct(receipt_id, user):
+def void_and_correct(receipt_id, user, request=None):
+    """
+    Void a goods receipt: create reversals, restore inventory, update PO statuses.
+    Replaces reverse_inventory_on_receipt_void, update_po_status,
+    update_po_item_status signals.
+    """
+    from inventory.models import Inventory, InventoryTransaction
+    from utils.utils import create_inventory_transaction
+
     with transaction.atomic():
         receipt = (
             GoodsReceipt.objects.select_for_update().select_related().get(pk=receipt_id)
         )
         if not can_void_receipt(receipt):
-            raise ValueError("This is inventory can not be voided")
+            raise BusinessRuleViolation("This receipt cannot be voided — insufficient stock.")
+
         for item in receipt.receipt_items.all():
+            # Create reversal item (this already creates the InventoryTransaction via model method)
             item.create_reversal(user)
 
-    receipt.status = GoodsReceipt.Status.VOIDED
-    receipt.save(update_fields=["status"])
+            # Restore inventory and recalculate WAC (replaces reverse_inventory signal)
+            inventory = Inventory.objects.select_for_update().get(product=item.product)
+            qty = item.received_quantity
+            cost = item.unit_cost_at_receipt
+
+            new_qty = inventory.quantity - qty
+            if new_qty > 0:
+                total_value = (inventory.quantity * inventory.weighted_average_cost) - (
+                    qty * cost
+                )
+                wac = total_value / new_qty
+            else:
+                wac = 0
+
+            inventory.quantity = new_qty
+            inventory.weighted_average_cost = wac
+            inventory.save(update_fields=["quantity", "weighted_average_cost", "updated_at"])
+
+            # Update PO item status
+            po_item = item.purchase_order_item
+            po_item.update_po_item_status()
+
+        receipt.status = GoodsReceipt.Status.VOIDED
+        receipt.save(update_fields=["status"])
+
+        # Update PO statuses
+        po = receipt.purchase_order
+        _update_po_status(po)
+
+        audit(user, 'void_receipt', receipt, detail={
+            'gr_number': receipt.gr_number,
+            'po_number': receipt.purchase_order.po_number,
+        }, request=request)
+
+
+def record_supplier_payment(po, amount, method, user, trxn_ref="", remark=""):
+    """
+    Record a supplier payment and update PO payment status.
+    Replaces update_po_payment_status signal.
+    """
+    with transaction.atomic():
+        payment = Payment(
+            purchase_order=po,
+            amount_paid=amount,
+            payment_method=method,
+            remark=remark,
+            created_by=user,
+            updated_by=user,
+        )
+        if trxn_ref:
+            payment.trxn_ref = trxn_ref
+        payment.save()
+
+        # Update PO statuses (replaces update_po_payment_status signal)
+        _update_po_status(po)
+    return payment
+
+
+def void_supplier_payment(payment_id, user, request=None):
+    """
+    Void a supplier payment and update PO payment status.
+    Replaces update_po_payment_status signal.
+    """
+    with transaction.atomic():
+        payment = Payment.objects.select_for_update().get(pk=payment_id)
+
+        if not payment.can_void:
+            raise BusinessRuleViolation("This payment cannot be voided.")
+
+        payment.status = Payment.Status.VOIDED
+        payment.updated_by = user
+        payment.save(update_fields=['status', 'updated_by'])
+
+        # Update PO statuses (replaces update_po_payment_status signal)
+        _update_po_status(payment.purchase_order)
+
+        audit(user, 'void_supplier_payment', payment, detail={
+            'amount': str(payment.amount_paid),
+            'payment_method': payment.payment_method,
+            'po_number': payment.purchase_order.po_number,
+            'trxn_ref': payment.trxn_ref,
+        }, request=request)
+
+    return payment

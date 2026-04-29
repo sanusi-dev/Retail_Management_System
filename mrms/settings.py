@@ -1,21 +1,12 @@
 from pathlib import Path
-import shutil
-import environ
+from decouple import config
 
-
-env = environ.Env(
-    # set casting, default value
-    DEBUG=(bool, True)
-)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Take environment variables from .env file
-environ.Env.read_env(BASE_DIR / ".env")
-
-DEBUG = env("DEBUG")
-SECRET_KEY = env("SECRET_KEY")
+DEBUG = config("DEBUG", default=True, cast=bool)
+SECRET_KEY = config("SECRET_KEY")
 
 
 ALLOWED_HOSTS = []
@@ -36,22 +27,11 @@ INSTALLED_APPS = [
     "customer",
     "inventory",
     "core",
-    "django_extensions",
-    "tailwind",
-    "theme",
     "django_htmx",
     "widget_tweaks",
     # 'debug_toolbar',
     "template_partials",
 ]
-
-TAILWIND_APP_NAME = "theme"
-NPM_BIN_PATH = shutil.which("npm")
-
-
-if DEBUG:
-    # Add django_browser_reload only in DEBUG mode
-    INSTALLED_APPS += ["django_browser_reload"]
 
 AUTH_USER_MODEL = "account.CustomUser"
 
@@ -68,11 +48,6 @@ MIDDLEWARE = [
     "django_htmx.middleware.HtmxMiddleware",
     # 'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
-
-if DEBUG:
-    MIDDLEWARE += [
-        "django_browser_reload.middleware.BrowserReloadMiddleware",
-    ]
 
 ROOT_URLCONF = "mrms.urls"
 
@@ -121,6 +96,9 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",

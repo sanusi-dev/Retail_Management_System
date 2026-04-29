@@ -475,13 +475,13 @@ def void_transformation(request, pk):
         pk=pk,
     )
     if request.method == "POST":
-        if services.can_void_transformation(transformation):
-            services.void_and_correct(pk)
+        try:
+            services.void_transformation(pk, request.user, request=request)
             message = (
                 f"Transformation {transformation.transformation_number} has been voided"
             )
-        else:
-            message = f"{transformation.transformation_number} can not be voided"
+        except services.BusinessRuleViolation as e:
+            message = str(e)
 
         void = render_block_to_string(
             "inventory/inventory/transformation_detail.html",

@@ -1,4 +1,4 @@
-{% load static tailwind_tags %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -9,7 +9,7 @@
         <meta name="htmx-view-transitions" content="true">
         <title>Ayotola & Sons</title>
         <meta name="htmx-config" content='{"scrollIntoViewOnBoost": false}'>
-        {% tailwind_css %}
+        <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
     </head>
     <body x-data="{ page: '{{ request.resolver_match.url_name|default:'dashboard' }}', 'loaded': true, 'sidebarToggle': false }"
           hx-headers='{"x-csrftoken": "{{ csrf_token }}"}'>

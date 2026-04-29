@@ -34,6 +34,7 @@ from .forms import (
     BoxedSaleFormSet,
     CoupledSaleFormSet,
 )
+from . import services as customer_services
 from inventory.models import Product, TransformationItem
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -446,6 +447,7 @@ def manage_transactions(request):
                 txn.created_by = request.user
                 txn.updated_by = request.user
                 txn.save()
+                customer_services._refresh_balances(txn.account)
 
             if customer_pk:
                 return redirect("customer_detail", pk=customer_pk)
@@ -476,6 +478,7 @@ def void_transaction(request, pk):
             txn.status = Transaction.Status.VOIDED
             txn.updated_by = request.user
             txn.save()
+            customer_services._refresh_balances(txn.account)
 
         transaction_row = render_block_to_string(
             "customers/customer_transactions.html",
@@ -554,6 +557,8 @@ def manage_purchase_agreements(request, pk=None):
                     item.updated_by = request.user
                     item.save()
 
+                customer_services._refresh_balances(agreement.account)
+
             return redirect(agreement.account.customer.get_absolute_url)
 
     else:
@@ -606,35 +611,36 @@ def cancel_purchase_agreement(request, pk):
     agreement = get_object_or_404(PurchaseAgreement, pk=pk)
     oob_content = ""
 
-    with transaction.atomic():
-        if agreement.can_cancel:
-            agreement.status = PurchaseAgreement.Status.CANCELLED
-            agreement.save(update_fields=["status"])
+    try:
+        customer_services.cancel_agreement(pk, request.user, request=request)
 
-            for item in agreement.agreement_line_items.all():
-                item.status = PurchaseAgreementLineItem.Status.CANCELLED
-                item.save(update_fields=["status"])
+        toast = render_to_string(
+            "partials/toast.html",
+            {
+                "message": f"Agreement {agreement.purchase_agreement_number} cancelled successfully.",
+                "type": "success",
+            },
+            request=request,
+        )
+        oob_content += toast
 
-            toast = render_to_string(
-                "partials/toast.html",
-                {
-                    "message": f"Agreement {agreement.purchase_agreement_number} cancelled successfully.",
-                    "type": "success",
-                },
-                request=request,
-            )
-            oob_content += toast
-
-            customer = agreement.account.customer
-            wallet = render_to_string(
-                "customers/partials/customer_wallet.html",
-                {
-                    "customer": customer,
-                    "oob_swap_enabled": True,
-                },
-                request=request,
-            )
-            oob_content += wallet
+        customer = agreement.account.customer
+        wallet = render_to_string(
+            "customers/partials/customer_wallet.html",
+            {
+                "customer": customer,
+                "oob_swap_enabled": True,
+            },
+            request=request,
+        )
+        oob_content += wallet
+    except customer_services.BusinessRuleViolation as e:
+        toast = render_to_string(
+            "partials/toast.html",
+            {"message": str(e), "type": "error"},
+            request=request,
+        )
+        oob_content += toast
 
     return HttpResponse(oob_content)
 
@@ -660,6 +666,7 @@ def manage_cfa_agreements(request, pk=None):
                     cfa_agreement.created_by = request.user
                 cfa_agreement.updated_by = request.user
                 cfa_agreement.save()
+                customer_services._refresh_balances(cfa_agreement.account)
 
             return redirect(cfa_agreement.account.customer.get_absolute_url)
 
@@ -695,6 +702,7 @@ def cancel_cfa_agreement(request, pk):
         if agreement.can_cancel:
             agreement.status = CfaAgreement.Status.CANCELLED
             agreement.save(update_fields=["status"])
+            customer_services._refresh_balances(agreement.account)
 
         toast = render_to_string(
             "partials/toast.html",
@@ -727,11 +735,14 @@ def manage_cfa_fulfillments(request):
 
         if form.is_valid():
             try:
-                with transaction.atomic():
-                    fulfillment = form.save(commit=False)
-                    fulfillment.created_by = request.user
-                    fulfillment.updated_by = request.user
-                    fulfillment.save()
+                fulfillment = form.save(commit=False)
+                customer_services.record_cfa_fulfillment(
+                    agreement_id=fulfillment.cfa_agreement.pk,
+                    cfa_amount=fulfillment.cfa_amount_disbursed,
+                    notes=fulfillment.notes,
+                    user=request.user,
+                    request=request,
+                )
 
                 return redirect(
                     fulfillment.cfa_agreement.account.customer.get_absolute_url
@@ -739,7 +750,6 @@ def manage_cfa_fulfillments(request):
 
             except Exception as e:
                 error_message = (
-                    request,
                     f"An error occurred while saving the fulfillment: {e}",
                 )
                 logging.error(error_message, exc_info=True)
@@ -765,31 +775,36 @@ def manage_cfa_fulfillments(request):
 
 @require_POST
 def void_cfa_fulfillment(request, pk):
-
     fulfillment = get_object_or_404(CfaFulfillment, pk=pk)
-    with transaction.atomic():
-        if fulfillment.status == CfaFulfillment.Status.ACTIVE:
-            fulfillment.status = CfaFulfillment.Status.VOIDED
-            fulfillment.updated_by = request.user
-            fulfillment.save()
 
-            toast = render_to_string(
-                "partials/toast.html",
-                {
-                    "message": f"Transaction {fulfillment.fulfillment_number} voided successfully.",
-                    "type": "success",
-                },
-            )
+    try:
+        customer_services.void_cfa_fulfillment(pk, "", request.user, request=request)
 
-            wallet = render_to_string(
-                "customers/partials/customer_wallet.html",
-                {
-                    "customer": fulfillment.cfa_agreement.account.customer,
-                    "oob_swap_enabled": True,
-                },
-                request=request,
-            )
-    return HttpResponse(wallet + toast)
+        toast = render_to_string(
+            "partials/toast.html",
+            {
+                "message": f"Transaction {fulfillment.fulfillment_number} voided successfully.",
+                "type": "success",
+            },
+        )
+
+        wallet = render_to_string(
+            "customers/partials/customer_wallet.html",
+            {
+                "customer": fulfillment.cfa_agreement.account.customer,
+                "oob_swap_enabled": True,
+            },
+            request=request,
+        )
+        return HttpResponse(wallet + toast)
+    except customer_services.BusinessRuleViolation as e:
+        toast = render_to_string(
+            "partials/toast.html",
+            {"message": str(e), "type": "error"},
+        )
+        response = HttpResponse(toast)
+        response["HX-Reswap"] = "none"
+        return response
 
 
 def sales(request):
@@ -1032,9 +1047,8 @@ def record_sale(request):
                 sale = form.save(commit=False)
                 sale.created_by = request.user
                 sale.updated_by = request.user
-                sale.save()
 
-                # Re-bind formsets with the saved sale instance
+                # Re-bind formsets with the sale instance for saving
                 boxed_formset = BoxedSaleFormSet(
                     request.POST,
                     instance=sale,
@@ -1048,7 +1062,6 @@ def record_sale(request):
                     is_from_deposit=is_from_deposit,
                 )
 
-                # These should still be valid since we validated above
                 boxed_formset.is_valid()
                 coupled_formset.is_valid()
 
@@ -1056,13 +1069,16 @@ def record_sale(request):
                 for item in boxed_items:
                     item.created_by = request.user
                     item.updated_by = request.user
-                    item.save()
 
                 coupled_items = coupled_formset.save(commit=False)
                 for item in coupled_items:
                     item.created_by = request.user
                     item.updated_by = request.user
-                    item.save()
+
+                # Call service to handle all business logic
+                customer_services.create_sale(
+                    sale, boxed_items, coupled_items, request.user
+                )
 
                 messages.success(
                     request, f"Sale {sale.sale_number} recorded successfully."
@@ -1165,3 +1181,17 @@ def load_agreement_line_items(request):
         "customers/partials/agreement_line_item_options.html",
         {"line_items": line_items},
     )
+
+
+@require_POST
+def void_sale(request, pk):
+    sale = get_object_or_404(Sale, pk=pk)
+    void_reason = request.POST.get("void_reason", "")
+
+    try:
+        customer_services.void_sale(pk, void_reason, request.user, request=request)
+        messages.success(request, f"Sale {sale.sale_number} voided successfully.")
+    except customer_services.BusinessRuleViolation as e:
+        messages.error(request, str(e))
+
+    return redirect("sale_detail", pk=pk)

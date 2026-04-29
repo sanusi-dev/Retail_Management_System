@@ -412,20 +412,23 @@ def manage_payments(request):
 
     if request.method == "POST":
         paymentform = PaymentForm(request.POST)
-        print(request.POST)
-        print(paymentform.is_valid())
         if paymentform.is_valid():
-            with transaction.atomic():
-                paymentform = paymentform.save(commit=False)
-                paymentform.created_by = request.user
-                paymentform.updated_by = request.user
-                paymentform.save()
+            try:
+                payment = services.record_supplier_payment(
+                    po=paymentform.cleaned_data['purchase_order'],
+                    amount=paymentform.cleaned_data['amount_paid'],
+                    method=paymentform.cleaned_data['payment_method'],
+                    user=request.user,
+                    remark=paymentform.cleaned_data.get('remark', ''),
+                )
 
                 return (
                     redirect(purchase_order.get_absolute_url)
                     if purchase_order
                     else redirect("payments")
                 )
+            except Exception as e:
+                messages.error(request, str(e))
     else:
         paymentform = PaymentForm(initial=initial_data)
 
@@ -446,11 +449,11 @@ def manage_payments(request):
 def payments_void(request, pk):
     payment = get_object_or_404(Payment, pk=pk)
     if request.method == "POST":
-        if payment.can_void:
-            payment.mark_as_void()
+        try:
+            services.void_supplier_payment(pk, request.user, request=request)
             message = f"Payment {payment.trxn_ref} has been voided"
-        else:
-            message = f"{payment.trxn_ref} can not be voided"
+        except services.BusinessRuleViolation as e:
+            message = str(e)
 
         context = {"payment": payment}
 
@@ -666,7 +669,7 @@ def void_receipt(request, pk):
     )
 
     if services.can_void_receipt(receipt):
-        services.void_and_correct(pk, request.user)
+        services.void_and_correct(pk, request.user, request=request)
         message = f"Receipt {receipt.gr_number} has been voided"
     else:
         message = f"{receipt.gr_number} can not be voided"

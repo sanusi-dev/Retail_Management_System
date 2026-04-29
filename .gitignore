@@ -79,3 +79,9 @@ backups/
 
 # Documentation
 # reconstruction_document.md
+
+# Tailwind standalone CLI binary
+tailwindcss
+
+# Tailwind compiled output (generated artifact)
+static/css/tailwind.css

@@ -27,6 +27,7 @@ urlpatterns = [
     path("sales", sales, name="sales"),
     path("sale_detail/<uuid:pk>/", sale_detail, name="sale_detail"),
     path("record_sale", record_sale, name="record_sale"),
+    path("void_sale/<uuid:pk>/", void_sale, name="void_sale"),
     path("search/customers/", search_customers, name="search_customers"),
     path("search/products/", search_products, name="search_products"),
     path("search/transformation_items/", search_transformation_items, name="search_transformation_items"),

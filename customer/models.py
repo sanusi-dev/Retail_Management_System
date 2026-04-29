@@ -29,6 +29,8 @@ class Customer(models.Model):
     customer_number = models.CharField(max_length=20, unique=True, editable=False)
     full_name = models.CharField(max_length=200, unique=True)
     phone = models.CharField(max_length=20, null=True, blank=True)
+    email = models.EmailField(blank=True)
+    address = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
@@ -501,7 +503,9 @@ class PurchaseAgreement(models.Model):
 
     @property
     def total_quantity_fulfilled(self):
-        total_boxed_and_coupled_sale = self.agreement_sales.aggregate(
+        total_boxed_and_coupled_sale = self.agreement_sales.filter(
+            status=Sale.Status.ACTIVE
+        ).aggregate(
             total=Sum(F("boxed_sales__quantity"), default=0)
             + Count("coupled_sales", distinct=True)
         )["total"]
@@ -905,6 +909,7 @@ class Sale(models.Model):
 
     sale_date = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=20, choices=Status, default=Status.ACTIVE)
+    void_reason = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(

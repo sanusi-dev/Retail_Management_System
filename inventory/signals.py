@@ -1,8 +1,6 @@
-from django.db.models.signals import post_save, pre_save, post_delete
+from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import *
-from . import services
-from django.db import transaction
+from .models import Product, Inventory
 
 
 @receiver(post_save, sender=Product)
@@ -32,28 +30,4 @@ def create_product_inventory(sender, instance, created, **kwargs):
             product=instance,
             created_by=instance.created_by,
             updated_by=instance.updated_by,
-        )
-
-
-@receiver(post_save, sender=TransformationItem)
-def update_inventory_and_create_transaction(sender, instance, created, **kwargs):
-    if not created:
-        return
-
-    with transaction.atomic():
-        inventory = Inventory.objects.select_for_update().get(
-            product=instance.source_product
-        )
-        if inventory.quantity < 1:
-            raise ValueError("Insufficient Stock")
-
-        inventory.quantity -= 1
-        inventory.save(update_fields=["quantity", "updated_at"])
-
-        services.create_inventory_transaction(
-            inventory=inventory,
-            source=instance,
-            transaction_type=InventoryTransaction.TransactionType.TRANSFORMATION,
-            quantity_change=-1,
-            cost_impact=inventory.weighted_average_cost,
         )

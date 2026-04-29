@@ -1,6 +1,5 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.conf import settings
 
 
 urlpatterns = [
@@ -12,8 +11,3 @@ urlpatterns = [
     path("", include("loan.urls")),
     path("purchases/", include("supply_chain.urls")),
 ]
-
-if settings.DEBUG:
-    urlpatterns += [
-        path("__reload__/", include("django_browser_reload.urls")),
-    ]
