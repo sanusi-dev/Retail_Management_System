@@ -79,7 +79,7 @@ def record_deposit(account, amount, note, user, request=None):
 
 
 def void_deposit(transaction_id, void_reason, user, request=None):
-    """Void a deposit transaction if allowed."""
+    """Void a deposit or withdrawal transaction if allowed."""
     from customer.models import Transaction
 
     with db_transaction.atomic():
@@ -88,8 +88,11 @@ def void_deposit(transaction_id, void_reason, user, request=None):
         if txn.status == Transaction.Status.VOIDED:
             raise BusinessRuleViolation("Transaction is already voided.")
 
-        if txn.transaction_type != Transaction.TransactionType.DEPOSIT:
-            raise BusinessRuleViolation("Only deposit transactions can be voided this way.")
+        if txn.transaction_type not in [
+            Transaction.TransactionType.DEPOSIT,
+            Transaction.TransactionType.WITHDRAWAL,
+        ]:
+            raise BusinessRuleViolation("Only manual transactions can be voided this way.")
 
         txn.status = Transaction.Status.VOIDED
         txn.updated_by = user
@@ -97,7 +100,12 @@ def void_deposit(transaction_id, void_reason, user, request=None):
 
         _refresh_balances(txn.account)
 
-        audit(user, 'void_deposit', txn, detail={
+        audit_action = (
+            'void_deposit'
+            if txn.transaction_type == Transaction.TransactionType.DEPOSIT
+            else 'void_withdrawal'
+        )
+        audit(user, audit_action, txn, detail={
             'void_reason': void_reason,
             'amount': str(txn.amount),
             'account_id': str(txn.account.pk),
@@ -264,6 +272,30 @@ def void_cfa_fulfillment(fulfillment_id, void_reason, user, request=None):
         }, request=request)
 
     return fulfillment
+
+
+def cancel_cfa_agreement(agreement_id, user, request=None):
+    """Cancel a CFA agreement and refresh balances."""
+    from customer.models import CfaAgreement
+
+    with db_transaction.atomic():
+        agreement = CfaAgreement.objects.select_for_update().get(pk=agreement_id)
+
+        if not agreement.can_cancel:
+            raise BusinessRuleViolation("This CFA agreement cannot be cancelled.")
+
+        agreement.status = CfaAgreement.Status.CANCELLED
+        agreement.save(update_fields=["status"])
+
+        _refresh_balances(agreement.account)
+
+        audit(user, 'cancel_cfa_agreement', agreement, detail={
+            'cfa_agreement_number': agreement.cfa_agreement_number,
+            'amount_allocated': str(agreement.amount_allocated),
+            'account_id': str(agreement.account.pk),
+        }, request=request)
+
+    return agreement
 
 
 def create_sale(sale, boxed_items, coupled_items, user, request=None):

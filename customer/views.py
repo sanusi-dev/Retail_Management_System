@@ -442,12 +442,22 @@ def manage_transactions(request):
     if request.method == "POST":
         form = TransactionForm(request.POST)
         if form.is_valid():
-            with transaction.atomic():
-                txn = form.save(commit=False)
-                txn.created_by = request.user
-                txn.updated_by = request.user
-                txn.save()
-                customer_services._refresh_balances(txn.account)
+            txn_type = form.cleaned_data.get("transaction_type")
+            if txn_type == Transaction.TransactionType.DEPOSIT:
+                txn = customer_services.record_deposit(
+                    account=form.cleaned_data["account"],
+                    amount=form.cleaned_data["amount"],
+                    note=form.cleaned_data["note"],
+                    user=request.user,
+                    request=request,
+                )
+            else:
+                with transaction.atomic():
+                    txn = form.save(commit=False)
+                    txn.created_by = request.user
+                    txn.updated_by = request.user
+                    txn.save()
+                    customer_services._refresh_balances(txn.account)
 
             if customer_pk:
                 return redirect("customer_detail", pk=customer_pk)
@@ -474,11 +484,7 @@ def void_transaction(request, pk):
     txn = get_object_or_404(Transaction, pk=pk)
 
     try:
-        with transaction.atomic():
-            txn.status = Transaction.Status.VOIDED
-            txn.updated_by = request.user
-            txn.save()
-            customer_services._refresh_balances(txn.account)
+        customer_services.void_deposit(pk, "", request.user, request=request)
 
         transaction_row = render_block_to_string(
             "customers/customer_transactions.html",
@@ -496,7 +502,7 @@ def void_transaction(request, pk):
 
         return HttpResponse(transaction_row + toast)
 
-    except ValidationError as e:
+    except (ValidationError, customer_services.BusinessRuleViolation) as e:
         error_message = (
             e.message_dict.get("__all__", [str(e)])[0]
             if hasattr(e, "message_dict")
@@ -537,29 +543,52 @@ def manage_purchase_agreements(request, pk=None):
             account = form.cleaned_data.get("account")
             balance = account.available_balance
 
-        formset = PurchaseAgreementLineItemFormSet(
-            request.POST, queryset=qs, prefix="item", available_balance=balance
-        )
-        if formset.is_valid():
-            with transaction.atomic():
-                agreement = form.save(commit=False)
-                agreement.created_by = request.user
-                agreement.updated_by = request.user
-                agreement.save()
+            formset = PurchaseAgreementLineItemFormSet(
+                request.POST, queryset=qs, prefix="item", available_balance=balance
+            )
+            if formset.is_valid():
+                if not instance:
+                    items = formset.save(commit=False)
+                    line_items_data = [
+                        {
+                            'product': item.product,
+                            'quantity_ordered': item.quantity_ordered,
+                            'price_per_unit': item.price_per_unit,
+                        }
+                        for item in items
+                    ]
+                    agreement = customer_services.create_purchase_agreement(
+                        account=account,
+                        line_items_data=line_items_data,
+                        user=request.user,
+                        request=request,
+                    )
+                else:
+                    with transaction.atomic():
+                        agreement = form.save(commit=False)
+                        agreement.created_by = request.user
+                        agreement.updated_by = request.user
+                        agreement.save()
 
-                items = formset.save(commit=False)
-                for obj in formset.deleted_objects:
-                    obj.delete()
+                        items = formset.save(commit=False)
+                        for obj in formset.deleted_objects:
+                            obj.delete()
 
-                for item in items:
-                    item.purchase_agreement = agreement
-                    item.created_by = request.user
-                    item.updated_by = request.user
-                    item.save()
+                        for item in items:
+                            item.purchase_agreement = agreement
+                            item.created_by = request.user
+                            item.updated_by = request.user
+                            item.save()
 
-                customer_services._refresh_balances(agreement.account)
+                        customer_services._refresh_balances(agreement.account)
 
-            return redirect(agreement.account.customer.get_absolute_url)
+                return redirect(agreement.account.customer.get_absolute_url)
+
+        # Ensure formset exists for re-rendering if validation failed
+        if 'formset' not in locals():
+            formset = PurchaseAgreementLineItemFormSet(
+                request.POST, queryset=qs, prefix="item"
+            )
 
     else:
         form = PurchaseAgreementForm(initial=initial_data, instance=instance)
@@ -659,14 +688,20 @@ def manage_cfa_agreements(request, pk=None):
         form = CfaAgreementForm(request.POST, instance=instance)
 
         if form.is_valid():
-            with transaction.atomic():
-                cfa_agreement = form.save(commit=False)
-
-                if cfa_agreement._state.adding:
-                    cfa_agreement.created_by = request.user
-                cfa_agreement.updated_by = request.user
-                cfa_agreement.save()
-                customer_services._refresh_balances(cfa_agreement.account)
+            if not instance:
+                cfa_agreement = customer_services.create_cfa_agreement(
+                    account=form.cleaned_data["account"],
+                    amount_naira=form.cleaned_data["amount_allocated"],
+                    exchange_rate=form.cleaned_data["exchange_rate"],
+                    user=request.user,
+                    request=request,
+                )
+            else:
+                with transaction.atomic():
+                    cfa_agreement = form.save(commit=False)
+                    cfa_agreement.updated_by = request.user
+                    cfa_agreement.save()
+                    customer_services._refresh_balances(cfa_agreement.account)
 
             return redirect(cfa_agreement.account.customer.get_absolute_url)
 
@@ -698,16 +733,13 @@ def manage_cfa_agreements(request, pk=None):
 def cancel_cfa_agreement(request, pk):
     agreement = get_object_or_404(CfaAgreement, pk=pk)
 
-    with transaction.atomic():
-        if agreement.can_cancel:
-            agreement.status = CfaAgreement.Status.CANCELLED
-            agreement.save(update_fields=["status"])
-            customer_services._refresh_balances(agreement.account)
+    try:
+        customer_services.cancel_cfa_agreement(pk, request.user, request=request)
 
         toast = render_to_string(
             "partials/toast.html",
             {
-                "message": f"Transaction {agreement.cfa_agreement_number} cancelled successfully.",
+                "message": f"CFA Agreement {agreement.cfa_agreement_number} cancelled successfully.",
                 "type": "success",
             },
         )
@@ -720,7 +752,14 @@ def cancel_cfa_agreement(request, pk):
             },
             request=request,
         )
-    return HttpResponse(toast + wallet)
+        return HttpResponse(toast + wallet)
+    except customer_services.BusinessRuleViolation as e:
+        toast = render_to_string(
+            "partials/toast.html",
+            {"message": str(e), "type": "error"},
+            request=request,
+        )
+        return HttpResponse(toast)
 
 
 def manage_cfa_fulfillments(request):
