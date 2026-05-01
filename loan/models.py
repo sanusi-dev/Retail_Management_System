@@ -117,6 +117,6 @@ class LoanRepayments(models.Model):
     class Meta:
         constraints = [
             CheckConstraint(
-                check=(Q(amount__gt=0)), name="chk_positive_repayment_amount"
+                condition=Q(amount__gt=0), name="chk_positive_repayment_amount"
             ),
         ]

@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_POST, require_GET
 from render_block import render_block_to_string
@@ -5,7 +6,7 @@ from django.urls import reverse
 from django.core.paginator import Paginator
 from django.http import HttpResponse
 from django_htmx.http import HttpResponseClientRedirect
-from django.db.models import Sum, F, DecimalField, Value, Q
+from django.db.models import Sum, F, DecimalField, Value, Q, Count
 from django.db.models.functions import Coalesce
 from .models import (
     Customer,
@@ -27,7 +28,6 @@ from .forms import (
     PurchaseAgreementLineItemFormSet,
     CfaAgreementForm,
     CfaFulfillmentForm,
-    CfaFulfillmentForm,
     NormalSaleForm,
     RecordSaleForm,
     AgreementSaleForm,
@@ -40,8 +40,6 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.template.loader import render_to_string
 from django.db import transaction
-from django.db.models import Sum, Count, Q, F, Prefetch
-from django.db.models.functions import Coalesce
 import logging
 
 logger = logging.getLogger(__name__)
@@ -49,61 +47,121 @@ logger = logging.getLogger(__name__)
 
 def customers(request):
     search_query = request.GET.get("q", "")
-    customer_list = Customer.objects.select_related("deposit_account").order_by(
-        "-deposit_account__cached_total_balance"
+    filter_by = request.GET.get("filter", "")
+    sort_by = request.GET.get("sort", "name_asc")
+
+    customer_list = (
+        Customer.objects.annotate(
+            total_balance=Coalesce(
+                F("deposit_account__cached_total_balance"),
+                Value(0),
+                output_field=DecimalField(),
+            ),
+            allocated_balance=Coalesce(
+                F("deposit_account__cached_allocated_balance"),
+                Value(0),
+                output_field=DecimalField(),
+            ),
+            available_balance=Coalesce(
+                F("deposit_account__cached_available_balance"),
+                Value(0),
+                output_field=DecimalField(),
+            ),
+            active_agreement_count=Count(
+                "deposit_account__purchase_agreements",
+                filter=Q(
+                    deposit_account__purchase_agreements__status=PurchaseAgreement.Status.ACTIVE
+                ),
+                distinct=True,
+            ),
+            cfa_agreement_count=Count(
+                "deposit_account__cfa_agreements",
+                filter=Q(
+                    deposit_account__cfa_agreements__status=CfaAgreement.Status.ACTIVE
+                ),
+                distinct=True,
+            ),
+            sale_count=Count("customer_sales", distinct=True),
+        )
+        .select_related("deposit_account")
+        .order_by("-deposit_account__cached_total_balance")
     )
 
+    # search
     if search_query:
         customer_list = customer_list.filter(
             Q(full_name__icontains=search_query)
             | Q(phone__icontains=search_query)
-            | Q(customer_id__icontains=search_query)
+            | Q(customer_number__icontains=search_query)
         )
 
-    # Sorting
-    sort_field = request.GET.get("sort", "deposit_account__cached_total_balance")
-    direction = request.GET.get("direction", "desc")
-    allowed_sort_fields = [
-        "full_name",
-        "deposit_account__cached_total_balance",
-        "phone",
-        "customer_id",
-    ]
+    # filtering
+    match filter_by:
+        case "active_agreements":
+            customer_list = customer_list.filter(
+                Q(
+                    deposit_account__purchase_agreements__status=PurchaseAgreement.Status.ACTIVE
+                )
+                | Q(deposit_account__cfa_agreements__status=CfaAgreement.Status.ACTIVE)
+            ).distinct()
+        case "balance_gt_1m":
+            customer_list = customer_list.filter(available_balance__gt=1_000_000)
+        case "no_activity":
+            customer_list = customer_list.filter(
+                deposit_account__transactions__isnull=True,
+                customer_sales__isnull=True,
+            )
 
-    if direction == "desc":
-        order_by_field = f"-{sort_field}"
-    else:
-        order_by_field = sort_field
+    # sorting
+    match sort_by:
+        case "balance_desc":
+            customer_list = customer_list.order_by("-total_balance")
+        case "newest":
+            customer_list = customer_list.order_by("-created_at")
+        case _:
+            customer_list = customer_list.order_by("full_name")
 
-    if sort_field in allowed_sort_fields:
-        customer_list = customer_list.order_by(order_by_field)
-
-    # Pagination
-    PAGE_SIZE = 100
+    # pagination
+    PAGE_SIZE = 20
     paginator = Paginator(customer_list, PAGE_SIZE)
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
+    # total deposited for subtitle
+    total_deposited = customer_list.aggregate(
+        total=Coalesce(Sum("total_balance"), Value(0), output_field=DecimalField())
+    )["total"] or Decimal("0.00")
+
+    params = {}
+    if search_query:
+        params["q"] = search_query
+    if filter_by:
+        params["filter"] = filter_by
+    if sort_by and sort_by != "name_asc":
+        params["sort"] = sort_by
+
     context = {
         "customers": page_obj,
         "search_query": search_query,
-        "sort_field": sort_field,
-        "direction": direction,
+        "filter_by": filter_by,
+        "sort_by": sort_by,
+        "total_deposited": total_deposited,
+        "params": params,
     }
 
     if request.htmx:
-        if "page" in request.GET or "q" in request.GET:
-            customer_list = render_block_to_string(
-                "customers/customers.html",
-                "body",
+        if any(key in request.GET for key in ["page", "q", "filter", "sort"]):
+            return render(
+                request,
+                "customers/customers.html#customerlist-table-partial",
                 context,
             )
-            return HttpResponse(customer_list)
         else:
-            customer_list = render_block_to_string(
-                "customers/customers.html", "content", context
+            return render(
+                request,
+                "customers/customers.html#customer-list-partial",
+                context,
             )
-            return HttpResponse(customer_list)
 
     return render(request, "customers/customers.html", context)
 
@@ -551,9 +609,9 @@ def manage_purchase_agreements(request, pk=None):
                     items = formset.save(commit=False)
                     line_items_data = [
                         {
-                            'product': item.product,
-                            'quantity_ordered': item.quantity_ordered,
-                            'price_per_unit': item.price_per_unit,
+                            "product": item.product,
+                            "quantity_ordered": item.quantity_ordered,
+                            "price_per_unit": item.price_per_unit,
                         }
                         for item in items
                     ]
@@ -585,7 +643,7 @@ def manage_purchase_agreements(request, pk=None):
                 return redirect(agreement.account.customer.get_absolute_url)
 
         # Ensure formset exists for re-rendering if validation failed
-        if 'formset' not in locals():
+        if "formset" not in locals():
             formset = PurchaseAgreementLineItemFormSet(
                 request.POST, queryset=qs, prefix="item"
             )

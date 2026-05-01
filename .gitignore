@@ -80,8 +80,25 @@ backups/
 # Documentation
 # reconstruction_document.md
 
-# Tailwind standalone CLI binary
+# Tailwind standalone CLI binary and config
 tailwindcss
+tailwind.config.js
+Procfile.tailwind
 
-# Tailwind compiled output (generated artifact)
-static/css/tailwind.css
+# Static files (collected/generated)
+static/
+staticfiles/
+
+# Generated migration files (if auto-generated)
+*/migrations/000*.py
+
+# Temporary/compiled files
+*.egg-info/
+*.whl
+*.tar.gz
+
+# npm/node build artifacts
+package-lock.json
+
+# Development files
+requirements-dev.txt

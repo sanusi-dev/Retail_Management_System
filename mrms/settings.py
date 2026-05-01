@@ -30,7 +30,6 @@ INSTALLED_APPS = [
     "django_htmx",
     "widget_tweaks",
     # 'debug_toolbar',
-    "template_partials",
 ]
 
 AUTH_USER_MODEL = "account.CustomUser"
@@ -47,6 +46,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     # 'debug_toolbar.middleware.DebugToolbarMiddleware',
+    "middleware.HtmxMessageMiddleware",  # must be last — reads messages into HX-Trigger
 ]
 
 ROOT_URLCONF = "mrms.urls"

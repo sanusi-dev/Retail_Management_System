@@ -2,432 +2,200 @@
 {% load static humanize %}
 
 {% block content %}
-    {% include "partials/spinner.html" with id="body_spinner" %}
-    <div class="flex h-full flex-col bg-gray-50/50" id="main_body">
-        <div class="p-6 min-h-full space-y-6">
-            <!-- Header -->
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Dashboard Overview</h1>
-                    <p class="text-sm text-gray-500">Welcome back! Here's your business performance at a glance.</p>
-                </div>
-                <div class="flex items-center gap-3">
-                    <div class="bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm text-sm font-medium text-gray-600 flex items-center gap-2">
-                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <span class="date-display"></span>
-                    </div>
-                </div>
-            </div>
+<div class="p-6 lg:p-8 max-w-screen-xl mx-auto">
 
-            <!-- KPI Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <!-- Revenue Card -->
-                <div class="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl shadow-indigo-200 relative overflow-hidden group">
-                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
-                         <svg class="w-24 h-24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                    <div class="relative z-10">
-                        <p class="text-indigo-100 text-xs font-bold tracking-wider uppercase mb-1">Total Revenue (Month)</p>
-                        <h3 class="text-3xl font-bold font-mono tracking-tight">₦{{ monthly_sales|floatformat:0|intcomma }}</h3>
-                        <div class="mt-4 flex flex-wrap gap-2 text-xs font-medium text-indigo-100/90">
-                            <span class="bg-white/20 px-2 py-1 rounded backdrop-blur-sm">Daily: ₦{{ daily_sales|floatformat:0|intcomma }}</span>
-                            <span class="bg-white/20 px-2 py-1 rounded backdrop-blur-sm">Year: ₦{{ yearly_sales|floatformat:0|intcomma }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Gross Profit Card -->
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 relative overflow-hidden group hover:border-emerald-200 transition-colors duration-300">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                             <p class="text-gray-500 text-xs font-bold uppercase tracking-wider">Gross Profit (Est.)</p>
-                            <h3 class="text-2xl font-bold text-gray-900 font-mono mt-1">₦{{ monthly_gross_profit|floatformat:0|intcomma }}</h3>
-                        </div>
-                        <div class="p-2 bg-emerald-50 rounded-lg text-emerald-600 group-hover:bg-emerald-100 transition-colors">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-                        </div>
-                    </div>
-                    <div class="flex items-center text-sm">
-                        <span class="{% if monthly_profit_margin > 0 %}text-emerald-600 bg-emerald-50{% else %}text-red-600 bg-red-50{% endif %} px-2 py-0.5 rounded text-xs font-bold mr-2">
-                            {{ monthly_profit_margin|floatformat:1 }}% Margin
-                        </span>
-                        <span class="text-gray-400 text-xs">Based on current costs</span>
-                    </div>
-                </div>
-
-                <!-- Inventory Value Card -->
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 relative overflow-hidden group hover:border-amber-200 transition-colors duration-300">
-                     <div class="flex justify-between items-start mb-4">
-                        <div>
-                             <p class="text-gray-500 text-xs font-bold uppercase tracking-wider">Inventory Value</p>
-                            <h3 class="text-2xl font-bold text-gray-900 font-mono mt-1">₦{{ total_stock_value|floatformat:0|intcomma }}</h3>
-                        </div>
-                        <div class="p-2 bg-amber-50 rounded-lg text-amber-600 group-hover:bg-amber-100 transition-colors">
-                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                        </div>
-                    </div>
-                   <div class="flex items-center gap-2 text-xs">
-                        {% if stockouts_count > 0 %}
-                            <span class="text-red-600 font-medium bg-red-50 px-2 py-0.5 rounded">{{ stockouts_count }} Stockouts</span>
-                        {% else %}
-                            <span class="text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded">Healthy Stock Levels</span>
-                        {% endif %}
-                        <span class="text-gray-400">weighted avg. cost</span>
-                    </div>
-                </div>
-
-                <!-- Customers Card -->
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 relative overflow-hidden group hover:border-blue-200 transition-colors duration-300">
-                     <div class="flex justify-between items-start mb-4">
-                        <div>
-                             <p class="text-gray-500 text-xs font-bold uppercase tracking-wider">Total Customers</p>
-                            <h3 class="text-2xl font-bold text-gray-900 font-mono mt-1">{{ total_customers }}</h3>
-                        </div>
-                        <div class="p-2 bg-blue-50 rounded-lg text-blue-600 group-hover:bg-blue-100 transition-colors">
-                           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                        </div>
-                    </div>
-                    <div class="flex items-center text-xs text-blue-600 font-medium bg-blue-50 inline-block px-2 py-0.5 rounded max-w-max">
-                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                        <span>{{ new_customers_month }} New this month</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Charts Section -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Sales Trend -->
-                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <div class="flex justify-between items-center mb-6">
-                         <h3 class="text-lg font-bold text-gray-900">Revenue Trend</h3>
-                         <span class="text-xs text-gray-400 font-medium bg-gray-50 px-2 py-1 rounded">Last 7 Days</span>
-                    </div>
-                    <div class="relative h-80 w-full">
-                        <canvas id="salesChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Top Products & Categories -->
-                <div class="flex flex-col gap-6">
-                    <!-- Top Products -->
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1">
-                        <h3 class="text-lg font-bold text-gray-900 mb-4">Top Selling Products</h3>
-                         <div class="relative h-48 w-full">
-                            <canvas id="topProductsChart"></canvas>
-                        </div>
-                    </div>
-                    <!-- Categories -->
-                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1">
-                        <h3 class="text-lg font-bold text-gray-900 mb-4">Sales by Category</h3>
-                        <div class="relative h-40 w-full">
-                            <canvas id="categoryChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Activity & Status Section -->
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <!-- Recent Sales Table -->
-                <div class="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                        <h3 class="text-lg font-bold text-gray-900">Recent Sales</h3>
-                         <a href="{% url 'sales' %}" hx-boost="true" hx-target="#main_body" hx-indicator="#body_spinner" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline">View All</a>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-left">
-                            <thead class="text-xs text-gray-500 uppercase bg-gray-50/50">
-                                <tr>
-                                    <th class="px-6 py-3 font-medium">Customer</th>
-                                    <th class="px-6 py-3 font-medium">Date</th>
-                                    <th class="px-6 py-3 font-medium text-center">Status</th>
-                                    <th class="px-6 py-3 font-medium text-right">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                {% for sale in recent_sales %}
-                                    <tr class="hover:bg-gray-50/50 transition-colors">
-                                        <td class="px-6 py-4 font-medium text-gray-900">
-                                            {{ sale.customer.full_name|title|truncatechars:20 }}
-                                        </td>
-                                        <td class="px-6 py-4 text-gray-500">
-                                            {{ sale.sale_date|date:"M d, H:i" }}
-                                        </td>
-                                        <td class="px-6 py-4 text-center">
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                                                Active
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 text-right font-mono text-gray-900">
-                                            ₦{{ sale.sales_total|floatformat:0|intcomma }}
-                                        </td>
-                                    </tr>
-                                {% empty %}
-                                     <tr><td colspan="4" class="text-center py-8 text-gray-400">No recent sales found</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Status Column -->
-                <div class="space-y-6">
-                    <!-- Low Stock Alerts -->
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                             <span class="relative flex h-3 w-3">
-                                {% if low_stock_products %}
-                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                  <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                                {% else %}
-                                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                                {% endif %}
-                            </span>
-                            Inventory Alerts
-                        </h3>
-                        <div class="space-y-3">
-                            {% if low_stock_products %}
-                                {% for inventory in low_stock_products %}
-                                    <div class="flex justify-between items-center p-3 bg-red-50/50 rounded-lg border border-red-100">
-                                        <div>
-                                            <p class="text-sm font-semibold text-gray-900">{{ inventory.product.modelname }}</p>
-                                            <p class="text-xs text-red-500">{{ inventory.product.brand.name }}</p>
-                                        </div>
-                                        <div class="text-right">
-                                            <span class="text-xs font-bold text-red-700 bg-red-100 px-2 py-1 rounded">
-                                                {{ inventory.quantity }} left
-                                            </span>
-                                        </div>
-                                    </div>
-                                {% endfor %}
-                                 <a href="{% url 'products' %}" hx-boost="true" hx-target="#main_body" hx-indicator="#body_spinner" class="block text-center text-xs text-red-600 hover:text-red-800 mt-2 font-medium">View All Low Stock</a>
-                            {% else %}
-                                 <div class="py-8 flex flex-col items-center justify-center text-gray-400">
-                                    <svg class="w-10 h-10 mb-2 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    <p class="text-sm">Stock levels are healthy!</p>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Pending Actions -->
-                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-bold text-gray-900 mb-4">Pending Actions</h3>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="p-3 bg-amber-50 rounded-xl border border-amber-100 text-center">
-                                <span class="block text-2xl font-bold text-amber-600 mb-1">{{ pending_pos }}</span>
-                                <span class="text-xs font-medium text-amber-800 uppercase tracking-wide">POs Pending</span>
-                            </div>
-                            <div class="p-3 bg-blue-50 rounded-xl border border-blue-100 text-center">
-                                <span class="block text-2xl font-bold text-blue-600 mb-1">{{ pending_deliveries }}</span>
-                                <span class="text-xs font-medium text-blue-800 uppercase tracking-wide">Receivables</span>
-                            </div>
-                        </div>
-                     </div>
-                </div>
-
-                 <!-- Recent Transactions (Financial) -->
-                 <div class="xl:col-span-3 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                        <h3 class="text-lg font-bold text-gray-900">Recent Financial Transactions</h3>
-                         <!-- No link yet for all transactions as it might not exist or be needed here -->
-                    </div>
-                     <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-left">
-                            <thead class="text-xs text-gray-500 uppercase bg-gray-50/50">
-                                <tr>
-                                    <th class="px-6 py-3 font-medium">Ref</th>
-                                    <th class="px-6 py-3 font-medium">Account/Customer</th>
-                                    <th class="px-6 py-3 font-medium">Type</th>
-                                    <th class="px-6 py-3 font-medium text-right">Amount</th>
-                                    <th class="px-6 py-3 font-medium text-right">Date</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                {% for txn in recent_transactions %}
-                                    <tr class="hover:bg-gray-50/50 transition-colors">
-                                        <td class="px-6 py-4 font-mono text-gray-500 text-xs">
-                                            {{ txn.reference_number }}
-                                        </td>
-                                        <td class="px-6 py-4 font-medium text-gray-900">
-                                            {{ txn.account.customer.full_name|title }}
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            {% if txn.transaction_type == 'deposit' %}
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">Deposit</span>
-                                            {% elif txn.transaction_type == 'withdrawal' %}
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Withdrawal</span>
-                                            {% else %}
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">{{ txn.transaction_type|title }}</span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="px-6 py-4 text-right font-mono {% if txn.transaction_type == 'deposit' %}text-emerald-600{% else %}text-red-600{% endif %}">
-                                            {% if txn.transaction_type == 'deposit' %}+{% else %}-{% endif %}₦{{ txn.amount|floatformat:0|intcomma }}
-                                        </td>
-                                         <td class="px-6 py-4 text-right text-gray-500 text-xs">
-                                            {{ txn.created_at|date:"M d, H:i" }}
-                                        </td>
-                                    </tr>
-                                {% empty %}
-                                     <tr><td colspan="5" class="text-center py-6 text-gray-400">No recent transactions</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                 </div>
-
-
-            </div>
-        </div>
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+    <div>
+      <h1 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">{{ greeting }}, {{ request.user.first_name|default:request.user.username|title }}</h1>
+      <p class="text-slate-400 text-sm mt-1 font-medium">{% now "l, j F Y" %}</p>
     </div>
+    <div class="flex items-center gap-3">
+      <select hx-get="{% url 'dashboard' %}"
+              hx-target="#main_body"
+              hx-push-url="true"
+              hx-trigger="change"
+              name="period"
+              class="field-select w-auto text-sm py-2 bg-white min-w-[180px]">
+        <option value="month" {% if period == 'month' %}selected{% endif %}>This Month ({{ period_label }})</option>
+        <option value="last_month" {% if period == 'last_month' %}selected{% endif %}>Last Month</option>
+        <option value="year" {% if period == 'year' %}selected{% endif %}>This Year</option>
+      </select>
+      <a href="{% url 'record_sale' %}" class="btn-primary btn-sm whitespace-nowrap">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        New Sale
+      </a>
+    </div>
+  </div>
 
-    <!-- Chart.js Configuration -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Date Display
-            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            const dateDisplay = document.querySelector('.date-display');
-            if(dateDisplay) dateDisplay.textContent = new Date().toLocaleDateString('en-GB', dateOptions);
+  <!-- Attention alerts -->
+  {% if show_attention %}
+  <div class="alert-warn mb-8">
+    <div class="flex items-center gap-2 mb-4">
+      <div class="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
+        <svg class="w-4 h-4 text-brand-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+      </div>
+      <span class="text-brand-800 text-sm font-bold">{{ attention_count }} item{{ attention_count|pluralize }} need attention</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {% if low_stock %}
+      <a href="{% url 'products' %}" hx-boost="true" hx-target="#main_body" class="bg-white rounded-xl p-4 border border-brand-100 cursor-pointer hover:border-brand-300 hover:shadow-md transition-all block no-underline">
+        <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Low Stock Alert</div>
+        <div class="text-sm font-bold text-slate-900">{{ low_stock|length }} product{{ low_stock|pluralize }} below threshold</div>
+        <div class="text-xs text-brand-600 font-semibold mt-2 flex items-center gap-1">View affected products <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div>
+      </a>
+      {% endif %}
+      {% if pending_deliveries %}
+      <a href="{% url 'purchases' %}" hx-boost="true" hx-target="#main_body" class="bg-white rounded-xl p-4 border border-brand-100 cursor-pointer hover:border-brand-300 hover:shadow-md transition-all block no-underline">
+        <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Pending Delivery</div>
+        <div class="text-sm font-bold text-slate-900">{{ pending_deliveries.0.po_number }} awaiting goods</div>
+        <div class="text-xs text-brand-600 font-semibold mt-2 flex items-center gap-1">View purchase order <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div>
+      </a>
+      {% endif %}
+      {% if idle_balances %}
+      <a href="{% url 'customer_detail' idle_balances.0.customer.pk %}" hx-boost="true" hx-target="#main_body" class="bg-white rounded-xl p-4 border border-brand-100 cursor-pointer hover:border-brand-300 hover:shadow-md transition-all block no-underline">
+        <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Large Idle Balance</div>
+        <div class="text-sm font-bold text-slate-900">{{ idle_balances.0.customer.full_name|title }} — ₦{{ idle_balances.0.cached_available_balance|floatformat:0|intcomma }} free</div>
+        <div class="text-xs text-brand-600 font-semibold mt-2 flex items-center gap-1">View customer <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 
-            // Common Chart Options
-            const commonOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                },
-                scales: {
-                    x: { grid: { display: false } },
-                    y: { grid: { color: '#f3f4f6' }, border: { display: false } }
-                }
-            };
+  <!-- KPIs -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8 stat-grid">
+    <div class="stat-card">
+      <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">{% if period == 'year' %}Yearly{% else %}Monthly{% endif %} Revenue</div>
+      <div class="amount text-2xl lg:text-3xl font-semibold text-slate-900">₦{{ monthly_sales|floatformat:0|intcomma }}</div>
+      <div class="flex items-center gap-1.5 mt-2">
+        <span class="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+          Daily: ₦{{ daily_sales|floatformat:0|intcomma }}
+        </span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Gross Profit</div>
+      <div class="amount text-2xl lg:text-3xl font-semibold text-slate-900">₦{{ monthly_gross_profit|floatformat:0|intcomma }}</div>
+      <div class="text-xs text-slate-400 mt-2">Margin: <span class="text-slate-700 font-bold">{{ monthly_profit_margin|floatformat:1 }}%</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Inventory Value</div>
+      <div class="amount text-2xl lg:text-3xl font-semibold text-slate-900">₦{{ total_stock_value|floatformat:0|intcomma }}</div>
+      <div class="text-xs text-slate-400 mt-2">At weighted avg cost</div>
+    </div>
+    <div class="stat-card">
+      <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Active Customers</div>
+      <div class="amount text-2xl lg:text-3xl font-semibold text-slate-900">{{ total_customers }}</div>
+      <div class="flex items-center gap-1.5 mt-2">
+        <span class="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">+{{ new_customers_month }} this {% if period == 'year' %}year{% else %}month{% endif %}</span>
+      </div>
+    </div>
+  </div>
 
-            // --- Sales Graph ---
-            const ctxSales = document.getElementById('salesChart');
-            if (ctxSales) {
-                const gradient = ctxSales.getContext('2d').createLinearGradient(0, 0, 0, 400);
-                gradient.addColorStop(0, 'rgba(79, 70, 229, 0.2)'); // Indigo
-                gradient.addColorStop(1, 'rgba(79, 70, 229, 0)');
+  <!-- Charts row -->
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8 chart-grid">
+    <div class="card card-p lg:col-span-3">
+      <div class="flex justify-between items-center mb-6">
+        <div class="font-bold text-sm text-slate-800">Revenue — Last 7 Days</div>
+        <div class="text-xs text-slate-400 font-medium">Daily totals</div>
+      </div>
+      <svg viewBox="0 0 400 130" class="w-full bar-chart" preserveAspectRatio="none">
+        {% for bar in svg_bars %}
+        <rect x="{{ bar.x }}" y="{{ bar.y }}" width="42" height="{{ bar.height }}" fill="{{ bar.fill }}" opacity="{{ bar.opacity }}" rx="4"/>
+        {% endfor %}
+        {% for bar in svg_bars %}
+        <text x="{{ bar.x|add:21 }}" y="128" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="Inter">{{ bar.day_name }}</text>
+        {% endfor %}
+      </svg>
+    </div>
+    <div class="card card-p lg:col-span-2">
+      <div class="font-bold text-sm text-slate-800 mb-5">Top Products {% if period == 'year' %}This Year{% else %}This Month{% endif %}</div>
+      <div class="space-y-4">
+        {% for product in top_products %}
+        <div>
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="text-slate-600 font-medium">{{ product.modelname }}</span>
+            <span class="amount font-bold text-slate-800">₦{{ product.total_revenue|floatformat:0|intcomma }}</span>
+          </div>
+          <div class="pbar"><div class="pbar-fill" style="width:{{ product.revenue_percent }}%"></div></div>
+        </div>
+        {% empty %}
+        <div class="text-center py-8 text-slate-400 text-sm">No sales data for this period</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
 
-                new Chart(ctxSales, {
-                    type: 'line',
-                    data: {
-                        labels: JSON.parse('{{ days_labels|safe }}'),
-                        datasets: [{
-                            label: 'Revenue',
-                            data: JSON.parse('{{ days_data|safe }}'),
-                            borderColor: '#4f46e5',
-                            backgroundColor: gradient,
-                            borderWidth: 2,
-                            pointBackgroundColor: '#ffffff',
-                            pointBorderColor: '#4f46e5',
-                            pointRadius: 4,
-                            fill: true,
-                            tension: 0.4
-                        }]
-                    },
-                    options: {
-                        ...commonOptions,
-                        interaction: {
-                            mode: 'index',
-                            intersect: false,
-                        },
-                         plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                                titleColor: '#1f2937',
-                                bodyColor: '#4f46e5',
-                                borderColor: '#e5e7eb',
-                                borderWidth: 1,
-                                padding: 10,
-                                boxPadding: 4,
-                                callbacks: {
-                                    label: function(context) {
-                                         return '₦' + new Intl.NumberFormat('en-NG').format(context.parsed.y);
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                             y: {
-                                beginAtZero: true,
-                                grid: { color: '#f3f4f6' },
-                                ticks: {
-                                    callback: function(value) {
-                                        if (value >= 1000000) return '₦' + (value/1000000).toFixed(1) + 'M';
-                                        if (value >= 1000) return '₦' + (value/1000).toFixed(0) + 'k';
-                                        return '₦' + value;
-                                    }
-                                }
-                            },
-                             x: { grid: { display: false } }
-                        }
-                    }
-                });
-            }
+  <!-- Recent tables -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="card overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <div class="font-bold text-sm text-slate-800">Recent Sales</div>
+        <a href="{% url 'sales' %}" class="text-xs text-brand-600 font-bold hover:text-brand-700 transition-colors" hx-boost="true" hx-target="#main_body">View all →</a>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <tbody>
+            {% for sale in recent_sales %}
+            <tr>
+              <td>
+                <div class="font-bold text-sm text-slate-800">{{ sale.customer.full_name|title|truncatechars:25 }}</div>
+                <div class="text-xs text-slate-400 font-mono mt-0.5">{{ sale.sale_number }}</div>
+              </td>
+              <td class="text-right">
+                <div class="amount font-bold text-sm text-slate-800">₦{{ sale.sales_total|floatformat:0|intcomma }}</div>
+                <div class="text-xs text-slate-400">{{ sale.get_payment_method_display }}</div>
+              </td>
+              <td class="text-right">
+                {% if sale.status == 'active' %}
+                <span class="badge badge-active">Active</span>
+                {% elif sale.status == 'voided' %}
+                <span class="badge badge-voided">Voided</span>
+                {% else %}
+                <span class="badge">{{ sale.status|title }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="3" class="text-center py-8 text-slate-400 text-sm">No recent sales</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <div class="font-bold text-sm text-slate-800">Recent Deposits</div>
+        <a href="{% url 'customers' %}" class="text-xs text-brand-600 font-bold hover:text-brand-700 transition-colors" hx-boost="true" hx-target="#main_body">View all →</a>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <tbody>
+            {% for txn in recent_deposits %}
+            <tr>
+              <td>
+                <div class="font-bold text-sm text-slate-800">{{ txn.account.customer.full_name|title|truncatechars:25 }}</div>
+                <div class="text-xs text-slate-400 font-mono mt-0.5">{{ txn.reference_number }}</div>
+              </td>
+              <td class="text-right">
+                <div class="amount font-bold text-sm {% if txn.transaction_type == 'withdrawal' %}text-rose-500{% else %}text-emerald-600{% endif %}">{% if txn.transaction_type == 'withdrawal' %}−{% else %}+{% endif %}₦{{ txn.amount|floatformat:0|intcomma }}</div>
+                <div class="text-xs text-slate-400">{{ txn.created_at|date:"j M" }}</div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="2" class="text-center py-8 text-slate-400 text-sm">No recent deposits</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
-            // --- Top Products (Horizontal Bar) ---
-            const ctxProducts = document.getElementById('topProductsChart');
-            if (ctxProducts) {
-                new Chart(ctxProducts, {
-                    type: 'bar',
-                    data: {
-                        labels: JSON.parse('{{ top_products_names|safe }}'),
-                        datasets: [{
-                            label: 'Revenue',
-                            data: JSON.parse('{{ top_products_data|safe }}'),
-                            backgroundColor: '#4f46e5',
-                            borderRadius: 4,
-                            barThickness: 20
-                        }]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                         plugins: {
-                            legend: { display: false }
-                        },
-                        scales: {
-                            x: { display: false },
-                            y: {
-                                grid: { display: false, drawBorder: false },
-                                ticks: { font: { size: 11 } }
-                            }
-                        }
-                    }
-                });
-            }
-
-            // --- Categories (Doughnut) ---
-            const ctxCategory = document.getElementById('categoryChart');
-            if (ctxCategory) {
-                new Chart(ctxCategory, {
-                    type: 'doughnut',
-                    data: {
-                        labels: JSON.parse('{{ category_labels|safe }}'),
-                        datasets: [{
-                            data: JSON.parse('{{ category_data|safe }}'),
-                            backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
-                            borderWidth: 0,
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'right',
-                                labels: { boxWidth: 12, font: { size: 11 } }
-                            }
-                        },
-                        cutout: '70%',
-                    }
-                });
-            }
-        });
-    </script>
+</div>
 {% endblock %}

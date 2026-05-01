@@ -1,207 +1,140 @@
-{% extends "index.html" %}
-{% load static %}
-{% load humanize %}
+{% extends 'index.html' %}
+{% load static humanize %}
 {% block content %}
-   {% include "partials/spinner.html" with id="body_spinner" %}
-   <div class="flex h-full flex-col" id="main_body">
-
-      {% block header %}
-         <div class="h-16 flex items-center justify-between px-6 gap-4 bg-white border-b border-gray-200">
-            <!-- Left Side: Search Bar -->
-            <div class="flex items-center gap-4 flex-1">
-               <!-- Search Bar -->
-               <div class="relative w-full max-w-lg">
-                  <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-                     <svg class="w-4 h-4 text-gray-400"
-                          aria-hidden="true"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 20 20">
-                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
-                     </svg>
+  {% partialdef customer-list-partial inline %}
+  <div class="p-6 lg:p-8 max-w-screen-xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+      <div>
+        <h1 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">Customers</h1>
+        <p id="customer-header-stats"
+           class="text-slate-400 text-sm mt-1 font-medium">
+          {{ customers.paginator.count }} account{{ customers.paginator.count|pluralize }} · ₦{{ total_deposited|floatformat:0|intcomma }} total deposited
+        </p>
+      </div>
+      <a href="{% url 'add_customer' %}"
+         class="btn-primary btn-sm"
+         hx-target="#main_body">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        New Customer
+      </a>
+    </div>
+    <!-- Filters -->
+    <div class="flex items-center gap-3 mb-6">
+      <!-- Search -->
+      <div class="search-field relative flex-1">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input type="text"
+               name="q"
+               value="{{ search_query|default:'' }}"
+               placeholder="Search customers…"
+               class="field-input"
+               hx-get="{% url 'customers' %}"
+               hx-push-url="true"
+               hx-target="#customerlist-table-partial"
+               hx-include="[name='filter'], [name='sort']"
+               hx-trigger="keyup changed delay:200ms, search">
+      </div>
+      <!-- Filter & Sort -->
+      <select name="filter"
+              class="field-select flex-1"
+              hx-get="{% url 'customers' %}"
+              hx-target="#customerlist-table-partial"
+              hx-push-url="true"
+              hx-include="[name='sort']">
+        <option value="" {% if not filter_by %}selected{% endif %}>All customers</option>
+        <option value="active_agreements" {% if filter_by == 'active_agreements' %}selected{% endif %}>With active agreements</option>
+        <option value="balance_gt_1m" {% if filter_by == 'balance_gt_1m' %}selected{% endif %}>Available balance > ₦1M</option>
+        <option value="no_activity" {% if filter_by == 'no_activity' %}selected{% endif %}>No activity (new)</option>
+      </select>
+      <select name="sort"
+              class="field-select flex-1"
+              hx-get="{% url 'customers' %}"
+              hx-target="#customerlist-table-partial"
+              hx-push-url="true"
+              hx-swap="innerHTML"
+              hx-include="[name='filter']">
+        <option value="name_asc" {% if sort_by == 'name_asc' %}selected{% endif %}>Sort: Name A–Z</option>
+        <option value="balance_desc" {% if sort_by == 'balance_desc' %}selected{% endif %}>Sort: Balance High–Low</option>
+        <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Sort: Newest first</option>
+      </select>
+    </div>
+    <!-- Table -->
+    {% partialdef customerlist-table-partial inline %}
+    <div class="card overflow-hidden" id="customerlist-table-partial">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="text-left">Customer</th>
+              <th class="text-right">Total Deposited</th>
+              <th class="text-right">Committed</th>
+              <th class="text-right">Available</th>
+              <th class="text-center">Agreements</th>
+              <th class="text-center">CFA</th>
+              <th class="text-center">Sales</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            {% for customer in customers %}
+              <tr hx-get="{% url 'customer_detail' customer.pk %}"
+                  hx-target="#main_body"
+                  hx-push-url="true"
+                  class="cursor-pointer">
+                <td>
+                  <div class="font-bold text-slate-800">{{ customer.full_name|title }}</div>
+                  <div class="text-xs text-slate-400 font-mono mt-0.5">
+                    {{ customer.customer_number }} · {{ customer.phone|default:"N/A" }}
                   </div>
-                  <input type="search"
-                         name="q"
-                         value="{{ search_query|default:'' }}"
-                         class="block w-full py-2.5 pl-10 pr-4 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all placeholder:text-gray-400 focus:bg-white"
-                         placeholder="Search by name, phone, or ID..."
-                         hx-get="{% url 'customers' %}"
-                         hx-target="#table_container"
-                         hx-indicator="#body_spinner"
-                         hx-push-url="true"
-                         hx-trigger="keyup changed delay:300ms, search">
-               </div>
-            </div>
-            <!-- Right Side: Action Button -->
-            <a href="{% url 'add_customer' %}"
-               hx-boost="true"
-               hx-target="#main_body"
-               hx-indicator="#body_spinner"
-               class="px-4 py-2.5 text-sm font-medium text-center inline-flex items-center text-white bg-brand-600 rounded-lg hover:bg-brand-700 focus:ring-4 focus:outline-none focus:ring-brand-300 transition-all shadow-md hover:shadow-lg whitespace-nowrap">
-               <svg xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    class="w-4 h-4 mr-2">
-                  <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-               </svg>
-               New Customer
-            </a>
-         </div>
-      {% endblock header %}
-      {% block body %}
-         <div id="table_container"
-              class="relative flex flex-col h-[calc(100vh-8rem)] bg-gray-50/50">
-            <div class="flex-1 overflow-y-auto pb-25">
-               <table class="w-full text-sm text-left text-gray-500">
-                  <thead class="text-xs text-gray-500 font-semibold uppercase bg-gray-50/50 border-b border-gray-200 sticky top-0 z-10 backdrop-blur-sm">
-                     <tr>
-                        <th scope="col" class="px-6 py-4 font-semibold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                            hx-get="{% url 'customers' %}?sort=customer_id&direction={% if sort_field == 'customer_id' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
-                            hx-target="#table_container"
-                            hx-indicator="#body_spinner"
-                            hx-push-url="true">
-                           <div class="flex items-center gap-1">
-                               ID
-                               {% if sort_field == 'customer_id' %}
-                                   {% if direction == 'asc' %}
-                                       <i class="fa-solid fa-sort-up"></i>
-                                   {% else %}
-                                       <i class="fa-solid fa-sort-down"></i>
-                                   {% endif %}
-                               {% else %}
-                                   <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                               {% endif %}
-                           </div>
-                        </th>
-                        <th scope="col" class="px-6 py-4 font-semibold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                            hx-get="{% url 'customers' %}?sort=full_name&direction={% if sort_field == 'full_name' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
-                            hx-target="#table_container"
-                            hx-indicator="#body_spinner"
-                            hx-push-url="true">
-                           <div class="flex items-center gap-1">
-                               Full Name
-                               {% if sort_field == 'full_name' %}
-                                   {% if direction == 'asc' %}
-                                       <i class="fa-solid fa-sort-up"></i>
-                                   {% else %}
-                                       <i class="fa-solid fa-sort-down"></i>
-                                   {% endif %}
-                               {% else %}
-                                   <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                               {% endif %}
-                           </div>
-                        </th>
-                        <th scope="col" class="px-6 py-4 font-semibold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                            hx-get="{% url 'customers' %}?sort=phone&direction={% if sort_field == 'phone' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
-                            hx-target="#table_container"
-                            hx-indicator="#body_spinner"
-                            hx-push-url="true">
-                           <div class="flex items-center gap-1">
-                               Phone
-                               {% if sort_field == 'phone' %}
-                                   {% if direction == 'asc' %}
-                                       <i class="fa-solid fa-sort-up"></i>
-                                   {% else %}
-                                       <i class="fa-solid fa-sort-down"></i>
-                                   {% endif %}
-                               {% else %}
-                                   <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                               {% endif %}
-                           </div>
-                         </th>
-                        <th scope="col" class="px-6 py-4 text-right font-semibold tracking-wider text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors"
-                            hx-get="{% url 'customers' %}?sort=deposit_account__cached_total_balance&direction={% if sort_field == 'deposit_account__cached_total_balance' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
-                            hx-target="#table_container"
-                            hx-indicator="#body_spinner"
-                            hx-push-url="true">
-                           <div class="flex items-center justify-end gap-1">
-                               Total Balance
-                               {% if sort_field == 'deposit_account__cached_total_balance' %}
-                                   {% if direction == 'asc' %}
-                                       <i class="fa-solid fa-sort-up"></i>
-                                   {% else %}
-                                       <i class="fa-solid fa-sort-down"></i>
-                                   {% endif %}
-                               {% else %}
-                                   <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                               {% endif %}
-                           </div>
-                        </th>
-                        <th scope="col" class="px-6 py-4 text-right font-semibold tracking-wider text-amber-600">Allocated</th>
-                        <th scope="col" class="px-6 py-4 text-right font-semibold tracking-wider text-emerald-600">Available Cash</th>
-                     </tr>
-                  </thead>
-                  <tbody class="text-sm font-light divide-y divide-gray-100" id="tbody">
-                     {% if customers %}
-                        {% for customer in customers %}
-                           <tr class="bg-white hover:bg-blue-50/50 cursor-pointer transition-colors duration-150 group"
-                               hx-get="{% url 'customer_detail' customer.pk %}"
-                               hx-target="#main_body"
-                               hx-indicator="#body_spinner"
-                               hx-push-url="true">
-                              <td class="px-6 py-4 whitespace-nowrap font-mono text-gray-500 text-xs group-hover:text-blue-600 transition-colors">{{ customer.customer_number }}</td>
-                              <td class="px-6 py-4 capitalize font-medium text-gray-900">{{ customer.full_name|upper }}</td>
-                              <td class="px-6 py-4 whitespace-nowrap text-gray-600">{{ customer.phone|default:"N/A" }}</td>
-                              <td class="px-6 py-4 text-right font-mono text-gray-700 font-medium">
-                                 {% if customer.deposit_account %}
-                                    NGN {{ customer.deposit_account.total_balance|floatformat:2|intcomma }}
-                                 {% else %}
-                                    -
-                                 {% endif %}
-                              </td>
-                              <td class="px-6 py-4 text-right font-mono text-amber-600 font-medium">
-                                 {% if customer.deposit_account %}
-                                    {% if customer.deposit_account.allocated_balance > 0 %}
-                                       NGN {{ customer.deposit_account.allocated_balance|floatformat:2|intcomma }}
-                                    {% else %}
-                                       <span class="text-gray-300">-</span>
-                                    {% endif %}
-                                 {% else %}
-                                    -
-                                 {% endif %}
-                              </td>
-                              <td class="px-6 py-4 text-right font-mono font-bold
-                                         {% if customer.deposit_account.available_balance > 0 %}
-                                            text-emerald-600
-                                         {% else %}
-                                            text-gray-400
-                                         {% endif %}">
-                                 {% if customer.deposit_account %}
-                                    NGN {{ customer.deposit_account.available_balance|floatformat:2|intcomma }}
-                                 {% else %}
-                                    -
-                                 {% endif %}
-                              </td>
-                           </tr>
-                        {% endfor %}
-                     {% else %}
-                        <tr class="bg-white border-b border-gray-100">
-                           <td colspan="6" class="px-6 py-12 text-center text-gray-400">
-                              <div class="flex flex-col items-center justify-center gap-3">
-                                 <div class="p-3 bg-gray-50 rounded-full">
-                                     <i class="fa-solid fa-users text-3xl text-gray-300"></i>
-                                 </div>
-                                 {% if search_query %}
-                                    <p class="text-lg font-medium text-gray-500">No customers found matching "{{ search_query }}"</p>
-                                    <p class="text-sm">Try adjusting your search terms</p>
-                                 {% else %}
-                                    <p class="text-lg font-medium text-gray-500">No customers found</p>
-                                    <p class="text-sm">Get started by creating a new customer</p>
-                                 {% endif %}
-                              </div>
-                           </td>
-                        </tr>
-                     {% endif %}
-                  </tbody>
-               </table>
-            </div>
-            <!-- Pagination Footer -->
-            <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
-               <div class="flex justify-end">
-                  {% include 'partials/pagination.html' with page_obj=customers target="table_container" %}
-               </div>
-            </div>
-         </div>
-      {% endblock body %}
-   </div>
-{% endblock content %}
+                </td>
+                <td class="text-right amount font-bold text-slate-800">₦{{ customer.total_balance|floatformat:0|intcomma }}</td>
+                <td class="text-right amount
+                           {% if customer.allocated_balance > 0 %}
+                             text-brand-600 font-semibold
+                           {% else %}
+                             text-slate-300
+                           {% endif %}">₦{{ customer.allocated_balance|floatformat:0|intcomma }}</td>
+                <td class="text-right amount
+                           {% if customer.available_balance > 0 %}
+                             text-emerald-600 font-bold
+                           {% else %}
+                             text-slate-300
+                           {% endif %}">₦{{ customer.available_balance|floatformat:0|intcomma }}</td>
+                <td class="text-center">
+                  {% if customer.active_agreement_count > 0 %}
+                    <span class="badge badge-partial">{{ customer.active_agreement_count }} active</span>
+                  {% else %}
+                    <span class="text-slate-300 text-xs">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  {% if customer.cfa_agreement_count > 0 %}
+                    <span class="badge badge-active">{{ customer.cfa_agreement_count }} active</span>
+                  {% else %}
+                    <span class="text-slate-300 text-xs">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-center text-sm text-slate-500 font-semibold">{{ customer.sale_count }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="7" class="py-16 text-center">
+                  <div class="text-slate-400 text-sm">No customers found matching "{{ search_query }}"</div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="px-5 py-3 border-t border-slate-100">
+        {% include "partials/pagination.html" with page_obj=customers hx_target="#customerlist-table-partial" params=params %}
+      </div>
+    </div>
+  {% endpartialdef %}
+</div>
+{% endpartialdef %}
+{% endblock %}
