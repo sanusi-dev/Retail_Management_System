@@ -1,0 +1,94 @@
+{% load humanize %}
+{% for agreement in agreements %}
+  <div class="card card-p mb-5
+              {% if agreement.status == 'CANCELLED' %}opacity-60 hover:opacity-80 transition-opacity{% endif %}">
+    <div class="flex flex-col lg:flex-row items-start justify-between mb-5 gap-4">
+      <div>
+        <div class="flex items-center gap-2 flex-wrap mb-1">
+          <span class="font-bold text-slate-800">Agreement {{ agreement.purchase_agreement_number }}</span>
+          {% if agreement.status == 'FULFILLED' %}
+            <span class="badge badge-fulfilled">{{ agreement.get_status_display }}</span>
+          {% elif agreement.status == 'PARTIALLY_FULFILLED' %}
+            <span class="badge badge-partial">{{ agreement.get_status_display }}</span>
+          {% elif agreement.status == 'CANCELLED' %}
+            <span class="badge badge-voided">{{ agreement.get_status_display }}</span>
+          {% else %}
+            <span class="badge badge-active">{{ agreement.get_status_display }}</span>
+          {% endif %}
+        </div>
+        <div class="text-xs text-slate-400 mt-0.5">
+          Created {{ agreement.date|date:"M d, Y" }} · Total: <span class="amount font-bold text-slate-600">₦{{ agreement.total_allocated_amount|floatformat:0|intcomma }}</span>
+        </div>
+      </div>
+      <div class="flex gap-2 flex-shrink-0 flex-wrap">
+        {% if agreement.status == 'ACTIVE' or agreement.status == 'PARTIALLY_FULFILLED' %}
+          <a href="{% url 'record_sale' %}?customer={{ customer.pk }}&agreement={{ agreement.pk }}"
+             class="btn-primary btn-sm">Fulfill items</a>
+        {% endif %}
+        {% if agreement.status != 'CANCELLED' %}
+          <a href="{% url 'edit_purchase_agreement' agreement.pk %}?customer={{ customer.pk }}"
+             class="btn-secondary btn-sm">View detail</a>
+        {% endif %}
+        {% if agreement.can_cancel %}
+          <button hx-post="{% url 'cancel_purchase_agreement' agreement.pk %}"
+                  hx-confirm="Are you sure you want to cancel this agreement?"
+                  class="btn-secondary btn-sm text-rose-600">Cancel</button>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if agreement.status != 'CANCELLED' %}
+      <div class="space-y-4">
+        {% for item in agreement.agreement_line_items.all %}
+          {% if item.is_current_version %}
+            <div class="bg-slate-50 rounded-xl p-5">
+              <div class="flex justify-between items-center mb-3">
+                <span class="text-sm font-bold text-slate-800">{{ item.product.modelname|upper }} ({{ item.product.type_variant }})</span>
+                <span class="text-xs text-slate-400 amount">₦{{ item.price_per_unit|floatformat:0|intcomma }}/unit</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="flex-1">
+                  <div class="flex justify-between text-xs text-slate-500 mb-1.5 font-medium">
+                    <span>{{ item.quantity_fulfilled_accross_all_versions }} of {{ item.quantity_ordered }} delivered</span>
+                    <span class="font-bold text-slate-700">{% widthratio item.quantity_fulfilled_accross_all_versions item.quantity_ordered 100 %}%</span>
+                  </div>
+                  <div class="pbar"><div class="pbar-fill" style="width:{% widthratio item.quantity_fulfilled_accross_all_versions item.quantity_ordered 100 %}%"></div></div>
+                </div>
+                <div class="text-right text-xs text-slate-400 flex-shrink-0">
+                  <div class="amount text-slate-900 font-bold text-sm">₦{{ item.remaining_quantity|floatformat:0|intcomma }}</div>
+                  <div>remaining</div>
+                </div>
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="flex justify-between text-xs text-slate-400 mt-4 pt-4 border-t border-slate-100 font-medium">
+        <span>Fulfilled: <span class="amount font-bold text-slate-700">₦{{ agreement.total_allocated_amount|floatformat:0|intcomma }}</span></span>
+        {% if agreement.can_cancel or agreement.can_edit %}
+          <div class="flex gap-3">
+            {% if agreement.can_edit %}
+              <a href="{% url 'edit_purchase_agreement' agreement.pk %}?customer={{ customer.pk }}"
+                 class="text-brand-600 hover:underline">Edit</a>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="alert-danger text-xs font-medium mt-2">
+        Agreement cancelled. No further actions available.
+      </div>
+    {% endif %}
+  </div>
+{% empty %}
+  <div class="card">
+    <div class="empty-state">
+      <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-5">
+        <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      </div>
+      <h3 class="font-bold text-slate-700 text-lg mb-2">No agreements yet</h3>
+      <p class="text-slate-400 text-sm max-w-sm mb-6">Create a purchase agreement to allocate customer funds toward motorcycle orders.</p>
+      <a href="{% url 'add_purchase_agreement' %}?customer={{ customer.pk }}" class="btn-primary">New Agreement</a>
+    </div>
+  </div>
+{% endfor %}

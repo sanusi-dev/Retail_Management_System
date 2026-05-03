@@ -1,0 +1,57 @@
+{% load humanize %}
+{% if sales %}
+  <div class="card overflow-hidden">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Sale #</th><th>Items</th><th>Payment</th><th>Date</th><th class="text-right">Total</th><th class="text-center">Status</th></tr></thead>
+        <tbody>
+          {% for sale in sales %}
+            <tr class="cursor-pointer
+                {% if sale.status == 'voided' %}opacity-50{% endif %}"
+                hx-get="{% url 'sale_detail' sale.pk %}"
+                hx-target="#main_body"
+                hx-push-url="true">
+              <td class="font-mono text-xs text-slate-400">{{ sale.sale_number }}</td>
+              <td class="text-slate-700 font-medium">
+                {% for boxed in sale.boxed_sales.all %}
+                  {{ boxed.quantity }}× {{ boxed.product.modelname|upper }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+                {% for coupled in sale.coupled_sales.all %}
+                  1× {{ coupled.transformation_item.target_product.modelname|default:"Motorcycle"|upper }}
+                {% endfor %}
+                {% if not sale.boxed_sales.exists and not sale.coupled_sales.exists %}
+                  —
+                {% endif %}
+              </td>
+              <td class="text-slate-500">{{ sale.get_payment_method_display }}</td>
+              <td class="text-slate-400">{{ sale.sale_date|date:"M d, Y" }}</td>
+              <td class="text-right amount font-bold text-slate-800">₦{{ sale.sales_total|floatformat:0|intcomma }}</td>
+              <td class="text-center">
+                {% if sale.status == 'active' %}
+                  <span class="badge badge-active">Active</span>
+                {% else %}
+                  <span class="badge badge-voided">Voided</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="px-5 py-3 border-t border-slate-100">
+      <a href="{% url 'sales' %}?customer={{ customer.pk }}"
+         class="btn-secondary btn-sm">View all sales</a>
+    </div>
+  </div>
+{% else %}
+  <div class="card">
+    <div class="empty-state">
+      <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-5">
+        <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+      </div>
+      <h3 class="font-bold text-slate-700 text-lg mb-2">No sales yet</h3>
+      <p class="text-slate-400 text-sm max-w-sm mb-6">Record a sale to deliver items against a purchase agreement.</p>
+      <a href="{% url 'record_sale' %}?customer={{ customer.pk }}" class="btn-primary">New Sale</a>
+    </div>
+  </div>
+{% endif %}

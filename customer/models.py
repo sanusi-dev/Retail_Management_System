@@ -346,12 +346,26 @@ class Transaction(models.Model):
     def __str__(self):
         return f"{self.reference_number}"
 
-    def clean(self):
-        # Check balance for both manual withdrawals and fulfillment withdrawals
-        if self.transaction_type in [
+    @property
+    def can_void(self):
+        if self.status != self.Status.ACTIVE:
+            return False
+        return self.transaction_type in [
+            self.TransactionType.DEPOSIT,
             self.TransactionType.WITHDRAWAL,
-            self.TransactionType.FULFILLMENT_WITHDRAWAL,
-        ]:
+        ]
+
+    @property
+    def source_sale(self):
+        if self.source and hasattr(self.source, 'sale_number'):
+            return self.source
+        return None
+
+    def clean(self):
+        # Only check balance for manual withdrawals — fulfillment withdrawals
+        # are automatic settlements for CFA disbursements; the naira was already
+        # allocated when the CFA agreement was created.
+        if self.transaction_type == self.TransactionType.WITHDRAWAL:
             with transaction.atomic():
                 # Lock the deposit account to prevent race conditions
                 account = DepositAccount.objects.select_for_update().get(
@@ -727,9 +741,7 @@ class CfaAgreement(models.Model):
     def expected_cfa_amount(self):
         if self.exchange_rate and self.exchange_rate > 0:
             result = (self.amount_allocated / self.exchange_rate) * Decimal("1000")
-
-            # Round to the nearest 100
-            rounded_result = result.quantize(Decimal("100"), rounding=ROUND_HALF_UP)
+            rounded_result = result.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
             return rounded_result
 
         return Decimal("0.00")
@@ -740,25 +752,21 @@ class CfaAgreement(models.Model):
             status=CfaFulfillment.Status.ACTIVE
         ).aggregate(total=Sum("cfa_amount_disbursed"))["total"] or Decimal("0.00")
 
-        # Round the aggregate sum to the nearest 100
-        rounded_total = total.quantize(Decimal("100"), rounding=ROUND_HALF_UP)
-
-        return rounded_total
+        return total
 
     @property
     def total_cfa_disbursed_percent(self):
         if self.expected_cfa_amount > Decimal("0"):
             result = (self.total_fulfilled_cfa / self.expected_cfa_amount) * 100
-            rounded_result = result.quantize(Decimal("100"), rounding=ROUND_HALF_UP)
-            return rounded_result
+            rounded_result = result.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+            return min(rounded_result, Decimal("100.0"))
 
-        return Decimal("0.00")
+        return Decimal("0.0")
 
     @property
     def remaining_cfa(self):
         result = self.expected_cfa_amount - self.total_fulfilled_cfa
-        rounded_result = result.quantize(Decimal("100"), rounding=ROUND_HALF_UP)
-        return rounded_result
+        return max(result, Decimal("0.00"))
 
     @property
     def can_cancel(self):
@@ -773,9 +781,7 @@ class CfaAgreement(models.Model):
         return False
 
     def update_status(self):
-        # Define a tiny margin of error (e.g., half a cent, or smaller)
-        # Anything less than this margin should be treated as fully fulfilled.
-        EPSILON = Decimal("100")
+        EPSILON = Decimal("1")
 
         remaining_precise = self.expected_cfa_amount - self.total_fulfilled_cfa
 
@@ -856,7 +862,7 @@ class CfaFulfillment(models.Model):
         )
 
         rounded_amount = amount_in_naira.quantize(
-            Decimal("100"), rounding=ROUND_HALF_UP
+            Decimal("0.01"), rounding=ROUND_HALF_UP
         )
         return rounded_amount
 
@@ -871,7 +877,7 @@ class CfaFulfillment(models.Model):
     def save(self, *args, **kwargs):
         if not self.fulfillment_number:
             self.fulfillment_number = f"CFA-FUL-{uuid.uuid4().hex[:4].upper()}"
-
+        self.full_clean()
         super().save(*args, **kwargs)
 
 

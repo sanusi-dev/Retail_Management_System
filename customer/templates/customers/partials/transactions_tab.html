@@ -1,0 +1,70 @@
+{% load humanize %}
+{% if transactions %}
+  <div class="card overflow-hidden">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Reference</th>
+            <th>Type</th>
+            <th>Date</th>
+            <th class="text-right">Amount</th>
+            <th class="text-center">Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for txn in transactions %}
+            <tr class="{% if txn.status == 'voided' %}opacity-50{% endif %}">
+              <td class="font-mono text-xs text-slate-400">{{ txn.reference_number }}</td>
+              <td class="text-slate-700 font-medium
+                         {% if txn.status == 'voided' %}line-through{% endif %}">{{ txn.get_transaction_type_display }}</td>
+              <td class="text-slate-400">{{ txn.created_at|date:"M d, Y" }}</td>
+              <td class="text-right amount font-bold
+                         {% if txn.transaction_type == 'deposit' or txn.transaction_type == 'refund' %}
+                           text-emerald-600
+                         {% else %}
+                           text-rose-500
+                         {% endif %}">
+                {% if txn.transaction_type == 'deposit' or txn.transaction_type == 'refund' %}+{% else %}−{% endif %}
+                ₦{{ txn.amount|floatformat:0|intcomma }}
+              </td>
+              <td class="text-center">
+                {% if txn.status == 'active' %}
+                  <span class="badge badge-active">Active</span>
+                {% else %}
+                  <span class="badge badge-voided">Voided</span>
+                {% endif %}
+              </td>
+              <td class="text-right">
+                {% if txn.source_sale %}
+                  <span class="text-xs text-slate-400">Auto · {{ txn.source_sale.sale_number }}</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="px-5 py-3 border-t border-slate-100">
+      <a href="{% url 'customer_transactions' %}?customer={{ customer.pk }}"
+         class="btn-secondary btn-sm">View all transactions</a>
+    </div>
+  </div>
+{% else %}
+  <div class="card">
+    <div class="empty-state">
+      <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-5">
+        <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+      </div>
+      <h3 class="font-bold text-slate-700 text-lg mb-2">No transactions yet</h3>
+      <p class="text-slate-400 text-sm max-w-sm mb-6">Record a deposit to get started with this customer account.</p>
+      <button hx-get="{% url 'modal_deposit' customer.pk %}"
+              hx-target="#modal_container"
+              hx-swap="innerHTML"
+              class="btn-primary">Record Deposit</button>
+    </div>
+  </div>
+{% endif %}

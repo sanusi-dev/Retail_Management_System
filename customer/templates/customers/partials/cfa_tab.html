@@ -1,0 +1,117 @@
+{% load humanize %}
+{% for cfa in cfa_agreements %}
+  <div class="card card-p mb-5
+              {% if cfa.status == 'CANCELLED' %}opacity-60 hover:opacity-80 transition-opacity{% endif %}">
+    <div class="flex items-start justify-between mb-5">
+      <div>
+        <div class="flex items-center gap-2 flex-wrap mb-1">
+          <span class="font-bold text-slate-800">CFA Agreement {{ cfa.cfa_agreement_number }}</span>
+          {% if cfa.status == 'FULFILLED' %}
+            <span class="badge badge-fulfilled">{{ cfa.get_status_display }}</span>
+          {% elif cfa.status == 'PARTIALLY_FULFILLED' %}
+            <span class="badge badge-partial">{{ cfa.get_status_display }}</span>
+          {% elif cfa.status == 'CANCELLED' %}
+            <span class="badge badge-voided">{{ cfa.get_status_display }}</span>
+          {% else %}
+            <span class="badge badge-active">{{ cfa.get_status_display }}</span>
+          {% endif %}
+        </div>
+        <div class="text-xs text-slate-400 mt-0.5">Created {{ cfa.created_at|date:"M d, Y" }}</div>
+      </div>
+      <div class="flex gap-2 flex-shrink-0 flex-wrap">
+        {% if cfa.status == 'ACTIVE' or cfa.status == 'PARTIALLY_FULFILLED' %}
+          <button hx-get="{% url 'modal_cfa_fulfillment' cfa.pk %}"
+                  hx-target="#modal_container"
+                  hx-swap="innerHTML"
+                  class="btn-primary btn-sm">Record Disbursement</button>
+          {% if cfa.can_edit %}
+            <button hx-get="{% url 'modal_cfa_agreement_edit' cfa.pk %}"
+                    hx-target="#modal_container"
+                    hx-swap="innerHTML"
+                    class="btn-secondary btn-sm">Edit</button>
+          {% endif %}
+        {% endif %}
+        {% if cfa.can_cancel %}
+          <button hx-get="{% url 'modal_cancel_cfa_agreement' cfa.pk %}"
+                  hx-target="#modal_container"
+                  hx-swap="innerHTML"
+                  class="btn-danger btn-sm">Cancel</button>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if cfa.status != 'CANCELLED' %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <div class="bg-slate-50 rounded-xl p-4">
+          <div class="text-xs text-slate-400 font-semibold mb-2">Naira Allocated</div>
+          <div class="amount text-lg font-bold text-slate-900">₦{{ cfa.amount_allocated|floatformat:0|intcomma }}</div>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-4">
+          <div class="text-xs text-slate-400 font-semibold mb-2">Exchange Rate</div>
+          <div class="amount text-lg font-bold text-slate-900">₦{{ cfa.exchange_rate|floatformat:0|intcomma }}</div>
+          <div class="text-xs text-slate-400">per 1,000 XOF</div>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-4">
+          <div class="text-xs text-slate-400 font-semibold mb-2">Expected CFA</div>
+          <div class="amount text-lg font-bold text-slate-900">{{ cfa.expected_cfa_amount|floatformat:0|intcomma }} XOF</div>
+        </div>
+        <div class="bg-slate-50 rounded-xl p-4">
+          <div class="text-xs text-slate-400 font-semibold mb-2">Remaining</div>
+          <div class="amount text-lg font-bold text-brand-600">{{ cfa.remaining_cfa|floatformat:0|intcomma }} XOF</div>
+        </div>
+      </div>
+      <div class="flex justify-between text-xs text-slate-400 mb-2 font-semibold">
+        <span>{{ cfa.total_fulfilled_cfa|floatformat:0|intcomma }} XOF disbursed</span>
+        <span>{{ cfa.total_cfa_disbursed_percent|floatformat:0 }}%</span>
+      </div>
+      <div class="pbar"><div class="pbar-fill" style="width:{{ cfa.total_cfa_disbursed_percent|floatformat:0 }}%"></div></div>
+
+      {% if cfa.cfa_fulfillments.exists %}
+        <div class="mt-5 pt-5 border-t border-slate-100">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Disbursements</div>
+          <div class="space-y-3 text-sm">
+            {% for fulfillment in cfa.cfa_fulfillments.all %}
+              <div class="flex justify-between items-center
+                          {% if fulfillment.status == 'VOIDED' %}opacity-50{% endif %}">
+                <span class="text-slate-500
+                              {% if fulfillment.status == 'VOIDED' %}line-through{% endif %}">
+                  {{ fulfillment.fulfillment_number }} · {{ fulfillment.date|date:"M d, Y" }}
+                </span>
+                <div class="flex items-center gap-3">
+                  <span class="amount font-bold
+                                {% if fulfillment.status == 'VOIDED' %}text-slate-400{% else %}text-slate-800{% endif %}">
+                    {{ fulfillment.cfa_amount_disbursed|floatformat:0|intcomma }} XOF
+                  </span>
+                  {% if fulfillment.status == 'ACTIVE' %}
+                    <button hx-get="{% url 'modal_void_cfa_fulfillment' fulfillment.pk %}"
+                            hx-target="#modal_container"
+                            hx-swap="innerHTML"
+                            class="btn-danger btn-sm">Void</button>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="alert-danger text-xs font-medium mt-2">
+        CFA agreement cancelled. No further actions available.
+      </div>
+    {% endif %}
+  </div>
+{% empty %}
+  <div class="card">
+    <div class="empty-state">
+      <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-5">
+        <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+      </div>
+      <h3 class="font-bold text-slate-700 text-lg mb-2">No CFA agreements</h3>
+      <p class="text-slate-400 text-sm max-w-sm mb-6">Create a CFA agreement to allocate funds for West African franc exchange.</p>
+      <button hx-get="{% url 'modal_cfa_agreement' customer.pk %}"
+              hx-target="#modal_container"
+              hx-swap="innerHTML"
+              class="btn-primary">New CFA Agreement</button>
+    </div>
+  </div>
+{% endfor %}

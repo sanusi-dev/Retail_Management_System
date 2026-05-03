@@ -1,0 +1,45 @@
+{% load humanize %}
+<!-- Tabs -->
+<div class="flex border-b border-slate-200 mb-6 overflow-x-auto">
+  <a href="{% url 'customer_detail' customer.pk %}?tab=agreements"
+     hx-get="{% url 'customer_detail' customer.pk %}?tab=agreements"
+     hx-target="#tab_area"
+     hx-push-url="true"
+     hx-indicator="#body_spinner"
+     hx-swap="innerHTML"
+     class="tab-btn {% if active_tab == 'agreements' %}active{% endif %}">Purchase Agreements</a>
+  <a href="{% url 'customer_detail' customer.pk %}?tab=cfa"
+     hx-get="{% url 'customer_detail' customer.pk %}?tab=cfa"
+     hx-target="#tab_area"
+     hx-push-url="true"
+     hx-indicator="#body_spinner"
+     hx-swap="innerHTML"
+     class="tab-btn {% if active_tab == 'cfa' %}active{% endif %}">CFA Agreements</a>
+  <a href="{% url 'customer_detail' customer.pk %}?tab=transactions"
+     hx-get="{% url 'customer_detail' customer.pk %}?tab=transactions"
+     hx-target="#tab_area"
+     hx-push-url="true"
+     hx-indicator="#body_spinner"
+     hx-swap="innerHTML"
+     class="tab-btn {% if active_tab == 'transactions' %}active{% endif %}">Transactions</a>
+  <a href="{% url 'customer_detail' customer.pk %}?tab=sales"
+     hx-get="{% url 'customer_detail' customer.pk %}?tab=sales"
+     hx-target="#tab_area"
+     hx-push-url="true"
+     hx-indicator="#body_spinner"
+     hx-swap="innerHTML"
+     class="tab-btn {% if active_tab == 'sales' %}active{% endif %}">Sales History</a>
+</div>
+
+<!-- Tab content -->
+<div id="tab_content">
+  {% if active_tab == 'agreements' %}
+    {% include "customers/partials/agreements_tab.html" %}
+  {% elif active_tab == 'cfa' %}
+    {% include "customers/partials/cfa_tab.html" %}
+  {% elif active_tab == 'transactions' %}
+    {% include "customers/partials/transactions_tab.html" %}
+  {% elif active_tab == 'sales' %}
+    {% include "customers/partials/sales_tab.html" %}
+  {% endif %}
+</div>

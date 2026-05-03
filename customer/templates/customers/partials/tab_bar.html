@@ -1,0 +1,22 @@
+<div id="tab-bar" class="flex border-b border-slate-200 mb-6 overflow-x-auto">
+  <a href="{% url 'customer_detail' customer.pk %}?tab=agreements"
+     hx-target="#tab_area"
+     hx-swap="innerHTML"
+     class="tab-btn
+            {% if active_tab == 'agreements' %}active{% endif %}">Purchase Agreements</a>
+  <a href="{% url 'customer_detail' customer.pk %}?tab=cfa"
+     hx-target="#tab_area"
+     hx-swap="innerHTML"
+     class="tab-btn
+            {% if active_tab == 'cfa' %}active{% endif %}">CFA Agreements</a>
+  <a href="{% url 'customer_detail' customer.pk %}?tab=transactions"
+     hx-target="#tab_area"
+     hx-swap="innerHTML"
+     class="tab-btn
+            {% if active_tab == 'transactions' %}active{% endif %}">Transactions</a>
+  <a href="{% url 'customer_detail' customer.pk %}?tab=sales"
+     hx-target="#tab_area"
+     hx-swap="innerHTML"
+     class="tab-btn
+            {% if active_tab == 'sales' %}active{% endif %}">Sales History</a>
+</div>

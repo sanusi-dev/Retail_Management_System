@@ -8,10 +8,8 @@
   <div class="flex items-center gap-1">
     {% if page_obj.has_previous %}
       <a href="?page={{ page_obj.previous_page_number }}{% for key, val in params.items %}&{{ key }}={{ val }}{% endfor %}"
-         hx-get="?page={{ page_obj.previous_page_number }}{% for key, val in params.items %}&{{ key }}={{ val }}{% endfor %}"
          hx-target="{{ hx_target }}"
          hx-swap="innerHTML"
-         hx-push-url="true"
          class="pagination-btn">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
       </a>
@@ -26,10 +24,8 @@
         <span class="pagination-btn pagination-btn-active">{{ num }}</span>
       {% elif num == 1 or num == page_obj.paginator.num_pages or num == page_obj.number|add:"-1" or num == page_obj.number|add:"+1" %}
         <a href="?page={{ num }}{% for key, val in params.items %}&{{ key }}={{ val }}{% endfor %}"
-           hx-get="?page={{ num }}{% for key, val in params.items %}&{{ key }}={{ val }}{% endfor %}"
            hx-target="{{ hx_target }}"
            hx-swap="innerHTML"
-           hx-push-url="true"
            class="pagination-btn">{{ num }}</a>
       {% elif num == page_obj.number|add:"-2" or num == page_obj.number|add:"+2" %}
         <span class="px-1 text-slate-400 select-none">&hellip;</span>
@@ -38,10 +34,8 @@
 
     {% if page_obj.has_next %}
       <a href="?page={{ page_obj.next_page_number }}{% for key, val in params.items %}&{{ key }}={{ val }}{% endfor %}"
-         hx-get="?page={{ page_obj.next_page_number }}{% for key, val in params.items %}&{{ key }}={{ val }}{% endfor %}"
          hx-target="{{ hx_target }}"
          hx-swap="innerHTML"
-         hx-push-url="true"
          class="pagination-btn">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
       </a>

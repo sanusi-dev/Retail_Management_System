@@ -2,7 +2,7 @@
 {% load static humanize %}
 {% block content %}
   {% partialdef customer-list-partial inline %}
-  <div class="p-6 lg:p-8 max-w-screen-xl mx-auto">
+  <div class="p-6 lg:p-8 max-w-screen-xl mx-auto" id="customer-list-partial">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
       <div>
@@ -47,9 +47,12 @@
               hx-push-url="true"
               hx-include="[name='sort']">
         <option value="" {% if not filter_by %}selected{% endif %}>All customers</option>
-        <option value="active_agreements" {% if filter_by == 'active_agreements' %}selected{% endif %}>With active agreements</option>
-        <option value="balance_gt_1m" {% if filter_by == 'balance_gt_1m' %}selected{% endif %}>Available balance > ₦1M</option>
-        <option value="no_activity" {% if filter_by == 'no_activity' %}selected{% endif %}>No activity (new)</option>
+        <option value="active_agreements"
+                {% if filter_by == 'active_agreements' %}selected{% endif %}>With active agreements</option>
+        <option value="balance_gt_1m"
+                {% if filter_by == 'balance_gt_1m' %}selected{% endif %}>Available balance > ₦1M</option>
+        <option value="no_activity"
+                {% if filter_by == 'no_activity' %}selected{% endif %}>No activity (new)</option>
       </select>
       <select name="sort"
               class="field-select flex-1"
@@ -59,7 +62,8 @@
               hx-swap="innerHTML"
               hx-include="[name='filter']">
         <option value="name_asc" {% if sort_by == 'name_asc' %}selected{% endif %}>Sort: Name A–Z</option>
-        <option value="balance_desc" {% if sort_by == 'balance_desc' %}selected{% endif %}>Sort: Balance High–Low</option>
+        <option value="balance_desc"
+                {% if sort_by == 'balance_desc' %}selected{% endif %}>Sort: Balance High–Low</option>
         <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Sort: Newest first</option>
       </select>
     </div>
@@ -82,7 +86,7 @@
           <tbody id="table-body">
             {% for customer in customers %}
               <tr hx-get="{% url 'customer_detail' customer.pk %}"
-                  hx-target="#main_body"
+                  hx-target="#customer-list-partial"
                   hx-push-url="true"
                   class="cursor-pointer">
                 <td>

@@ -409,7 +409,7 @@ class CfaAgreementStatusTest(TestCase):
         self.assertEqual(cfa.status, CfaAgreement.Status.PARTIALLY_FULFILLED)
 
     def test_fulfilled_when_remaining_within_epsilon(self):
-        """When remaining CFA <= 100 XOF, status should be FULFILLED."""
+        """When remaining CFA <= 1 XOF, status should be FULFILLED."""
         cfa = CfaAgreement.objects.create(
             account=self.account,
             amount_allocated=Decimal("1800000.00"),
@@ -417,10 +417,10 @@ class CfaAgreementStatusTest(TestCase):
             created_by=self.user,
         )
         # expected_cfa = 1000000 XOF
-        # Fulfill exactly 1000000 - 50 = 999950 (within epsilon of 100)
+        # Fulfill exactly 1000000 - 0.5 = 999999.50 (within epsilon of 1)
         CfaFulfillment.objects.create(
             cfa_agreement=cfa,
-            cfa_amount_disbursed=Decimal("999950.00"),
+            cfa_amount_disbursed=Decimal("999999.50"),
             created_by=self.user,
         )
         cfa.update_status()
@@ -443,7 +443,7 @@ class CfaAgreementStatusTest(TestCase):
         self.assertEqual(cfa.status, CfaAgreement.Status.FULFILLED)
 
     def test_not_fulfilled_when_remaining_exceeds_epsilon(self):
-        """When remaining CFA > 100 XOF, status should be PARTIALLY_FULFILLED."""
+        """When remaining CFA > 1 XOF, status should be PARTIALLY_FULFILLED."""
         cfa = CfaAgreement.objects.create(
             account=self.account,
             amount_allocated=Decimal("1800000.00"),
@@ -451,7 +451,7 @@ class CfaAgreementStatusTest(TestCase):
             created_by=self.user,
         )
         # expected_cfa = 1000000 XOF
-        # Fulfill 999800 -> remaining = 200 > 100
+        # Fulfill 999800 -> remaining = 200 > 1
         CfaFulfillment.objects.create(
             cfa_agreement=cfa,
             cfa_amount_disbursed=Decimal("999800.00"),

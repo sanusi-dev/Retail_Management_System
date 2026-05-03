@@ -1,13 +1,15 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from datetime import datetime
 from django.shortcuts import render, get_object_or_404, redirect
-from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.http import require_POST
 from render_block import render_block_to_string
 from django.urls import reverse
 from django.core.paginator import Paginator
 from django.http import HttpResponse
 from django_htmx.http import HttpResponseClientRedirect
-from django.db.models import Sum, F, DecimalField, Value, Q, Count
+from django.db.models import Prefetch, Sum, F, DecimalField, Value, Q, Count
 from django.db.models.functions import Coalesce
+from django.utils import timezone
 from .models import (
     Customer,
     Transaction,
@@ -43,6 +45,19 @@ from django.db import transaction
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def parse_backdate(date_str):
+    """Parse a date string (YYYY-MM-DD) and return a timezone-aware datetime
+    with the user-selected date but the current local time."""
+    if not date_str:
+        return None
+    try:
+        parsed = datetime.strptime(date_str, "%Y-%m-%d")
+        now = timezone.localtime(timezone.now())
+        return now.replace(year=parsed.year, month=parsed.month, day=parsed.day)
+    except (ValueError, TypeError):
+        return None
 
 
 def customers(request):
@@ -157,6 +172,9 @@ def customers(request):
                 context,
             )
         else:
+            print(
+                "HTMX request without pagination, search, filter, or sort - returning full page with customer list partial"
+            )
             return render(
                 request,
                 "customers/customers.html#customer-list-partial",
@@ -167,58 +185,12 @@ def customers(request):
 
 
 def customer_detail(request, pk):
+    active_tab = request.GET.get("tab", "agreements")
+
     customer = get_object_or_404(
-        Customer.objects.select_related("deposit_account").prefetch_related(
-            Prefetch(
-                "deposit_account__purchase_agreements",
-                queryset=PurchaseAgreement.objects.select_related(
-                    "account"
-                ).prefetch_related(
-                    Prefetch(
-                        "agreement_line_items",
-                        queryset=PurchaseAgreementLineItem.objects.filter(
-                            is_current_version=True
-                        ).select_related("product"),
-                    )
-                ),
-            ),
-            Prefetch(
-                "deposit_account__cfa_agreements",
-                queryset=CfaAgreement.objects.select_related("account"),
-            ),
-            Prefetch(
-                "deposit_account__transactions",
-                queryset=Transaction.objects.order_by("-created_at"),
-            ),
-            Prefetch("customer_sales", queryset=Sale.objects.order_by("-sale_date")),
-        ),
+        Customer.objects.select_related("deposit_account"),
         pk=pk,
     )
-
-    customer_list = (
-        Customer.objects.select_related("deposit_account")
-        .only(
-            "customer_id",
-            "customer_number",
-            "full_name",
-            "deposit_account__cached_total_balance",
-        )
-        .order_by("-deposit_account__cached_total_balance")
-    )
-
-    search_query = request.GET.get("q", "")
-    if search_query:
-        customer_list = customer_list.filter(
-            Q(full_name__icontains=search_query)
-            | Q(phone__icontains=search_query)
-            | Q(customer_id__icontains=search_query)
-        )
-
-    # Pagination
-    PAGE_SIZE = 50
-    page_number = request.GET.get("page", 1)
-    paginator = Paginator(customer_list, PAGE_SIZE)
-    page_obj = paginator.get_page(page_number)
 
     product_summary = {}
 
@@ -250,7 +222,6 @@ def customer_detail(request, pk):
     )
 
     for item in line_items:
-        # Get Model Name
         model_name = (
             item.product.modelname.upper()
             if item.product and item.product.modelname
@@ -264,14 +235,12 @@ def customer_detail(request, pk):
                 "unfulfilled": 0,
             }
 
-        # Calculate quantities using the annotated values
         ordered = item.quantity_ordered
         fulfilled = item.total_boxed_fulfilled + item.total_coupled_fulfilled
 
         product_summary[model_name]["ordered"] += ordered
         product_summary[model_name]["fulfilled"] += fulfilled
 
-    # Calculate 'unfulfilled' and percentage
     for model, data in product_summary.items():
         data["unfulfilled"] = max(0, data["ordered"] - data["fulfilled"])
 
@@ -280,113 +249,374 @@ def customer_detail(request, pk):
         else:
             data["percent"] = 0
 
+    agreements = (
+        customer.deposit_account.purchase_agreements.select_related("account")
+        .prefetch_related(
+            Prefetch(
+                "agreement_line_items",
+                queryset=PurchaseAgreementLineItem.objects.filter(
+                    is_current_version=True
+                ).select_related("product"),
+            )
+        )
+        .order_by("-created_at")
+    )
+
+    cfa_agreements = (
+        customer.deposit_account.cfa_agreements.select_related("account")
+        .prefetch_related("cfa_fulfillments")
+        .order_by("-created_at")
+    )
+
+    transactions = customer.deposit_account.transactions.all().order_by("-created_at")[
+        :20
+    ]
+
+    sales = (
+        customer.customer_sales.select_related("agreement")
+        .prefetch_related(
+            "boxed_sales__product", "coupled_sales__transformation_item__target_product"
+        )
+        .order_by("-sale_date")[:20]
+    )
+
+    account = customer.deposit_account
+    total_balance = account.cached_total_balance or Decimal("0.00")
+    allocated_balance = account.cached_allocated_balance or Decimal("0.00")
+    available_balance = account.cached_available_balance or Decimal("0.00")
+
+    committed_pct = (
+        int((allocated_balance / total_balance) * 100) if total_balance > 0 else 0
+    )
+    available_pct = 100 - committed_pct if total_balance > 0 else 100
+
+    active_agreement_count = (
+        agreements.exclude(status=PurchaseAgreement.Status.CANCELLED)
+        .exclude(status=PurchaseAgreement.Status.FULFILLED)
+        .count()
+    )
+
     context = {
         "customer": customer,
-        "customer_list": page_obj,
+        "active_tab": active_tab,
         "product_summary": product_summary,
-        "search_query": search_query,
+        "agreements": agreements,
+        "cfa_agreements": cfa_agreements,
+        "transactions": transactions,
+        "sales": sales,
+        "total_balance": total_balance,
+        "allocated_balance": allocated_balance,
+        "available_balance": available_balance,
+        "committed_pct": committed_pct,
+        "available_pct": available_pct,
+        "active_agreement_count": active_agreement_count,
     }
 
     if request.htmx:
-        if request.htmx.target == "main_content":
-            html = render_block_to_string(
-                "customers/customer_detail.html",
-                "main_content",
+        if request.htmx.target == "tab_area":
+            return render(
+                request,
+                "customers/partials/tab_area_partial.html",
                 context,
-                request=request,
             )
-            return HttpResponse(html)
-
-        elif request.htmx.target == "main_body":
-            html = render_block_to_string(
-                "customers/customer_detail.html",
-                "content",
-                context,
-                request=request,
-            )
-            return HttpResponse(html)
-
         else:
-            html = render_block_to_string(
-                "customers/customer_detail.html",
-                "side_bar_list",
-                context,
-                request=request,
+            print(
+                "HTMX request to customer detail without tab_area target - returning full page with tab area partial"
             )
-            return HttpResponse(html)
+            return render(
+                request,
+                "customers/customer_detail.html#customer-detail-partial",
+                context,
+            )
+    return render(request, "customers/customer_detail.html", context)
+
+
+def modal_deposit(request, pk):
+    customer = get_object_or_404(
+        Customer.objects.select_related("deposit_account"), pk=pk
+    )
+
+    if request.method == "POST":
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            try:
+                custom_date = parse_backdate(request.POST.get("date"))
+                customer_services.record_deposit(
+                    account=customer.deposit_account,
+                    amount=form.cleaned_data["amount"],
+                    note=form.cleaned_data.get("note", ""),
+                    user=request.user,
+                    request=request,
+                    created_at=custom_date,
+                )
+                messages.success(
+                    request,
+                    f"Deposit of ₦{form.cleaned_data['amount']:,.0f} recorded for {customer.full_name}.",
+                )
+                response = HttpResponse(status=204)
+                response["HX-Trigger"] = "customerDetailChanged"
+                return response
+
+            except (ValidationError, customer_services.BusinessRuleViolation) as e:
+                form.add_error(None, str(e))
     else:
-        return render(request, "customers/customer_detail.html", context)
+        form = TransactionForm()
+
+    return render(request, "customers/modals/deposit_modal.html", {
+        "customer": customer,
+        "form": form,
+    })
 
 
-@require_GET
-def filter_agreements_partial(request, pk):
+def modal_withdrawal(request, pk):
+    customer = get_object_or_404(
+        Customer.objects.select_related("deposit_account"), pk=pk
+    )
 
-    customer = get_object_or_404(Customer, pk=pk)
-    agreements = customer.deposit_account.purchase_agreements.all()
+    if request.method == "POST":
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            try:
+                custom_date = parse_backdate(request.POST.get("date"))
+                customer_services.record_withdrawal(
+                    account=customer.deposit_account,
+                    amount=form.cleaned_data["amount"],
+                    note=form.cleaned_data.get("note", ""),
+                    user=request.user,
+                    request=request,
+                    created_at=custom_date,
+                )
+                messages.success(
+                    request,
+                    f"Withdrawal of ₦{form.cleaned_data['amount']:,.0f} recorded for {customer.full_name}.",
+                )
+                response = HttpResponse(status=204)
+                response["HX-Trigger"] = "customerDetailChanged"
+                return response
 
-    status_filter = request.GET.get("status")
-    if status_filter:
-        agreements = agreements.filter(status=status_filter)
-
-    # Sorting
-    sort_field = request.GET.get("sort", "created_at")
-    direction = request.GET.get("direction", "desc")
-    allowed_sort_fields = ["created_at", "status", "purchase_agreement_number"]
-
-    if direction == "desc":
-        order_by_field = f"-{sort_field}"
+            except (ValidationError, customer_services.BusinessRuleViolation) as e:
+                form.add_error(None, str(e))
     else:
-        order_by_field = sort_field
+        form = TransactionForm()
 
-    if sort_field in allowed_sort_fields:
-        agreements = agreements.order_by(order_by_field)
-
-    context = {
-        "agreements": agreements,
-        "pk": pk,  # Pass pk for hx-get url construction
-        "sort_field": sort_field,
-        "direction": direction,
-    }
-
-    return render(request, "customers/partials/purchase_agreements_list.html", context)
+    return render(request, "customers/modals/withdrawal_modal.html", {
+        "customer": customer,
+        "form": form,
+    })
 
 
-@require_GET
-def filter_cfa_agreements_partial(request, pk):
+def modal_cfa_agreement(request, pk):
+    customer = get_object_or_404(
+        Customer.objects.select_related("deposit_account"), pk=pk
+    )
 
-    customer = get_object_or_404(Customer, pk=pk)
-    agreements = customer.deposit_account.cfa_agreements.all()
+    if request.method == "POST":
+        form = CfaAgreementForm(request.POST)
+        if form.is_valid():
+            try:
+                customer_services.create_cfa_agreement(
+                    account=customer.deposit_account,
+                    amount_naira=form.cleaned_data["amount_allocated"],
+                    exchange_rate=form.cleaned_data["exchange_rate"],
+                    user=request.user,
+                    request=request,
+                )
+                messages.success(
+                    request,
+                    f"CFA agreement created for {customer.full_name}.",
+                )
+                response = HttpResponse(status=204)
+                response["HX-Trigger"] = "customerDetailChanged"
+                return response
 
-    status_filter = request.GET.get("status")
-    if status_filter:
-        agreements = agreements.filter(status=status_filter)
-
-    # Sorting
-    sort_field = request.GET.get("sort", "created_at")
-    direction = request.GET.get("direction", "desc")
-    allowed_sort_fields = [
-        "created_at",
-        "status",
-        "cfa_agreement_number",
-        "amount_allocated",
-    ]
-
-    if direction == "desc":
-        order_by_field = f"-{sort_field}"
+            except (ValidationError, customer_services.BusinessRuleViolation) as e:
+                form.add_error(None, str(e))
     else:
-        order_by_field = sort_field
+        form = CfaAgreementForm(initial={"account": customer.deposit_account})
 
-    if sort_field in allowed_sort_fields:
-        agreements = agreements.order_by(order_by_field)
+    return render(request, "customers/modals/cfa_agreement_modal.html", {
+        "customer": customer,
+        "form": form,
+    })
 
-    context = {
-        "cfas": agreements,
-        "pk": pk,
-        "sort_field": sort_field,
-        "direction": direction,
-    }
 
-    return render(request, "customers/partials/cfa_agreements_list.html", context)
+def modal_cfa_agreement_edit(request, pk):
+    cfa_agreement = get_object_or_404(
+        CfaAgreement.objects.select_related("account__customer", "account"), pk=pk
+    )
+    customer = cfa_agreement.account.customer
+
+    if request.method == "POST":
+        form = CfaAgreementForm(request.POST, instance=cfa_agreement)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    cfa_agreement.amount_allocated = form.cleaned_data[
+                        "amount_allocated"
+                    ]
+                    cfa_agreement.exchange_rate = form.cleaned_data["exchange_rate"]
+                    cfa_agreement.updated_by = request.user
+                    cfa_agreement.full_clean()
+                    cfa_agreement.save()
+                    customer_services._refresh_balances(cfa_agreement.account)
+                messages.success(request, "CFA agreement updated.")
+                response = HttpResponse(status=204)
+                response["HX-Trigger"] = "customerDetailChanged"
+                return response
+
+            except (ValidationError, customer_services.BusinessRuleViolation) as e:
+                form.add_error(None, str(e))
+    else:
+        form = CfaAgreementForm(
+            instance=cfa_agreement,
+            initial={"account": cfa_agreement.account},
+        )
+
+    return render(request, "customers/modals/cfa_agreement_edit_modal.html", {
+        "cfa_agreement": cfa_agreement,
+        "customer": customer,
+        "form": form,
+    })
+
+
+def modal_cancel_cfa_agreement(request, pk):
+    cfa_agreement = get_object_or_404(
+        CfaAgreement.objects.select_related("account__customer"), pk=pk
+    )
+    customer = cfa_agreement.account.customer
+
+    if request.method == "POST":
+        try:
+            customer_services.cancel_cfa_agreement(pk, request.user, request=request)
+            messages.warning(
+                request,
+                f"CFA agreement {cfa_agreement.cfa_agreement_number} cancelled.",
+            )
+            response = HttpResponse(status=204)
+            response["HX-Trigger"] = "customerDetailChanged"
+            return response
+
+        except (ValidationError, customer_services.BusinessRuleViolation) as e:
+            form = TransactionForm()
+            form.add_error(None, str(e))
+            return render(
+                request, "customers/modals/cancel_cfa_agreement_modal.html", {
+                    "cfa_agreement": cfa_agreement,
+                    "customer": customer,
+                    "form": form,
+                }
+            )
+
+    return render(request, "customers/modals/cancel_cfa_agreement_modal.html", {
+        "cfa_agreement": cfa_agreement,
+        "customer": customer,
+    })
+
+
+def modal_void_transaction(request, pk):
+    txn = get_object_or_404(
+        Transaction.objects.select_related("account__customer"), pk=pk
+    )
+    customer = txn.account.customer
+
+    if request.method == "POST":
+        void_reason = request.POST.get("void_reason", "")
+        try:
+            customer_services.void_deposit(
+                pk, void_reason, request.user, request=request
+            )
+            messages.success(
+                request, f"Transaction {txn.reference_number} voided successfully."
+            )
+            response = HttpResponse(status=204)
+            response["HX-Trigger"] = "customerDetailChanged"
+            return response
+
+        except (ValidationError, customer_services.BusinessRuleViolation) as e:
+            form = TransactionForm()
+            form.add_error(None, str(e))
+            return render(
+                request, "customers/modals/void_transaction_modal.html", {
+                    "txn": txn,
+                    "customer": customer,
+                    "form": form,
+                }
+            )
+
+    return render(request, "customers/modals/void_transaction_modal.html", {
+        "txn": txn,
+        "customer": customer,
+    })
+
+
+def modal_cfa_fulfillment(request, pk):
+    cfa_agreement = get_object_or_404(
+        CfaAgreement.objects.select_related("account__customer"), pk=pk
+    )
+    customer = cfa_agreement.account.customer
+
+    if request.method == "POST":
+        form = CfaFulfillmentForm(request.POST)
+        if form.is_valid():
+            try:
+                custom_date = parse_backdate(request.POST.get("date"))
+                customer_services.record_cfa_fulfillment(
+                    agreement_id=cfa_agreement.pk,
+                    cfa_amount=form.cleaned_data["cfa_amount_disbursed"],
+                    notes=form.cleaned_data.get("notes", ""),
+                    user=request.user,
+                    request=request,
+                    created_at=custom_date,
+                )
+                messages.success(request, "Disbursement recorded.")
+                response = HttpResponse(status=204)
+                response["HX-Trigger"] = "customerDetailChanged"
+                return response
+
+            except (ValidationError, customer_services.BusinessRuleViolation) as e:
+                form.add_error(None, str(e))
+    else:
+        form = CfaFulfillmentForm()
+
+    return render(request, "customers/modals/cfa_fulfillment_modal.html", {
+        "cfa_agreement": cfa_agreement,
+        "customer": customer,
+        "form": form,
+    })
+
+
+def modal_void_cfa_fulfillment(request, pk):
+    fulfillment = get_object_or_404(
+        CfaFulfillment.objects.select_related("cfa_agreement__account__customer"), pk=pk
+    )
+    customer = fulfillment.cfa_agreement.account.customer
+
+    if request.method == "POST":
+        void_reason = request.POST.get("void_reason", "")
+        try:
+            customer_services.void_cfa_fulfillment(
+                pk, void_reason, request.user, request=request
+            )
+            messages.success(request, "Disbursement voided.")
+            response = HttpResponse(status=204)
+            response["HX-Trigger"] = "customerDetailChanged"
+            return response
+
+        except (ValidationError, customer_services.BusinessRuleViolation) as e:
+            form = TransactionForm()
+            form.add_error(None, str(e))
+            return render(
+                request, "customers/modals/void_cfa_fulfillment_modal.html", {
+                    "fulfillment": fulfillment,
+                    "customer": customer,
+                    "form": form,
+                }
+            )
+
+    return render(request, "customers/modals/void_cfa_fulfillment_modal.html", {
+        "fulfillment": fulfillment,
+        "customer": customer,
+    })
 
 
 def manage_customers(request, pk=None):

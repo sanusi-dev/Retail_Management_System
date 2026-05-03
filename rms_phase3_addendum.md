@@ -44,11 +44,8 @@ function showPage(id, navEl) {
 ```html
 <!-- Sidebar nav link -->
 <a href="{% url 'customers' %}"
-   hx-get="{% url 'customers' %}"
    hx-target="#main_body"
-   hx-push-url="true"
-   hx-indicator="#body_spinner"
-   class="nav-link {% if request.resolver_match.url_name == 'customers' %}active{% endif %}">
+  class="nav-link {% if url == 'dashboard' %}active{% endif %}">
   Customers
 </a>
 
@@ -56,16 +53,13 @@ function showPage(id, navEl) {
 <tr class="cursor-pointer hover:bg-gray-50"
     hx-get="{% url 'customer_detail' pk=customer.pk %}"
     hx-target="#main_body"
-    hx-push-url="true"
-    hx-indicator="#body_spinner">
+    hx-push-url="true"> 
   ...
 </tr>
 
 <!-- Action button navigating to another page -->
 <a href="{% url 'sale_create' %}"
-   hx-get="{% url 'sale_create' %}"
    hx-target="#main_body"
-   hx-push-url="true"
    class="btn-primary btn-sm">
   New Sale
 </a>
@@ -73,8 +67,6 @@ function showPage(id, navEl) {
 
 **Key difference:** The prototype uses a fake single-page app with `display:none` pages.
 The real app has actual URLs. Every `showPage()` call becomes an `hx-get` to a real URL.
-The `active` class on nav links is set server-side via `request.resolver_match.url_name`,
-not by JavaScript.
 
 ---
 

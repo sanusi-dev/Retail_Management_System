@@ -61,7 +61,7 @@ def _update_agreement_status(line_item):
     line_item.purchase_agreement.update_status()
 
 
-def record_deposit(account, amount, note, user, request=None):
+def record_deposit(account, amount, note, user, request=None, created_at=None):
     """Create a deposit transaction and refresh balances."""
     from customer.models import Transaction
 
@@ -74,7 +74,38 @@ def record_deposit(account, amount, note, user, request=None):
             created_by=user,
             updated_by=user,
         )
+        if created_at is not None:
+            txn.created_at = created_at
+            txn.save(update_fields=["created_at"])
         _refresh_balances(account)
+    return txn
+
+
+def record_withdrawal(account, amount, note, user, request=None, created_at=None):
+    """Create a withdrawal transaction and refresh balances."""
+    from customer.models import Transaction
+
+    with db_transaction.atomic():
+        txn = Transaction(
+            account=account,
+            transaction_type=Transaction.TransactionType.WITHDRAWAL,
+            amount=amount,
+            note=note,
+            created_by=user,
+            updated_by=user,
+        )
+        txn.full_clean()
+        txn.save()
+        if created_at is not None:
+            txn.created_at = created_at
+            txn.save(update_fields=["created_at"])
+        _refresh_balances(account)
+
+        audit(user, 'create_withdrawal', txn, detail={
+            'amount': str(amount),
+            'account_id': str(account.pk),
+        }, request=request)
+
     return txn
 
 
@@ -188,7 +219,7 @@ def create_cfa_agreement(account, amount_naira, exchange_rate, user, request=Non
     return cfa
 
 
-def record_cfa_fulfillment(agreement_id, cfa_amount, notes, user, request=None):
+def record_cfa_fulfillment(agreement_id, cfa_amount, notes, user, request=None, created_at=None):
     """Record a CFA fulfillment and create withdrawal transaction."""
     from customer.models import CfaFulfillment, Transaction
 
@@ -212,7 +243,7 @@ def record_cfa_fulfillment(agreement_id, cfa_amount, notes, user, request=None):
         if not Transaction.objects.filter(
             source_object_id=fulfillment.pk, source_content_type=ct
         ).exists():
-            Transaction.objects.create(
+            txn = Transaction.objects.create(
                 account=agreement.account,
                 transaction_type=Transaction.TransactionType.FULFILLMENT_WITHDRAWAL,
                 amount=naira_amount,
@@ -221,6 +252,9 @@ def record_cfa_fulfillment(agreement_id, cfa_amount, notes, user, request=None):
                 created_by=user,
                 updated_by=user,
             )
+            if created_at is not None:
+                txn.created_at = created_at
+                txn.save(update_fields=["created_at"])
 
         # Update CFA agreement status (replaces update_cfa_statuses_after_fulfillment signal)
         agreement.update_status()

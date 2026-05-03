@@ -1,0 +1,55 @@
+{% load humanize %}
+<div id="modal-backdrop"
+     class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+
+  <div id="modal-dialog"
+       class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
+       hx-target="this"
+       onclick="event.stopPropagation()">
+
+    <div class="flex justify-between items-center mb-5">
+      <h3 class="font-bold text-lg text-slate-800">Record CFA Disbursement</h3>
+      <button id="modal-close-btn"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="summary-box mb-5">
+      <div class="font-bold text-sm text-slate-800">{{ cfa_agreement.cfa_agreement_number }} · {{ cfa_agreement.account.customer.full_name|title }}</div>
+      <div class="text-xs text-slate-400 mt-1">Remaining: <span class="amount font-bold text-brand-600">{{ cfa_agreement.remaining_cfa|floatformat:0|intcomma }} XOF</span></div>
+    </div>
+    {% if form.non_field_errors %}
+      <div class="text-xs text-rose-600 bg-rose-50 rounded-lg px-3 py-2 mb-4">
+        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+      </div>
+    {% endif %}
+    <form hx-post="{% url 'modal_cfa_fulfillment' cfa_agreement.pk %}"
+          hx-target="#modal-dialog"
+          hx-swap="innerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="cfa_agreement" value="{{ cfa_agreement.pk }}">
+      <div class="space-y-4">
+        <div>
+          <label class="field-label">Amount to Disburse (XOF)</label>
+          <input type="number" name="cfa_amount_disbursed" class="field-input font-mono" placeholder="e.g. 50000 XOF" step="100" min="100" required>
+          <div class="text-xs text-slate-400 mt-1 font-medium">Max: {{ cfa_agreement.remaining_cfa|floatformat:0|intcomma }} XOF. Must be a multiple of 100.</div>
+          {% if form.cfa_amount_disbursed.errors %}
+            {% for error in form.cfa_amount_disbursed.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
+          {% endif %}
+        </div>
+        <div>
+          <label class="field-label">Disbursement Date</label>
+          <input type="date" name="date" class="field-input" value="{% now 'Y-m-d' %}">
+        </div>
+        <div>
+          <label class="field-label">Notes / Reference</label>
+          <input type="text" name="notes" class="field-input" placeholder="Bank reference or notes...">
+        </div>
+      </div>
+      <div class="flex gap-3 mt-6">
+        <button type="button" id="modal-cancel-btn" class="btn-secondary flex-1">Cancel</button>
+        <button type="submit" class="btn-primary flex-1 shadow-md shadow-brand-600/15">Record Disbursement</button>
+      </div>
+    </form>
+  </div>
+</div>

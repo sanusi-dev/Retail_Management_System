@@ -1,72 +1,48 @@
 import json
 from django.contrib.messages import get_messages
-from django.contrib.messages.storage.base import LEVEL_TAGS
-from django.utils.deprecation import MiddlewareMixin
 
 
-class HtmxMessageMiddleware(MiddlewareMixin):
+class HtmxMessageMiddleware:
     """
-    For HTMX requests: intercepts pending Django messages and serialises them
-    into the HX-Trigger response header as a 'showMessages' event payload.
+    Intercepts Django messages on HTMX responses and serialises them into
+    HX-Trigger as a 'messages' event payload. The frontend showMessages listener
+    (in app.js) picks this up and calls SweetAlert2.
 
-    The client's app.js listens for the 'showMessages' event and calls SweetAlert2.
-
-    For non-HTMX requests: messages render normally in the base template.
-
-    This replaces the old system that appended OOB toast HTML to response bodies.
+    Skips redirects because the browser follows them transparently and
+    HTMX never sees the headers — messages must stay in the session.
     """
 
-    # Map Django message level tags to SweetAlert2 icon names
-    ICON_MAP = {
-        'debug':   'info',
-        'info':    'info',
-        'success': 'success',
-        'warning': 'warning',
-        'error':   'error',
-    }
+    def __init__(self, get_response):
+        self.get_response = get_response
 
-    def process_response(self, request, response):
-        # Only intercept HTMX requests
-        if not request.headers.get('HX-Request'):
+    def __call__(self, request):
+        response = self.get_response(request)
+
+        if "HX-Request" not in request.headers:
             return response
 
-        # Only intercept HTML responses (not JSON, not redirects)
-        content_type = response.get('Content-Type', '')
-        if 'text/html' not in content_type:
+        if 300 <= response.status_code < 400:
             return response
 
-        # Read and consume all pending messages
         storage = get_messages(request)
-        message_list = list(storage)
+        message_list = [
+            {"message": str(msg), "tags": msg.tags}
+            for msg in storage
+        ]
 
         if not message_list:
             return response
 
-        # Serialise messages
-        messages_data = []
-        for message in message_list:
-            tag = message.tags.split()[-1] if message.tags else 'info'
-            messages_data.append({
-                'text':  str(message),
-                'icon':  self.ICON_MAP.get(tag, 'info'),
-                'level': tag,
-            })
-
-        # Read any existing HX-Trigger header — must merge, not overwrite
-        existing_trigger = response.get('HX-Trigger', None)
-
-        if existing_trigger:
+        existing = response.get("HX-Trigger")
+        if existing:
             try:
-                trigger_data = json.loads(existing_trigger)
+                trigger_data = json.loads(existing)
             except (json.JSONDecodeError, ValueError):
-                # Existing header is a plain event name string, not JSON
-                trigger_data = {existing_trigger: True}
+                trigger_data = {existing: True}
         else:
             trigger_data = {}
 
-        # Add our showMessages event to the trigger payload
-        trigger_data['showMessages'] = messages_data
-
-        response['HX-Trigger'] = json.dumps(trigger_data)
+        trigger_data["messages"] = message_list
+        response["HX-Trigger"] = json.dumps(trigger_data)
 
         return response
