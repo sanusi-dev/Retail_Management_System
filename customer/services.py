@@ -263,7 +263,7 @@ def record_cfa_fulfillment(agreement_id, cfa_amount, notes, user, request=None, 
 
 
 def void_cfa_fulfillment(fulfillment_id, void_reason, user, request=None):
-    """Void a CFA fulfillment and create refund transaction."""
+    """Void a CFA fulfillment and reverse its withdrawal transaction."""
     from customer.models import CfaFulfillment, Transaction
 
     with db_transaction.atomic():
@@ -276,24 +276,20 @@ def void_cfa_fulfillment(fulfillment_id, void_reason, user, request=None):
         fulfillment.updated_by = user
         fulfillment.save(update_fields=['status', 'updated_by'])
 
-        # Create refund transaction (replaces create_refund_after_cfa_fulfillment_void signal)
-        naira_amount = fulfillment.cfa_amount_disbursed_to_naira
+        # Void the original FULFILLMENT_WITHDRAWAL transaction so it no longer
+        # counts against the balance (balance calc filters by status=ACTIVE).
         ct = ContentType.objects.get_for_model(fulfillment)
-
-        if not Transaction.objects.filter(
+        withdrawal_txn = Transaction.objects.filter(
             source_object_id=fulfillment.pk,
             source_content_type=ct,
-            transaction_type=Transaction.TransactionType.DEPOSIT_REFUND,
-        ).exists():
-            Transaction.objects.create(
-                account=fulfillment.cfa_agreement.account,
-                transaction_type=Transaction.TransactionType.DEPOSIT_REFUND,
-                amount=abs(naira_amount),
-                source=fulfillment,
-                note=f"Naira Refund for voided fulfillment {fulfillment.fulfillment_number}",
-                created_by=user,
-                updated_by=user,
-            )
+            transaction_type=Transaction.TransactionType.FULFILLMENT_WITHDRAWAL,
+            status=Transaction.Status.ACTIVE,
+        ).first()
+
+        if withdrawal_txn:
+            withdrawal_txn.status = Transaction.Status.VOIDED
+            withdrawal_txn.updated_by = user
+            withdrawal_txn.save(update_fields=['status', 'updated_by'])
 
         # Update CFA agreement status
         fulfillment.cfa_agreement.update_status()
@@ -303,6 +299,7 @@ def void_cfa_fulfillment(fulfillment_id, void_reason, user, request=None):
             'fulfillment_number': fulfillment.fulfillment_number,
             'cfa_amount': str(fulfillment.cfa_amount_disbursed),
             'cfa_agreement_id': str(fulfillment.cfa_agreement.pk),
+            'void_reason': void_reason,
         }, request=request)
 
     return fulfillment
@@ -519,3 +516,79 @@ def void_sale(sale_id, void_reason, user, request=None):
         }, request=request)
 
     return sale
+
+
+def amend_line_item(line_item_id, new_quantity, new_price_per_unit, reason, user, request=None):
+    """Create a new version of an existing agreement line item."""
+    from customer.models import PurchaseAgreement, PurchaseAgreementLineItem
+
+    with db_transaction.atomic():
+        old_item = PurchaseAgreementLineItem.objects.select_for_update().select_related(
+            "purchase_agreement__account"
+        ).get(pk=line_item_id)
+
+        if not old_item.is_current_version:
+            raise BusinessRuleViolation("Only the current version of a line item can be amended.")
+
+        if old_item.status in (
+            PurchaseAgreementLineItem.Status.VOIDED,
+            PurchaseAgreementLineItem.Status.CANCELLED,
+        ):
+            raise BusinessRuleViolation("Cannot amend a voided or cancelled line item.")
+
+        fulfilled = old_item.quantity_fulfilled_accross_all_versions
+        if new_quantity < fulfilled:
+            raise BusinessRuleViolation(
+                f"Cannot set quantity below {fulfilled} — {fulfilled} units have already been fulfilled."
+            )
+
+        account = old_item.purchase_agreement.account
+        old_allocated = (old_item.quantity_ordered - fulfilled) * old_item.price_per_unit
+        new_allocated = (new_quantity - fulfilled) * new_price_per_unit
+        allocation_increase = new_allocated - old_allocated
+
+        if allocation_increase > 0:
+            available = account.available_balance
+            if allocation_increase > available:
+                raise BusinessRuleViolation(
+                    f"Insufficient available balance. "
+                    f"Amendment requires ₦{allocation_increase:,.2f} more, "
+                    f"but only ₦{available:,.2f} is available."
+                )
+
+        new_version = old_item.version + 1
+
+        new_item = PurchaseAgreementLineItem(
+            purchase_agreement=old_item.purchase_agreement,
+            line_number=old_item.line_number,
+            product=old_item.product,
+            quantity_ordered=new_quantity,
+            price_per_unit=new_price_per_unit,
+            version=new_version,
+            is_current_version=True,
+            superseded_by=None,
+            created_by=user,
+            updated_by=user,
+        )
+        new_item.save()
+
+        old_item.is_current_version = False
+        old_item.superseded_by = new_item
+        old_item.save(update_fields=["is_current_version", "superseded_by"])
+
+        _refresh_balances(account)
+
+        audit(user, 'amend_line_item', new_item, detail={
+            'line_number': old_item.line_number,
+            'old_version': old_item.version,
+            'new_version': new_item.version,
+            'old_quantity': old_item.quantity_ordered,
+            'new_quantity': new_quantity,
+            'old_price': str(old_item.price_per_unit),
+            'new_price': str(new_price_per_unit),
+            'allocation_increase': str(allocation_increase),
+            'reason': reason,
+            'agreement_number': old_item.purchase_agreement.purchase_agreement_number,
+        }, request=request)
+
+    return new_item

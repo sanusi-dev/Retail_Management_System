@@ -2,35 +2,26 @@
 <!-- Tabs -->
 <div class="flex border-b border-slate-200 mb-6 overflow-x-auto">
   <a href="{% url 'customer_detail' customer.pk %}?tab=agreements"
-     hx-get="{% url 'customer_detail' customer.pk %}?tab=agreements"
      hx-target="#tab_area"
-     hx-push-url="true"
-     hx-indicator="#body_spinner"
      hx-swap="innerHTML"
-     class="tab-btn {% if active_tab == 'agreements' %}active{% endif %}">Purchase Agreements</a>
+     class="tab-btn
+            {% if active_tab == 'agreements' %}active{% endif %}">Purchase Agreements</a>
   <a href="{% url 'customer_detail' customer.pk %}?tab=cfa"
-     hx-get="{% url 'customer_detail' customer.pk %}?tab=cfa"
      hx-target="#tab_area"
-     hx-push-url="true"
-     hx-indicator="#body_spinner"
      hx-swap="innerHTML"
-     class="tab-btn {% if active_tab == 'cfa' %}active{% endif %}">CFA Agreements</a>
+     class="tab-btn
+            {% if active_tab == 'cfa' %}active{% endif %}">CFA Agreements</a>
   <a href="{% url 'customer_detail' customer.pk %}?tab=transactions"
-     hx-get="{% url 'customer_detail' customer.pk %}?tab=transactions"
      hx-target="#tab_area"
-     hx-push-url="true"
-     hx-indicator="#body_spinner"
      hx-swap="innerHTML"
-     class="tab-btn {% if active_tab == 'transactions' %}active{% endif %}">Transactions</a>
+     class="tab-btn
+            {% if active_tab == 'transactions' %}active{% endif %}">Transactions</a>
   <a href="{% url 'customer_detail' customer.pk %}?tab=sales"
-     hx-get="{% url 'customer_detail' customer.pk %}?tab=sales"
      hx-target="#tab_area"
-     hx-push-url="true"
-     hx-indicator="#body_spinner"
      hx-swap="innerHTML"
-     class="tab-btn {% if active_tab == 'sales' %}active{% endif %}">Sales History</a>
+     class="tab-btn
+            {% if active_tab == 'sales' %}active{% endif %}">Sales History</a>
 </div>
-
 <!-- Tab content -->
 <div id="tab_content">
   {% if active_tab == 'agreements' %}

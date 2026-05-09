@@ -1,343 +1,129 @@
 {% extends 'index.html' %}
-{% load static %}
-{% load humanize %}
+{% load static humanize %}
 {% block content %}
-    {% include "partials/spinner.html" with id="body_spinner" %}
-    <div class="flex flex-col h-[calc(100vh-4rem)] overflow-hidden" id="main_body">
-        <div class="flex flex-row h-full">
-            <!-- ========================== -->
-            <!-- SIDEBAR: SALES LIST        -->
-            <!-- ========================== -->
-            {% block _side_bar %}
-                <div x-data="{ activeSale: '{{ sale.pk }}' }"
-                     class="flex-none w-[340px] h-full bg-white border-r flex flex-col z-20">
-                    <!-- Sidebar Header -->
-                    <div class="flex-none border-b bg-gradient-to-r from-blue-50 to-white">
-                        <div class="h-16 flex items-center justify-between px-5 py-2">
-                            <div>
-                                <h4 class="text-gray-900 text-lg font-semibold">All Sales</h4>
-                                <p class="text-xs text-gray-500">{{ sale_list.paginator.count }} total</p>
-                            </div>
-                            <!-- Add New Sale Button -->
-                            <a href="{% url 'customers' %}"
-                               hx-boost="true"
-                               hx-target="#main_body"
-                               hx-indicator="#body_spinner"
-                               class="p-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
-                               title="Go to Customers to create sale">
-                                <svg xmlns="http://www.w3.org/2000/svg"
-                                     viewBox="0 0 20 20"
-                                     fill="currentColor"
-                                     class="w-5 h-5">
-                                    <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-                                </svg>
-                            </a>
-                        </div>
-                        <!-- Search Box -->
-                        <div class="px-4 pb-3">
-                            <div class="relative">
-                                <input type="text"
-                                       name="q"
-                                       value="{{ search_query }}"
-                                       hx-get="{% url 'sale_detail' sale.pk %}"
-                                       hx-trigger="keyup changed delay:500ms, search"
-                                       hx-target="#sidebar_pagination"
-                                       hx-push-url="true"
-                                       placeholder="Search sales..."
-                                       class="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
-                                <svg class="w-4 h-4 absolute left-3 top-2.5 text-gray-400"
-                                     fill="none"
-                                     viewBox="0 0 24 24"
-                                     stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Sidebar List Content -->
-                    {% block side_bar_list %}
-                        <div id="sidebar_pagination" class="flex-1 flex flex-col min-h-0 overflow-hidden">
-                            <div id="side_bar" class="flex-1 overflow-y-auto min-h-0">
-                                {% for s in sale_list %}
-                                    <a href="{% url 'sale_detail' pk=s.pk %}"
-                                       class="h-18 flex flex-col justify-center px-5 border-b hover:bg-gray-50 transition-colors duration-150 py-3"
-                                       hx-boost="true"
-                                       hx-target="#main_content"
-                                       hx-indicator="#side_bar_spinner"
-                                       @click="activeSale = '{{ s.pk }}'"
-                                       x-bind:class="{'bg-blue-50 border-r-4 border-r-blue-600': activeSale === '{{ s.pk }}' }">
-                                        <div class="flex justify-between items-center w-full mb-1">
-                                            <h4 class="text-gray-800 font-medium text-sm truncate w-40">{{ s.customer.full_name|upper }}</h4>
-                                            <span class="text-xs font-mono text-gray-500">{{ s.sale_number }}</span>
-                                        </div>
-                                        <div class="flex justify-between items-center">
-                                            <p class="text-xs text-gray-500">{{ s.sale_date | date:"M d, Y" }}</p>
-                                            {% if s.status == 'voided' %}
-                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-100 text-red-600">Voided</span>
-                                            {% else %}
-                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-green-100 text-green-700">Active</span>
-                                            {% endif %}
-                                        </div>
-                                    </a>
-                                {% empty %}
-                                    <div class="p-5 text-center text-gray-500 text-sm">No sales records found.</div>
-                                {% endfor %}
-                            </div>
-                            <!-- Sidebar Pagination -->
-                            <div class="flex-shrink-0 bg-white border-t border-gray-200 p-3">
-                                {% include "partials/pagination.html" with page_obj=sale_list target="sidebar_pagination" %}
-                            </div>
-                        </div>
-                    {% endblock side_bar_list %}
-                </div>
-            {% endblock _side_bar %}
-            <!-- ========================== -->
-            <!-- MAIN CONTENT: DETAIL VIEW  -->
-            <!-- ========================== -->
-            <div class="flex-1 bg-white relative flex flex-col h-screen overflow-hidden"
-                 id="content-wrapper">
-                {% include "partials/spinner.html" with id="side_bar_spinner" %}
-                <div id="main_content" class="flex-1 flex flex-col overflow-hidden">
-                    {% block main_content %}
-                        {% if sale %}
-                            <!-- Top Header Toolbar -->
-                            {% block _header %}
-                                <div class="flex-none bg-white py-3 px-6 h-16 border-b flex justify-between items-center z-10">
-                                    <div>
-                                        <h1 class="text-lg font-bold text-gray-900">{{ sale.sale_number }}</h1>
-                                        <p class="text-xs text-gray-500">Created by {{ sale.created_by.get_full_name|default:sale.created_by.username }}</p>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <!-- Back Button -->
-                                        <button onclick="history.back()"
-                                                class="text-gray-400 hover:text-gray-600 transition-colors p-1">
-                                            <svg xmlns="http://www.w3.org/2000/svg"
-                                                 fill="none"
-                                                 viewBox="0 0 24 24"
-                                                 stroke-width="1.5"
-                                                 stroke="currentColor"
-                                                 class="size-6">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            {% endblock _header %}
-                            <!-- Scrollable Invoice Area -->
-                            {% block _content %}
-                                <div id="_content" class="flex-1 overflow-y-auto bg-gray-50 p-6">
-                                    <!-- Invoice Card -->
-                                    <div class="bg-white shadow-sm border border-gray-200 rounded-lg max-w-5xl mx-auto min-h-[600px]">
-                                        <!-- Invoice Header -->
-                                        <div class="flex justify-between items-start p-8 border-b border-gray-100">
-                                            <div>
-                                                <h1 class="text-2xl font-bold text-gray-900 mb-1">SALE RECEIPT</h1>
-                                                <p class="text-sm text-gray-500">{{ sale.sale_date|date:"l, F j, Y" }}</p>
-                                            </div>
-                                            <div class="text-right">
-                                                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Customer</p>
-                                                <p class="text-lg font-medium text-blue-600 hover:underline">
-                                                    <a href="{% url 'customer_detail' sale.customer.pk %}"
-                                                       hx-boost="true"
-                                                       hx-target="#main_body"
-                                                       hx-indicator="#body_spinner">{{ sale.customer.full_name|upper }}</a>
-                                                </p>
-                                                <p class="text-sm text-gray-600">{{ sale.customer.phone }}</p>
-                                            </div>
-                                        </div>
-                                        <!-- Status Grid -->
-                                        <div class="p-8 border-b border-gray-100 bg-gray-50/50">
-                                            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                                                <div>
-                                                    <p class="text-xs text-gray-500 uppercase font-medium mb-1">Status</p>
-                                                    {% if sale.status == 'active' %}
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                            ACTIVE
-                                                        </span>
-                                                    {% else %}
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                            VOIDED
-                                                        </span>
-                                                    {% endif %}
-                                                </div>
-                                                <div>
-                                                    <p class="text-xs text-gray-500 uppercase font-medium mb-1">Payment Method</p>
-                                                    <span class="text-sm font-medium text-gray-900 capitalize flex items-center gap-1">
-                                                        {{ sale.get_payment_method_display|upper }}
-                                                    </span>
-                                                </div>
-                                                {% if sale.agreement %}
-                                                    <div class="col-span-2">
-                                                        <p class="text-xs text-gray-500 uppercase font-medium mb-1">Linked Agreement</p>
-                                                        <span class="text-sm font-mono text-gray-700 bg-white border border-gray-200 px-1 py-1 rounded">
-                                                            {{ sale.agreement.purchase_agreement_number }}
-                                                        </span>
-                                                    </div>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                        <!-- Items Sections -->
-                                        <div class="p-8">
-                                            <!-- Boxed Sales Section -->
-                                            {% if sale.boxed_sales.exists %}
-                                                <div class="mb-8">
-                                                    <div class="flex items-center gap-3 mb-4">
-                                                        <div class="flex items-center gap-2">
-                                                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-blue-600">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0-3-3m3 3 3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
-                                                                </svg>
-                                                            </span>
-                                                            <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wide">Boxed Products</h3>
-                                                        </div>
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                            {{ sale.boxed_sales.count }} item{{ sale.boxed_sales.count|pluralize }}
-                                                        </span>
-                                                    </div>
-                                                    <div class="bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
-                                                        <table class="w-full text-left">
-                                                            <thead>
-                                                                <tr class="bg-gray-100">
-                                                                    <th class="py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">Product</th>
-                                                                    <th class="py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">Brand</th>
-                                                                    <th class="py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide text-center">Qty</th>
-                                                                    <th class="py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide text-right">Unit Price</th>
-                                                                    <th class="py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide text-right">Total</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody class="divide-y divide-gray-200 bg-white">
-                                                                {% for item in sale.boxed_sales.all %}
-                                                                    <tr class="hover:bg-blue-50/50 transition-colors">
-                                                                        <td class="py-4 px-4">
-                                                                            <p class="text-sm font-medium text-gray-900">{{ item.product.modelname|upper }}</p>
-                                                                            <p class="text-xs text-gray-500 mt-0.5">{{ item.product.type_variant|upper }}</p>
-                                                                        </td>
-                                                                        <td class="py-4 px-4">
-                                                                            <span class="text-sm text-gray-600">{{ item.product.brand.name }}</span>
-                                                                        </td>
-                                                                        <td class="py-4 px-4 text-center">
-                                                                            <span class="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 text-sm font-semibold text-blue-700 bg-blue-100 rounded-md">{{ item.quantity }}</span>
-                                                                        </td>
-                                                                        <td class="py-4 px-4 text-right">
-                                                                            <span class="text-sm font-mono text-gray-700">₦{{ item.price|floatformat:2|intcomma }}</span>
-                                                                        </td>
-                                                                        <td class="py-4 px-4 text-right">
-                                                                            {% widthratio item.price 1 item.quantity as total %}
-                                                                            <span class="text-sm font-mono font-semibold text-gray-900">₦{{ total|intcomma }}</span>
-                                                                        </td>
-                                                                    </tr>
-                                                                {% endfor %}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            {% endif %}
-
-                                            <!-- Coupled Sales Section -->
-                                            {% if sale.coupled_sales.exists %}
-                                                {% if sale.boxed_sales.exists %}
-                                                    <div class="border-t border-gray-200 my-8"></div>
-                                                {% endif %}
-                                                <div class="mb-8">
-                                                    <div class="flex items-center gap-3 mb-4">
-                                                        <div class="flex items-center gap-2">
-                                                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-emerald-600">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-                                                                </svg>
-                                                            </span>
-                                                            <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wide">Coupled Units</h3>
-                                                        </div>
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                                                            {{ sale.coupled_sales.count }} unit{{ sale.coupled_sales.count|pluralize }}
-                                                        </span>
-                                                    </div>
-                                                    <div class="bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
-                                                        <table class="w-full text-left">
-                                                            <thead>
-                                                                <tr class="bg-gray-100">
-                                                                    <th class="py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">Product</th>
-                                                                    <th class="py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">Item Number</th>
-                                                                    <th class="py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">Engine No.</th>
-                                                                    <th class="py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide">Chassis No.</th>
-                                                                    <th class="py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wide text-right">Price</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody class="divide-y divide-gray-200 bg-white">
-                                                                {% for item in sale.coupled_sales.all %}
-                                                                    <tr class="hover:bg-emerald-50/50 transition-colors">
-                                                                        <td class="py-4 px-4">
-                                                                            <p class="text-sm font-medium text-gray-900">{{ item.transformation_item.target_product.modelname|upper }}</p>
-                                                                            <p class="text-xs text-gray-500 mt-0.5">{{ item.transformation_item.target_product.brand.name }}</p>
-                                                                        </td>
-                                                                        <td class="py-4 px-4">
-                                                                            <span class="inline-flex items-center px-2 py-1 text-xs font-mono font-medium text-gray-700 bg-gray-100 rounded border border-gray-200">
-                                                                                {{ item.transformation_item.item_number }}
-                                                                            </span>
-                                                                        </td>
-                                                                        <td class="py-4 px-4">
-                                                                            <span class="text-sm font-mono text-gray-900">{{ item.transformation_item.engine_number|upper }}</span>
-                                                                        </td>
-                                                                        <td class="py-4 px-4">
-                                                                            <span class="text-sm font-mono text-gray-900">{{ item.transformation_item.chassis_number|upper }}</span>
-                                                                        </td>
-                                                                        <td class="py-4 px-4 text-right">
-                                                                            <span class="text-sm font-mono font-semibold text-gray-900">₦{{ item.price|floatformat:2|intcomma }}</span>
-                                                                        </td>
-                                                                    </tr>
-                                                                {% endfor %}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            {% endif %}
-
-                                            <!-- Empty State -->
-                                            {% if not sale.boxed_sales.exists and not sale.coupled_sales.exists %}
-                                                <div class="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 mx-auto text-gray-300 mb-4">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-                                                    </svg>
-                                                    <p class="text-gray-500 text-sm">No items found in this sale record.</p>
-                                                </div>
-                                            {% endif %}
-                                            <!-- Footer Totals -->
-                                            <div class="mt-8 pt-8 border-t border-gray-200 flex justify-end">
-                                                <div class="w-64">
-                                                    <div class="flex justify-between items-center mb-2">
-                                                        <span class="text-sm text-gray-500">Subtotal</span>
-                                                        <span class="text-sm font-mono text-gray-900">{{ sale_total|floatformat:2|intcomma }}</span>
-                                                    </div>
-                                                    <div class="flex justify-between items-center py-3 border-t-2 border-gray-800 mt-2">
-                                                        <span class="text-base font-bold text-gray-900">Grand Total</span>
-                                                        <span class="text-lg font-bold text-gray-900 font-mono">NGN {{ sale.sales_total|floatformat:2|intcomma }}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- Footer Actions (Voiding) -->
-                                    {% if sale.status == 'active' %}
-                                        <div class="max-w-5xl mx-auto mt-6 flex justify-end">
-                                            <button class="text-red-500 border border-red-200 bg-white hover:bg-red-50 hover:border-red-400 font-medium rounded-md px-3 py-1 text-sm transition-colors shadow-sm flex items-center gap-2">
-                                                Void
-                                            </button>
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            {% endblock _content %}
-                        {% else %}
-                            <!-- Empty State if no sales exist in DB -->
-                            <div class="flex-1 flex items-center justify-center bg-gray-50">
-                                <div class="text-center">
-                                    <h3 class="text-lg font-medium text-gray-900">No Sales Records</h3>
-                                    <p class="text-sm text-gray-500 mt-2">Create a sale from the Customer Dashboard to see it here.</p>
-                                </div>
-                            </div>
-                        {% endif %}
-                    {% endblock main_content %}
-                </div>
-            </div>
-        </div>
+  {% partialdef sale-detail-partial inline %}
+  <div class="p-6 lg:p-8 max-w-3xl mx-auto"
+       id="sale-detail-partial"
+       hx-get="{{ request.get_full_path }}"
+       hx-trigger="saleDetailChanged from:body"
+       hx-swap="outerHTML">
+    <!-- Header -->
+    <div class="flex items-center gap-3 mb-8">
+      <a href="{% url 'sales' %}"
+         class="btn-back mt-1">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </a>
+      <div class="flex-1">
+        <h1 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">Sale {{ sale.sale_number }}</h1>
+        <p class="text-slate-400 font-mono text-xs mt-1">
+          {{ sale.get_status_display }} · {{ sale.sale_date|date:"j M Y" }}
+        </p>
+      </div>
+      {% if sale.status == 'active' %}
+        <button hx-get="{% url 'modal_void_sale' sale.pk %}"
+                hx-target="#modal_container"
+                hx-swap="innerHTML"
+                class="btn-danger btn-sm">Void Sale</button>
+      {% endif %}
     </div>
+
+    <!-- Sale info -->
+    <div class="card card-p mb-5">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-6 text-sm">
+        <div>
+          <div class="text-xs text-slate-400 font-semibold mb-1.5">Customer</div>
+          <a href="{% url 'customer_detail' sale.customer.pk %}"
+             class="font-bold text-slate-800 hover:text-brand-600 transition-colors">{{ sale.customer.full_name|title }}</a>
+        </div>
+        <div>
+          <div class="text-xs text-slate-400 font-semibold mb-1.5">Payment Method</div>
+          <div class="font-bold text-slate-800">{{ sale.get_payment_method_display }}</div>
+        </div>
+        {% if sale.agreement %}
+          <div>
+            <div class="text-xs text-slate-400 font-semibold mb-1.5">Agreement</div>
+            <a href="{% url 'agreement_detail' sale.agreement.pk %}"
+               class="font-bold text-brand-600 hover:text-brand-700 transition-colors">{{ sale.agreement.purchase_agreement_number }}</a>
+          </div>
+        {% else %}
+          <div>
+            <div class="text-xs text-slate-400 font-semibold mb-1.5">Agreement</div>
+            <span class="font-bold text-slate-400">None</span>
+          </div>
+        {% endif %}
+        <div>
+          <div class="text-xs text-slate-400 font-semibold mb-1.5">Sale Date</div>
+          <div class="font-bold text-slate-800">{{ sale.sale_date|date:"j M Y" }}</div>
+        </div>
+        <div>
+          <div class="text-xs text-slate-400 font-semibold mb-1.5">Created by</div>
+          <div class="font-bold text-slate-800">{{ sale.created_by.get_full_name|default:sale.created_by.username }}</div>
+        </div>
+        <div>
+          <div class="text-xs text-slate-400 font-semibold mb-1.5">Status</div>
+      {% if sale.status == 'active' %}
+            <span class="badge badge-active">Active</span>
+          {% else %}
+            <span class="badge badge-voided">Voided</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Items -->
+      <div class="border-t border-slate-100 pt-5">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Sale Items</div>
+
+        {% for item in sale.boxed_sales.all %}
+          <div class="bg-slate-50 rounded-xl p-5 mb-3">
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="font-bold text-sm text-slate-800">
+                  {{ item.product.brand.name|title }} <span class="font-mono text-xs font-semibold text-slate-500">{{ item.product.modelname|upper }}</span> — Boxed
+                </div>
+                <div class="text-xs text-slate-400 font-mono mt-1.5">
+                  Qty: {{ item.quantity }} · Unit Price: ₦{{ item.price|floatformat:0|intcomma }}
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="amount font-bold">₦{% widthratio item.price 1 item.quantity as boxed_total %}{{ boxed_total|intcomma }}</div>
+                {% if item.agreement_line_item %}
+                  <div class="text-xs text-slate-400 mt-1">From {{ item.agreement_line_item.purchase_agreement.purchase_agreement_number }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+
+        {% for item in sale.coupled_sales.all %}
+          <div class="bg-slate-50 rounded-xl p-5 mb-3">
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="font-bold text-sm text-slate-800">
+                  {{ item.transformation_item.target_product.brand.name|title }} <span class="font-mono text-xs font-semibold text-slate-500">{{ item.transformation_item.target_product.modelname|upper }}</span> — Coupled
+                </div>
+                <div class="text-xs text-slate-400 font-mono mt-1.5">
+                  Engine: {{ item.transformation_item.engine_number|upper }} · Chassis: {{ item.transformation_item.chassis_number|upper }}
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="amount font-bold">₦{{ item.price|floatformat:0|intcomma }}</div>
+                {% if item.agreement_line_item %}
+                  <div class="text-xs text-slate-400 mt-1">From {{ item.agreement_line_item.purchase_agreement.purchase_agreement_number }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="border-t border-slate-100 mt-5 pt-4 flex justify-between">
+        <span class="text-sm text-slate-500 font-medium">
+          {{ sale.boxed_sales.count|add:sale.coupled_sales.count }} item{{ sale.boxed_sales.count|add:sale.coupled_sales.count|pluralize }} · {{ sale.get_payment_method_display }}
+        </span>
+        <span class="amount font-bold text-slate-900">Total: ₦{{ sale.sales_total|floatformat:0|intcomma }}</span>
+      </div>
+    </div>
+  {% endpartialdef %}
 {% endblock content %}

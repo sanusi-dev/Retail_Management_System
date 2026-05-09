@@ -4,8 +4,7 @@
 
   <div id="modal-dialog"
        class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
-       hx-target="this"
-       onclick="event.stopPropagation()">
+       hx-target="this">
 
     <div class="flex justify-between items-center mb-5">
       <h3 class="font-bold text-lg text-slate-800">Void CFA Disbursement</h3>
@@ -24,9 +23,9 @@
         {{ fulfillment.date|date:"M d, Y" }} · <span class="amount font-bold">{{ fulfillment.cfa_amount_disbursed|floatformat:0|intcomma }} XOF</span>
       </div>
     </div>
-    {% if form.non_field_errors %}
+    {% if error %}
       <div class="text-xs text-rose-600 bg-rose-50 rounded-lg px-3 py-2 mb-4">
-        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+        {{ error }}
       </div>
     {% endif %}
     <form hx-post="{% url 'modal_void_cfa_fulfillment' fulfillment.pk %}"

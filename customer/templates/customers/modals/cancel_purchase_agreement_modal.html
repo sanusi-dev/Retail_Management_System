@@ -7,28 +7,32 @@
        hx-target="this">
 
     <div class="flex justify-between items-center mb-5">
-      <h3 class="font-bold text-lg text-slate-800">Cancel CFA Agreement?</h3>
+      <h3 class="font-bold text-lg text-slate-800">Cancel Agreement?</h3>
       <button id="modal-close-btn"
               class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
+
     <div class="alert-danger mb-5">
       <div class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-3">What cancelling will do</div>
       <ul class="text-sm text-rose-700 space-y-1.5 font-medium">
-        <li>&#8226; <span class="amount font-bold">₦{{ cfa_agreement.amount_allocated|floatformat:0|intcomma }}</span> will be released back to available balance</li>
-        <li>&#8226; Agreement <strong>{{ cfa_agreement.cfa_agreement_number }}</strong> will be permanently marked as cancelled</li>
-        {% if cfa_agreement.total_fulfilled_cfa %}
-          <li>&#8226; <strong>{{ cfa_agreement.total_fulfilled_cfa|floatformat:0|intcomma }} XOF</strong> already disbursed will not be reversed</li>
+        <li>&#8226; <span class="amount font-bold">₦{{ agreement.total_allocated_amount|floatformat:0|intcomma }}</span> will be released back to available balance</li>
+        <li>&#8226; Agreement <strong>{{ agreement.purchase_agreement_number }}</strong> will be permanently marked as cancelled</li>
+        <li>&#8226; All <strong>{{ agreement.agreement_line_items.count }}</strong> line items will be cancelled</li>
+        {% if agreement.total_quantity_fulfilled > 0 %}
+          <li>&#8226; <strong>{{ agreement.total_quantity_fulfilled }}</strong> already fulfilled items will not be reversed</li>
         {% endif %}
       </ul>
     </div>
+
     {% if error %}
       <div class="text-xs text-rose-600 bg-rose-50 rounded-lg px-3 py-2 mb-4">
         {{ error }}
       </div>
     {% endif %}
-    <form hx-post="{% url 'modal_cancel_cfa_agreement' cfa_agreement.pk %}"
+
+    <form hx-post="{% url 'modal_cancel_purchase_agreement' agreement.pk %}"
           hx-target="#modal-dialog"
           hx-swap="innerHTML">
       {% csrf_token %}

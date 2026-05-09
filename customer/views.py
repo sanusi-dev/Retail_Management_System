@@ -1,7 +1,6 @@
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
 from django.shortcuts import render, get_object_or_404, redirect
-from django.views.decorators.http import require_POST
 from render_block import render_block_to_string
 from django.urls import reverse
 from django.core.paginator import Paginator
@@ -22,6 +21,7 @@ from .models import (
     CoupledSale,
     BoxedSale,
 )
+from inventory.models import TransformationItem
 from .forms import (
     CustomerForm,
     TransactionForm,
@@ -35,6 +35,7 @@ from .forms import (
     AgreementSaleForm,
     BoxedSaleFormSet,
     CoupledSaleFormSet,
+    AmendLineItemForm,
 )
 from . import services as customer_services
 from inventory.models import Product, TransformationItem
@@ -172,9 +173,7 @@ def customers(request):
                 context,
             )
         else:
-            print(
-                "HTMX request without pagination, search, filter, or sort - returning full page with customer list partial"
-            )
+
             return render(
                 request,
                 "customers/customers.html#customer-list-partial",
@@ -320,9 +319,6 @@ def customer_detail(request, pk):
                 context,
             )
         else:
-            print(
-                "HTMX request to customer detail without tab_area target - returning full page with tab area partial"
-            )
             return render(
                 request,
                 "customers/customer_detail.html#customer-detail-partial",
@@ -362,10 +358,14 @@ def modal_deposit(request, pk):
     else:
         form = TransactionForm()
 
-    return render(request, "customers/modals/deposit_modal.html", {
-        "customer": customer,
-        "form": form,
-    })
+    return render(
+        request,
+        "customers/modals/deposit_modal.html",
+        {
+            "customer": customer,
+            "form": form,
+        },
+    )
 
 
 def modal_withdrawal(request, pk):
@@ -399,10 +399,14 @@ def modal_withdrawal(request, pk):
     else:
         form = TransactionForm()
 
-    return render(request, "customers/modals/withdrawal_modal.html", {
-        "customer": customer,
-        "form": form,
-    })
+    return render(
+        request,
+        "customers/modals/withdrawal_modal.html",
+        {
+            "customer": customer,
+            "form": form,
+        },
+    )
 
 
 def modal_cfa_agreement(request, pk):
@@ -434,10 +438,14 @@ def modal_cfa_agreement(request, pk):
     else:
         form = CfaAgreementForm(initial={"account": customer.deposit_account})
 
-    return render(request, "customers/modals/cfa_agreement_modal.html", {
-        "customer": customer,
-        "form": form,
-    })
+    return render(
+        request,
+        "customers/modals/cfa_agreement_modal.html",
+        {
+            "customer": customer,
+            "form": form,
+        },
+    )
 
 
 def modal_cfa_agreement_edit(request, pk):
@@ -445,6 +453,10 @@ def modal_cfa_agreement_edit(request, pk):
         CfaAgreement.objects.select_related("account__customer", "account"), pk=pk
     )
     customer = cfa_agreement.account.customer
+    # Available balance excluding this agreement's current allocation
+    available_balance = (
+        cfa_agreement.account.available_balance + cfa_agreement.amount_allocated
+    )
 
     if request.method == "POST":
         form = CfaAgreementForm(request.POST, instance=cfa_agreement)
@@ -472,11 +484,16 @@ def modal_cfa_agreement_edit(request, pk):
             initial={"account": cfa_agreement.account},
         )
 
-    return render(request, "customers/modals/cfa_agreement_edit_modal.html", {
-        "cfa_agreement": cfa_agreement,
-        "customer": customer,
-        "form": form,
-    })
+    return render(
+        request,
+        "customers/modals/cfa_agreement_edit_modal.html",
+        {
+            "cfa_agreement": cfa_agreement,
+            "customer": customer,
+            "form": form,
+            "available_balance": available_balance,
+        },
+    )
 
 
 def modal_cancel_cfa_agreement(request, pk):
@@ -497,20 +514,30 @@ def modal_cancel_cfa_agreement(request, pk):
             return response
 
         except (ValidationError, customer_services.BusinessRuleViolation) as e:
-            form = TransactionForm()
-            form.add_error(None, str(e))
+            error_msg = str(e)
+            if hasattr(e, "message_dict"):
+                error_msg = "; ".join(
+                    f"{field}: {msgs[0]}" if isinstance(msgs, list) else str(msgs)
+                    for field, msgs in e.message_dict.items()
+                )
             return render(
-                request, "customers/modals/cancel_cfa_agreement_modal.html", {
+                request,
+                "customers/modals/cancel_cfa_agreement_modal.html",
+                {
                     "cfa_agreement": cfa_agreement,
                     "customer": customer,
-                    "form": form,
-                }
+                    "error": error_msg,
+                },
             )
 
-    return render(request, "customers/modals/cancel_cfa_agreement_modal.html", {
-        "cfa_agreement": cfa_agreement,
-        "customer": customer,
-    })
+    return render(
+        request,
+        "customers/modals/cancel_cfa_agreement_modal.html",
+        {
+            "cfa_agreement": cfa_agreement,
+            "customer": customer,
+        },
+    )
 
 
 def modal_void_transaction(request, pk):
@@ -532,21 +559,31 @@ def modal_void_transaction(request, pk):
             response["HX-Trigger"] = "customerDetailChanged"
             return response
 
-        except (ValidationError, customer_services.BusinessRuleViolation) as e:
-            form = TransactionForm()
-            form.add_error(None, str(e))
+        except Exception as e:
+            error_msg = str(e)
+            if hasattr(e, "message_dict"):
+                error_msg = "; ".join(
+                    f"{field}: {msgs[0]}" if isinstance(msgs, list) else str(msgs)
+                    for field, msgs in e.message_dict.items()
+                )
             return render(
-                request, "customers/modals/void_transaction_modal.html", {
+                request,
+                "customers/modals/void_transaction_modal.html",
+                {
                     "txn": txn,
                     "customer": customer,
-                    "form": form,
-                }
+                    "error": error_msg,
+                },
             )
 
-    return render(request, "customers/modals/void_transaction_modal.html", {
-        "txn": txn,
-        "customer": customer,
-    })
+    return render(
+        request,
+        "customers/modals/void_transaction_modal.html",
+        {
+            "txn": txn,
+            "customer": customer,
+        },
+    )
 
 
 def modal_cfa_fulfillment(request, pk):
@@ -578,11 +615,15 @@ def modal_cfa_fulfillment(request, pk):
     else:
         form = CfaFulfillmentForm()
 
-    return render(request, "customers/modals/cfa_fulfillment_modal.html", {
-        "cfa_agreement": cfa_agreement,
-        "customer": customer,
-        "form": form,
-    })
+    return render(
+        request,
+        "customers/modals/cfa_fulfillment_modal.html",
+        {
+            "cfa_agreement": cfa_agreement,
+            "customer": customer,
+            "form": form,
+        },
+    )
 
 
 def modal_void_cfa_fulfillment(request, pk):
@@ -602,55 +643,59 @@ def modal_void_cfa_fulfillment(request, pk):
             response["HX-Trigger"] = "customerDetailChanged"
             return response
 
-        except (ValidationError, customer_services.BusinessRuleViolation) as e:
-            form = TransactionForm()
-            form.add_error(None, str(e))
+        except Exception as e:
+            error_msg = str(e)
+            if hasattr(e, "message_dict"):
+                error_msg = "; ".join(
+                    f"{field}: {msgs[0]}" if isinstance(msgs, list) else str(msgs)
+                    for field, msgs in e.message_dict.items()
+                )
             return render(
-                request, "customers/modals/void_cfa_fulfillment_modal.html", {
+                request,
+                "customers/modals/void_cfa_fulfillment_modal.html",
+                {
                     "fulfillment": fulfillment,
                     "customer": customer,
-                    "form": form,
-                }
+                    "error": error_msg,
+                },
             )
 
-    return render(request, "customers/modals/void_cfa_fulfillment_modal.html", {
-        "fulfillment": fulfillment,
-        "customer": customer,
-    })
+    return render(
+        request,
+        "customers/modals/void_cfa_fulfillment_modal.html",
+        {
+            "fulfillment": fulfillment,
+            "customer": customer,
+        },
+    )
 
 
-def manage_customers(request, pk=None):
-    instance = get_object_or_404(Customer, pk=pk) if pk else None
-
+def modal_new_customer(request):
     if request.method == "POST":
-        form = CustomerForm(request.POST, instance=instance)
+        form = CustomerForm(request.POST)
         if form.is_valid():
             with transaction.atomic():
-                form = form.save(commit=False)
-                if not instance:
-                    form.created_by = request.user
-                form.updated_by = request.user
-                form.save()
-            return redirect("customers")
-
+                customer = form.save(commit=False)
+                customer.created_by = request.user
+                customer.updated_by = request.user
+                customer.save()
+            messages.success(
+                request,
+                f"Customer {customer.full_name} ({customer.customer_number}) created.",
+            )
+            response = HttpResponse(status=204)
+            response["HX-Trigger"] = "customerCreated"
+            return response
     else:
-        form = CustomerForm(instance=instance)
-    if instance:
-        form_acion_url = reverse("edit_customer", kwargs={"pk": instance.pk})
-    else:
-        form_acion_url = reverse("add_customer")
+        form = CustomerForm()
 
-    context = {
-        "form": form,
-        "form_action_url": form_acion_url,
-        "instance": instance,
-    }
-    if request.htmx:
-        html = render_block_to_string(
-            "customers/customer_form.html", "content", context, request=request
-        )
-        return HttpResponse(html)
-    return render(request, "customers/customer_form.html", context)
+    return render(
+        request,
+        "customers/modals/new_customer_modal.html",
+        {
+            "form": form,
+        },
+    )
 
 
 def customer_transactions(request):
@@ -716,101 +761,6 @@ def customer_transactions(request):
     return render(request, "customers/customer_transactions.html", context)
 
 
-def manage_transactions(request):
-    initial_data = {}
-    customer_pk = request.GET.get("customer")
-    if customer_pk:
-        account = get_object_or_404(DepositAccount, customer__pk=customer_pk)
-        initial_data["account"] = account
-
-    txn_type = request.GET.get("type")
-    if txn_type:
-        initial_data["transaction_type"] = txn_type
-
-    if request.method == "POST":
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            txn_type = form.cleaned_data.get("transaction_type")
-            if txn_type == Transaction.TransactionType.DEPOSIT:
-                txn = customer_services.record_deposit(
-                    account=form.cleaned_data["account"],
-                    amount=form.cleaned_data["amount"],
-                    note=form.cleaned_data["note"],
-                    user=request.user,
-                    request=request,
-                )
-            else:
-                with transaction.atomic():
-                    txn = form.save(commit=False)
-                    txn.created_by = request.user
-                    txn.updated_by = request.user
-                    txn.save()
-                    customer_services._refresh_balances(txn.account)
-
-            if customer_pk:
-                return redirect("customer_detail", pk=customer_pk)
-            return redirect("transaction_list")
-
-    else:
-        form = TransactionForm(initial=initial_data)
-    context = {"form": form, "form_action_url": request.get_full_path()}
-
-    if request.htmx:
-        return HttpResponse(
-            render_block_to_string(
-                "customers/customer_transaction_form.html",
-                "content",
-                context,
-                request=request,
-            )
-        )
-    return render(request, "customers/customer_transaction_form.html", context)
-
-
-@require_POST
-def void_transaction(request, pk):
-    txn = get_object_or_404(Transaction, pk=pk)
-
-    try:
-        customer_services.void_deposit(pk, "", request.user, request=request)
-
-        transaction_row = render_block_to_string(
-            "customers/customer_transactions.html",
-            "transaction_row",
-            {"transaction": txn},
-        )
-
-        toast = render_to_string(
-            "partials/toast.html",
-            {
-                "message": f"Transaction {txn.reference_number} voided successfully.",
-                "type": "success",
-            },
-        )
-
-        return HttpResponse(transaction_row + toast)
-
-    except (ValidationError, customer_services.BusinessRuleViolation) as e:
-        error_message = (
-            e.message_dict.get("__all__", [str(e)])[0]
-            if hasattr(e, "message_dict")
-            else str(e)
-        )
-
-        toast = render_to_string(
-            "partials/toast.html",
-            {
-                "message": error_message,
-                "type": "error",
-            },
-        )
-
-        response = HttpResponse(toast)
-        response["HX-Reswap"] = "none"
-
-        return response
-
-
 def manage_purchase_agreements(request, pk=None):
     initial_data = {}
     customer_pk = request.GET.get("customer")
@@ -819,11 +769,8 @@ def manage_purchase_agreements(request, pk=None):
         initial_data["account"] = account
 
     instance = get_object_or_404(PurchaseAgreement, pk=pk) if pk else None
-    qs = (
-        instance.agreement_line_items.all()
-        if instance
-        else PurchaseAgreementLineItem.objects.none()
-    )
+    if not instance:
+        initial_data.setdefault("date", timezone.now().date())
 
     if request.method == "POST":
         form = PurchaseAgreementForm(request.POST, instance=instance)
@@ -831,8 +778,17 @@ def manage_purchase_agreements(request, pk=None):
             account = form.cleaned_data.get("account")
             balance = account.available_balance
 
+            qs = (
+                instance.agreement_line_items.filter(is_current_version=True)
+                if instance
+                else None
+            )
             formset = PurchaseAgreementLineItemFormSet(
-                request.POST, queryset=qs, prefix="item", available_balance=balance
+                request.POST,
+                instance=instance,
+                prefix="item",
+                queryset=qs,
+                available_balance=balance,
             )
             if formset.is_valid():
                 if not instance:
@@ -854,307 +810,381 @@ def manage_purchase_agreements(request, pk=None):
                 else:
                     with transaction.atomic():
                         agreement = form.save(commit=False)
-                        agreement.created_by = request.user
                         agreement.updated_by = request.user
                         agreement.save()
 
+                        formset.instance = agreement  # ← ensures FK is set
                         items = formset.save(commit=False)
+
                         for obj in formset.deleted_objects:
                             obj.delete()
 
                         for item in items:
-                            item.purchase_agreement = agreement
+                            # No need to set purchase_agreement — inline handles it
                             item.created_by = request.user
                             item.updated_by = request.user
                             item.save()
 
                         customer_services._refresh_balances(agreement.account)
 
-                return redirect(agreement.account.customer.get_absolute_url)
-
-        # Ensure formset exists for re-rendering if validation failed
-        if "formset" not in locals():
+                messages.success(
+                    request,
+                    f"Agreement {agreement.purchase_agreement_number} saved successfully.",
+                )
+                return redirect("agreement_detail", pk=agreement.pk)
+        else:
+            qs = (
+                instance.agreement_line_items.filter(is_current_version=True)
+                if instance
+                else None
+            )
             formset = PurchaseAgreementLineItemFormSet(
-                request.POST, queryset=qs, prefix="item"
+                request.POST,
+                instance=instance,
+                prefix="item",
+                queryset=qs,
             )
 
     else:
         form = PurchaseAgreementForm(initial=initial_data, instance=instance)
-        formset = PurchaseAgreementLineItemFormSet(queryset=qs, prefix="item")
+        qs = (
+            instance.agreement_line_items.filter(is_current_version=True)
+            if instance
+            else None
+        )
+        formset = PurchaseAgreementLineItemFormSet(
+            instance=instance,
+            prefix="item",
+            queryset=qs,
+        )
 
     form_action_url = (
         reverse("edit_purchase_agreement", kwargs={"pk": pk})
         if instance
         else reverse("add_purchase_agreement")
     )
+
+    customer = None
+    if instance:
+        customer = instance.account.customer
+    elif customer_pk:
+        customer = get_object_or_404(Customer, pk=customer_pk)
+    elif request.method == "POST":
+        account_pk = request.POST.get("account")
+        if account_pk:
+            try:
+                account = DepositAccount.objects.select_related("customer").get(
+                    pk=account_pk
+                )
+                customer = account.customer
+            except DepositAccount.DoesNotExist:
+                pass
+
     context = {
         "form": form,
         "formset": formset,
         "form_action_url": form_action_url,
-        "is_creating": instance,
+        "is_creating": instance is None,
+        "agreement": instance,
+        "customer": customer,
     }
-
     if request.htmx:
-        return HttpResponse(
-            render_block_to_string(
-                "customers/purchase_agreement_form.html",
-                "content",
-                context,
-                request=request,
-            )
+        return render(
+            request,
+            "customers/purchase_agreement_form.html#agreement-form-partial",
+            context,
         )
-
     return render(request, "customers/purchase_agreement_form.html", context)
 
 
-def manage_purchase_agreement_line_item(request):
-    try:
-        current_index = int(request.GET.get("index", "0"))
-    except ValueError:
-        current_index = 0
+def agreement_line_item_add(request):
+    """
+    Receives the full current form state via POST (hx-include="closest form").
+    Appends one empty row by incrementing TOTAL_FORMS and seeding blank fields.
+    Returns the re-rendered #formset-container partial.
+    """
+    post_data = request.POST.copy()
+    total_forms = int(post_data.get("item-TOTAL_FORMS", 0))
 
-    formset = PurchaseAgreementLineItemFormSet(prefix="item")
-    empty_form = formset.empty_form
-    empty_form.prefix = f"item-{current_index}"
+    post_data[f"item-{total_forms}-product"] = ""
+    post_data[f"item-{total_forms}-quantity_ordered"] = ""
+    post_data[f"item-{total_forms}-price_per_unit"] = ""
+    post_data["item-TOTAL_FORMS"] = total_forms + 1
 
-    context = {"form": empty_form}
+    formset = PurchaseAgreementLineItemFormSet(post_data, prefix="item")
+
     return render(
-        request, "customers/partials/purchase_agreement_line_item_form.html", context
+        request,
+        "customers/partials/purchase_agreement_formset.html",
+        {"formset": formset},
     )
 
 
-@require_POST
-def cancel_purchase_agreement(request, pk):
-    agreement = get_object_or_404(PurchaseAgreement, pk=pk)
-    oob_content = ""
+def agreement_line_item_remove(request, index):
+    """
+    Receives the full current form state via POST (hx-include="closest form")
+    and the index of the row to operate on from the URL.
 
-    try:
-        customer_services.cancel_agreement(pk, request.user, request=request)
+    Logic:
+    - If the row has a pk (item-{index}-id is non-empty): the row is an
+      existing DB record. Toggle its DELETE flag. If it was unmarked, mark it
+      "on". If it was already "on", unmark it (undo).
+    - If the row has no pk: it is a new unsaved row. Shift all rows above
+      this index down by one, decrement TOTAL_FORMS, drop the row entirely.
 
-        toast = render_to_string(
-            "partials/toast.html",
-            {
-                "message": f"Agreement {agreement.purchase_agreement_number} cancelled successfully.",
-                "type": "success",
-            },
-            request=request,
-        )
-        oob_content += toast
+    Returns the re-rendered #formset-container partial.
+    """
+    post_data = request.POST.copy()
+    total_forms = int(post_data.get("item-TOTAL_FORMS", 0))
+    pk_value = post_data.get(f"item-{index}-id", "").strip()
 
-        customer = agreement.account.customer
-        wallet = render_to_string(
-            "customers/partials/customer_wallet.html",
-            {
-                "customer": customer,
-                "oob_swap_enabled": True,
-            },
-            request=request,
-        )
-        oob_content += wallet
-    except customer_services.BusinessRuleViolation as e:
-        toast = render_to_string(
-            "partials/toast.html",
-            {"message": str(e), "type": "error"},
-            request=request,
-        )
-        oob_content += toast
+    if pk_value:
+        # Existing DB record — toggle DELETE
+        already_deleted = post_data.get(f"item-{index}-DELETE", "") == "on"
+        if already_deleted:
+            post_data.pop(f"item-{index}-DELETE", None)
+        else:
+            post_data[f"item-{index}-DELETE"] = "on"
 
-    return HttpResponse(oob_content)
-
-
-def manage_cfa_agreements(request, pk=None):
-    initial_data = {}
-    customer_pk = request.GET.get("customer")
-
-    if customer_pk:
-        account = get_object_or_404(DepositAccount, customer__pk=customer_pk)
-        initial_data["account"] = account
-
-    instance = get_object_or_404(CfaAgreement, pk=pk) if pk else None
-
-    if request.method == "POST":
-        form = CfaAgreementForm(request.POST, instance=instance)
-
-        if form.is_valid():
-            if not instance:
-                cfa_agreement = customer_services.create_cfa_agreement(
-                    account=form.cleaned_data["account"],
-                    amount_naira=form.cleaned_data["amount_allocated"],
-                    exchange_rate=form.cleaned_data["exchange_rate"],
-                    user=request.user,
-                    request=request,
-                )
-            else:
-                with transaction.atomic():
-                    cfa_agreement = form.save(commit=False)
-                    cfa_agreement.updated_by = request.user
-                    cfa_agreement.save()
-                    customer_services._refresh_balances(cfa_agreement.account)
-
-            return redirect(cfa_agreement.account.customer.get_absolute_url)
+        formset = PurchaseAgreementLineItemFormSet(post_data, prefix="item")
 
     else:
-        form = CfaAgreementForm(initial=initial_data, instance=instance)
+        # New unsaved row — remove by shifting indexes
+        import urllib.parse
+        from django.http import QueryDict
 
-    form_action_url = (
-        reverse("edit_cfa_agreement", kwargs={"pk": pk})
-        if instance
-        else reverse("add_cfa_agreement")
+        line_fields = ["id", "product", "quantity_ordered", "price_per_unit", "DELETE"]
+        new_data = {}
+        new_index = 0
+
+        for i in range(total_forms):
+            if i == index:
+                continue
+            for field in line_fields:
+                old_key = f"item-{i}-{field}"
+                if old_key in post_data:
+                    new_data[f"item-{new_index}-{field}"] = post_data[old_key]
+            new_index += 1
+
+        new_data["item-TOTAL_FORMS"] = new_index
+        new_data["item-INITIAL_FORMS"] = post_data.get("item-INITIAL_FORMS", 0)
+        new_data["item-MIN_NUM_FORMS"] = post_data.get("item-MIN_NUM_FORMS", 0)
+        new_data["item-MAX_NUM_FORMS"] = post_data.get("item-MAX_NUM_FORMS", 1000)
+
+        encoded = urllib.parse.urlencode(new_data, doseq=True)
+        rebuilt = QueryDict(encoded, mutable=True)
+
+        formset = PurchaseAgreementLineItemFormSet(rebuilt, prefix="item")
+
+    return render(
+        request,
+        "customers/partials/purchase_agreement_formset.html",
+        {"formset": formset},
     )
 
-    context = {"form": form, "form_action_url": form_action_url}
 
-    if request.htmx:
-        return HttpResponse(
-            render_block_to_string(
-                "customers/cfa_agreement_form.html",
-                "content",
-                context,
-                request=request,
-            )
-        )
-
-    return render(request, "customers/cfa_agreement_form.html", context)
-
-
-@require_POST
-def cancel_cfa_agreement(request, pk):
-    agreement = get_object_or_404(CfaAgreement, pk=pk)
-
-    try:
-        customer_services.cancel_cfa_agreement(pk, request.user, request=request)
-
-        toast = render_to_string(
-            "partials/toast.html",
-            {
-                "message": f"CFA Agreement {agreement.cfa_agreement_number} cancelled successfully.",
-                "type": "success",
-            },
-        )
-
-        wallet = render_to_string(
-            "customers/partials/customer_wallet.html",
-            {
-                "customer": agreement.account.customer,
-                "oob_swap_enabled": True,
-            },
-            request=request,
-        )
-        return HttpResponse(toast + wallet)
-    except customer_services.BusinessRuleViolation as e:
-        toast = render_to_string(
-            "partials/toast.html",
-            {"message": str(e), "type": "error"},
-            request=request,
-        )
-        return HttpResponse(toast)
-
-
-def manage_cfa_fulfillments(request):
-    initial_data = {}
-    cfa_agreement_pk = request.GET.get("agreement")
-    if cfa_agreement_pk:
-        agreement_instance = get_object_or_404(CfaAgreement, pk=cfa_agreement_pk)
-        initial_data["cfa_agreement"] = agreement_instance
+def modal_cancel_purchase_agreement(request, pk):
+    agreement = get_object_or_404(
+        PurchaseAgreement.objects.select_related("account__customer"), pk=pk
+    )
+    customer = agreement.account.customer
 
     if request.method == "POST":
-        form = CfaFulfillmentForm(request.POST, initial=initial_data)
+        try:
+            customer_services.cancel_agreement(pk, request.user, request=request)
+            messages.warning(
+                request,
+                f"Agreement {agreement.purchase_agreement_number} cancelled.",
+            )
+            response = HttpResponse(status=204)
+            response["HX-Trigger"] = "customerDetailChanged"
+            return response
 
+        except customer_services.BusinessRuleViolation as e:
+            error_msg = str(e)
+            return render(
+                request,
+                "customers/modals/cancel_purchase_agreement_modal.html",
+                {
+                    "agreement": agreement,
+                    "customer": customer,
+                    "error": error_msg,
+                },
+            )
+
+    return render(
+        request,
+        "customers/modals/cancel_purchase_agreement_modal.html",
+        {
+            "agreement": agreement,
+            "customer": customer,
+        },
+    )
+
+
+def modal_amend_line_item(request, pk):
+    line_item = get_object_or_404(
+        PurchaseAgreementLineItem.objects.select_related(
+            "purchase_agreement__account__customer", "product"
+        ),
+        pk=pk,
+    )
+    agreement = line_item.purchase_agreement
+    customer = agreement.account.customer
+    fulfilled = line_item.quantity_fulfilled_accross_all_versions
+
+    if request.method == "POST":
+        form = AmendLineItemForm(request.POST, line_item=line_item)
         if form.is_valid():
             try:
-                fulfillment = form.save(commit=False)
-                customer_services.record_cfa_fulfillment(
-                    agreement_id=fulfillment.cfa_agreement.pk,
-                    cfa_amount=fulfillment.cfa_amount_disbursed,
-                    notes=fulfillment.notes,
+                new_item = customer_services.amend_line_item(
+                    line_item_id=line_item.pk,
+                    new_quantity=form.cleaned_data["new_quantity"],
+                    new_price_per_unit=form.cleaned_data["new_price_per_unit"],
+                    reason=form.cleaned_data.get("reason", ""),
                     user=request.user,
                     request=request,
                 )
-
-                return redirect(
-                    fulfillment.cfa_agreement.account.customer.get_absolute_url
+                messages.success(
+                    request,
+                    f"Line item amended. Version {new_item.version} created.",
                 )
+                response = HttpResponse(status=204)
+                response["HX-Trigger"] = "customerDetailChanged"
+                return response
 
-            except Exception as e:
-                error_message = (
-                    f"An error occurred while saving the fulfillment: {e}",
-                )
-                logging.error(error_message, exc_info=True)
-        else:
-            print("Not Valid")
+            except (ValidationError, customer_services.BusinessRuleViolation) as e:
+                form.add_error(None, str(e))
     else:
-        form = CfaFulfillmentForm(initial=initial_data)
+        form = AmendLineItemForm(
+            initial={
+                "new_quantity": line_item.quantity_ordered,
+                "new_price_per_unit": line_item.price_per_unit,
+            },
+            line_item=line_item,
+        )
 
-    context = {"form": form, "form_action_url": request.get_full_path()}
+    return render(
+        request,
+        "customers/modals/amend_line_item_modal.html",
+        {
+            "line_item": line_item,
+            "agreement": agreement,
+            "customer": customer,
+            "form": form,
+            "fulfilled": fulfilled,
+        },
+    )
 
+
+def agreement_detail(request, pk):
+    agreement = get_object_or_404(
+        PurchaseAgreement.objects.select_related(
+            "account", "account__customer", "created_by"
+        ),
+        pk=pk,
+    )
+    customer = agreement.account.customer
+
+    line_items = (
+        agreement.agreement_line_items.select_related("product", "product__inventory")
+        .prefetch_related(
+            "boxed_sales",
+            "boxed_sales__sale",
+            "coupled_sales",
+            "coupled_sales__sale",
+            "coupled_sales__transformation_item",
+        )
+        .order_by("line_number")
+    )
+
+    # Build line item data with fulfillment details
+    line_items_data = []
+    for item in line_items:
+        boxed_sales = item.boxed_sales.filter(sale__status=Sale.Status.ACTIVE)
+        coupled_sales = item.coupled_sales.filter(
+            sale__status=Sale.Status.ACTIVE
+        ).select_related(
+            "transformation_item", "transformation_item__transformation"
+        )
+
+        # Get all transformation items (coupled units) sold for this line item
+        coupled_details = []
+        for cs in coupled_sales:
+            ti = cs.transformation_item
+            coupled_details.append({
+                "sale_pk": cs.sale.pk,
+                "sale_number": cs.sale.sale_number,
+                "sale_date": cs.sale.sale_date,
+                "price": cs.price,
+                "engine_number": ti.engine_number,
+                "chassis_number": ti.chassis_number,
+                "item_number": ti.item_number,
+            })
+
+        # Get boxed sales details
+        boxed_details = []
+        for bs in boxed_sales:
+            boxed_details.append({
+                "sale_pk": bs.sale.pk,
+                "sale_number": bs.sale.sale_number,
+                "sale_date": bs.sale.sale_date,
+                "quantity": bs.quantity,
+                "price": bs.price,
+            })
+
+        total_fulfilled = item.quantity_fulfilled_accross_all_versions
+        remaining = item.remaining_quantity
+        progress_pct = 0
+        if item.quantity_ordered > 0:
+            progress_pct = int((total_fulfilled / item.quantity_ordered) * 100)
+
+        line_items_data.append({
+            "item": item,
+            "boxed_details": boxed_details,
+            "coupled_details": coupled_details,
+            "total_fulfilled": total_fulfilled,
+            "remaining": remaining,
+            "progress_pct": progress_pct,
+            "line_total": item.total_line,
+            "fulfilled_value": total_fulfilled * item.price_per_unit,
+            "remaining_value": remaining * item.price_per_unit,
+        })
+
+    # Check for superseded (old version) line items
+    superseded_items = (
+        agreement.agreement_line_items.filter(is_current_version=False)
+        .select_related("product")
+        .order_by("line_number", "-version")
+    )
+
+    context = {
+        "agreement": agreement,
+        "customer": customer,
+        "line_items_data": line_items_data,
+        "superseded_items": superseded_items,
+    }
     if request.htmx:
-        return HttpResponse(
-            render_block_to_string(
-                "customers/cfa_fulfillment_form.html",
-                "content",
-                context,
-                request=request,
-            )
+        return render(
+            request,
+            "customers/agreement_detail.html#agreement-detail-partial",
+            context,
         )
-
-    return render(request, "customers/cfa_fulfillment_form.html", context)
-
-
-@require_POST
-def void_cfa_fulfillment(request, pk):
-    fulfillment = get_object_or_404(CfaFulfillment, pk=pk)
-
-    try:
-        customer_services.void_cfa_fulfillment(pk, "", request.user, request=request)
-
-        toast = render_to_string(
-            "partials/toast.html",
-            {
-                "message": f"Transaction {fulfillment.fulfillment_number} voided successfully.",
-                "type": "success",
-            },
-        )
-
-        wallet = render_to_string(
-            "customers/partials/customer_wallet.html",
-            {
-                "customer": fulfillment.cfa_agreement.account.customer,
-                "oob_swap_enabled": True,
-            },
-            request=request,
-        )
-        return HttpResponse(wallet + toast)
-    except customer_services.BusinessRuleViolation as e:
-        toast = render_to_string(
-            "partials/toast.html",
-            {"message": str(e), "type": "error"},
-        )
-        response = HttpResponse(toast)
-        response["HX-Reswap"] = "none"
-        return response
+    return render(request, "customers/agreement_detail.html", context)
 
 
 def sales(request):
     PAGE_SIZE = 100
     page_number = request.GET.get("page", 1)
-    customer_pk = request.GET.get("customer")
     search_query = request.GET.get("q", "")
-    sale_list = Sale.objects.annotate(
-        total_boxed=Coalesce(
-            Sum(
-                F("boxed_sales__quantity") * F("boxed_sales__price"),
-                output_field=DecimalField(),
-            ),
-            Value(0, output_field=DecimalField()),
-        ),
-        total_coupled=Coalesce(
-            Sum("coupled_sales__price", output_field=DecimalField()),
-            Value(0, output_field=DecimalField()),
-        ),
-    ).annotate(annotated_total=F("total_boxed") + F("total_coupled"))
+    filter_status = request.GET.get("status", "")
+    filter_payment = request.GET.get("payment", "")
+    filter_date_from = request.GET.get("date_from", "")
+    filter_date_to = request.GET.get("date_to", "")
 
-    if customer_pk:
-        sale_list = sale_list.filter(customer__pk=customer_pk)
+    sale_list = Sale.objects.select_related("customer").prefetch_related(
+        "boxed_sales", "coupled_sales"
+    )
 
     if search_query:
         sale_list = sale_list.filter(
@@ -1162,6 +1192,26 @@ def sales(request):
             | Q(customer__full_name__icontains=search_query)
             | Q(customer__customer_number__icontains=search_query)
         )
+
+    if filter_status:
+        status_map = {"ACTIVE": "active", "VOIDED": "voided"}
+        db_status = status_map.get(filter_status, filter_status.lower())
+        sale_list = sale_list.filter(status=db_status)
+
+    if filter_payment:
+        payment_map = {
+            "from_deposit": "from deposit",
+            "transfer": "bank transfer",
+            "cash": "cash",
+        }
+        db_payment = payment_map.get(filter_payment, filter_payment)
+        sale_list = sale_list.filter(payment_method=db_payment)
+
+    if filter_date_from:
+        sale_list = sale_list.filter(sale_date__date__gte=filter_date_from)
+
+    if filter_date_to:
+        sale_list = sale_list.filter(sale_date__date__lte=filter_date_to)
 
     # Sorting
     sort_field = request.GET.get("sort", "sale_date")
@@ -1172,7 +1222,6 @@ def sales(request):
         "customer__full_name",
         "payment_method",
         "status",
-        "sales_total",
     ]
 
     if direction == "desc":
@@ -1180,12 +1229,7 @@ def sales(request):
     else:
         order_by_field = sort_field
 
-    if sort_field == "sales_total":
-        if direction == "desc":
-            sale_list = sale_list.order_by("-annotated_total")
-        else:
-            sale_list = sale_list.order_by("annotated_total")
-    elif sort_field in allowed_sort_fields:
+    if sort_field in allowed_sort_fields:
         sale_list = sale_list.order_by(order_by_field)
 
     paginator = Paginator(sale_list, PAGE_SIZE)
@@ -1195,29 +1239,29 @@ def sales(request):
         "search_query": search_query,
         "sort_field": sort_field,
         "direction": direction,
+        "filter_status": filter_status,
+        "filter_payment": filter_payment,
+        "filter_date_from": filter_date_from,
+        "filter_date_to": filter_date_to,
     }
 
     if request.htmx:
-        if "page" in request.GET or "q" in request.GET:
-            sale_list = render_block_to_string(
-                "customers/sales/sales.html",
-                "body",
+        if any(key in request.GET for key in ["q", "status", "payment", "date_from", "date_to", "page"]):
+            return render(
+                request,
+                "customers/sales/sales.html#sales-table-partial",
                 context,
             )
-            return HttpResponse(sale_list)
-        else:
-            sale_list = render_block_to_string(
-                "customers/sales/sales.html", "content", context
-            )
-            return HttpResponse(sale_list)
+        return render(
+            request,
+            "customers/sales/sales.html#sales-list-partial",
+            context,
+        )
 
     return render(request, "customers/sales/sales.html", context)
 
 
 def sale_detail(request, pk):
-    PAGE_SIZE = 50
-    page_number = request.GET.get("page", 1)
-
     sale = get_object_or_404(
         Sale.objects.select_related(
             "customer", "created_by", "agreement"
@@ -1227,51 +1271,18 @@ def sale_detail(request, pk):
         pk=pk,
     )
 
-    all_sales = Sale.objects.select_related("customer").order_by("-sale_date")
-
-    search_query = request.GET.get("q", "")
-    if search_query:
-        all_sales = all_sales.filter(
-            Q(sale_number__icontains=search_query)
-            | Q(customer__full_name__icontains=search_query)
-            | Q(customer__customer_id__icontains=search_query)
-        )
-
-    paginator = Paginator(all_sales, PAGE_SIZE)
-    page_obj = paginator.get_page(page_number)
-
     context = {
         "sale": sale,
-        "sale_list": page_obj,
-        "search_query": search_query,
     }
 
     if request.htmx:
-        # If clicking a link in the sidebar, update the Main Content area
-        if request.htmx.target == "main_content":
-            html = render_block_to_string(
-                "customers/sales/sale_detail.html",
-                "main_content",
-                context,
-            )
-            return HttpResponse(html)
+        return render(
+            request,
+            "customers/sales/sale_detail.html#sale-detail-partial",
+            context,
+        )
 
-        # If performing a full hx-boost navigation
-        elif request.htmx.target == "main_body":
-            html = render_block_to_string(
-                "customers/sales/sale_detail.html", "content", context
-            )
-            return HttpResponse(html)
-
-        # If using pagination in the sidebar
-        else:
-            html = render_block_to_string(
-                "customers/sales/sale_detail.html", "side_bar_list", context
-            )
-            return HttpResponse(html)
-
-    else:
-        return render(request, "customers/sales/sale_detail.html", context)
+    return render(request, "customers/sales/sale_detail.html", context)
 
 
 def search_customers(request):
@@ -1510,15 +1521,35 @@ def load_agreement_line_items(request):
     )
 
 
-@require_POST
-def void_sale(request, pk):
-    sale = get_object_or_404(Sale, pk=pk)
-    void_reason = request.POST.get("void_reason", "")
+def modal_void_sale(request, pk):
+    sale = get_object_or_404(
+        Sale.objects.select_related("customer__deposit_account"), pk=pk
+    )
 
-    try:
-        customer_services.void_sale(pk, void_reason, request.user, request=request)
-        messages.success(request, f"Sale {sale.sale_number} voided successfully.")
-    except customer_services.BusinessRuleViolation as e:
-        messages.error(request, str(e))
+    if request.method == "POST":
+        void_reason = request.POST.get("void_reason", "")
+        try:
+            customer_services.void_sale(pk, void_reason, request.user, request=request)
+            messages.success(request, f"Sale {sale.sale_number} voided successfully.")
+            response = HttpResponse(status=204)
+            response["HX-Trigger"] = "saleDetailChanged"
+            return response
 
-    return redirect("sale_detail", pk=pk)
+        except customer_services.BusinessRuleViolation as e:
+            error_msg = str(e)
+            return render(
+                request,
+                "customers/modals/void_sale_modal.html",
+                {
+                    "sale": sale,
+                    "error": error_msg,
+                },
+            )
+
+    return render(
+        request,
+        "customers/modals/void_sale_modal.html",
+        {
+            "sale": sale,
+        },
+    )

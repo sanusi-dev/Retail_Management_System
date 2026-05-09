@@ -1,0 +1,89 @@
+{% load humanize %}
+<div id="modal-backdrop"
+     class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+
+  <div id="modal-dialog"
+       class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
+       hx-target="this">
+
+    <div class="flex justify-between items-center mb-5">
+      <h3 class="font-bold text-lg text-slate-800">Amend Line Item</h3>
+      <button id="modal-close-btn"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="alert-warn mb-5 text-xs text-brand-800 font-medium">
+      Amending creates a new version of this line item. Fulfilled quantities count across all versions — you cannot use amendments to re-sell already-fulfilled units.
+    </div>
+
+    <div class="summary-box mb-5">
+      <div class="text-xs text-slate-400 font-bold mb-1.5">Current Version (V{{ line_item.version }})</div>
+      <div class="text-sm font-bold text-slate-800">
+        {{ line_item.product.brand.name|title }} {{ line_item.product.modelname|title }} (Boxed) · {{ line_item.quantity_ordered }} units @ ₦{{ line_item.price_per_unit|floatformat:0|intcomma }}
+      </div>
+      <div class="text-xs text-slate-400 mt-1">
+        {{ fulfilled }} of {{ line_item.quantity_ordered }} delivered. {{ line_item.remaining_quantity }} remaining.
+      </div>
+    </div>
+
+    {% if form.non_field_errors %}
+      <div class="text-xs text-rose-600 bg-rose-50 rounded-lg px-3 py-2 mb-4">
+        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+      </div>
+    {% endif %}
+
+    <form hx-post="{% url 'modal_amend_line_item' line_item.pk %}"
+          hx-target="#modal-dialog"
+          hx-swap="innerHTML">
+      {% csrf_token %}
+      <div class="space-y-3 mb-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="field-label">{{ form.new_quantity.label }}</label>
+            <input type="number"
+                   name="{{ form.new_quantity.html_name }}"
+                   class="field-input font-mono"
+                   min="{{ fulfilled }}"
+                   value="{{ form.new_quantity.value|default:'' }}">
+            <div class="text-xs text-slate-400 mt-1 font-medium">Min: {{ fulfilled }} (already fulfilled)</div>
+            {% if form.new_quantity.errors %}
+              {% for error in form.new_quantity.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
+            {% endif %}
+          </div>
+          <div>
+            <label class="field-label">{{ form.new_price_per_unit.label }}</label>
+            <input type="number"
+                   name="{{ form.new_price_per_unit.html_name }}"
+                   class="field-input font-mono"
+                   placeholder="0.00" step="0.01" min="0.01"
+                   value="{{ form.new_price_per_unit.value|default:'' }}">
+            {% if form.new_price_per_unit.errors %}
+              {% for error in form.new_price_per_unit.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
+            {% endif %}
+          </div>
+        </div>
+        <div>
+          <label class="field-label">{{ form.reason.label }}</label>
+          <input type="text"
+                 name="{{ form.reason.html_name }}"
+                 class="field-input"
+                 placeholder="e.g. Price increase agreed with customer"
+                 value="{{ form.reason.value|default:'' }}">
+        </div>
+      </div>
+
+      <div class="bg-brand-50 border border-brand-100 rounded-xl p-4 mb-5 text-sm">
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Amendment Preview (V{{ line_item.version|add:1 }})</div>
+        <div class="flex justify-between"><span class="text-slate-500 font-medium">Product</span><span class="font-bold">{{ line_item.product.brand.name|title }} {{ line_item.product.modelname|title }}</span></div>
+        <div class="flex justify-between mt-1"><span class="text-slate-500 font-medium">Line number</span><span class="font-mono text-xs">{{ line_item.line_number }}</span></div>
+      </div>
+
+      <div class="flex gap-3">
+        <button type="button" id="modal-cancel-btn" class="btn-secondary flex-1">Cancel</button>
+        <button type="submit" class="btn-primary flex-1 shadow-md shadow-brand-600/15">Confirm Amendment</button>
+      </div>
+    </form>
+  </div>
+</div>

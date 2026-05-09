@@ -4,8 +4,7 @@
 
   <div id="modal-dialog"
        class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
-       hx-target="this"
-       onclick="event.stopPropagation()">
+       hx-target="this">
 
     <div class="flex justify-between items-center mb-5">
       <h3 class="font-bold text-lg text-slate-800">Edit CFA Agreement</h3>
@@ -32,7 +31,7 @@
         <div>
           <label class="field-label">Naira Allocated (₦)</label>
           <input type="number" name="amount_allocated" class="field-input font-mono"
-                 value="{{ cfa_agreement.amount_allocated|floatformat:0 }}"
+                 value="{{ form.amount_allocated.value|default:'' }}"
                  placeholder="Minimum ₦1,000" step="0.01" min="1000" required
                  id="id_cfa_amount"
                  oninput="updateCfaPreview(this, document.getElementById('id_cfa_rate'))">
@@ -43,7 +42,7 @@
         <div>
           <label class="field-label">Exchange Rate (₦ per 1,000 XOF)</label>
           <input type="number" name="exchange_rate" class="field-input font-mono"
-                 value="{{ cfa_agreement.exchange_rate|floatformat:0 }}"
+                 value="{{ form.exchange_rate.value|default:'' }}"
                  placeholder="e.g. 1800" step="1" min="1" required
                  id="id_cfa_rate"
                  oninput="updateCfaPreview(document.getElementById('id_cfa_amount'), this)">
@@ -60,7 +59,7 @@
           <div class="flex justify-between"><span class="text-slate-500 font-medium">Exchange rate:</span><span id="cfa-rate-preview" class="amount font-bold text-slate-800">₦{{ cfa_agreement.exchange_rate|floatformat:0|intcomma }} / 1,000 XOF</span></div>
           <div class="flex justify-between border-t border-brand-100 pt-2 mt-2"><span class="text-slate-700 font-bold">Expected CFA:</span><span id="cfa-xof-preview" class="amount font-bold text-lg text-slate-900">{{ cfa_agreement.expected_cfa_amount|floatformat:0|intcomma }} XOF</span></div>
         </div>
-        <span id="cfa-available-balance" data-value="{{ cfa_agreement.account.cached_available_balance }}" class="hidden"></span>
+        <span id="cfa-available-balance" data-value="{{ available_balance }}" class="hidden"></span>
         <div id="cfa-balance-warn" class="hidden mt-3 text-xs text-rose-600 font-medium">Amount exceeds available balance</div>
       </div>
       <div class="flex gap-3">

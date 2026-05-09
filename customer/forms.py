@@ -12,7 +12,7 @@ from .models import (
     BoxedSale,
 )
 from inventory.models import Product, TransformationItem
-from django.forms import modelformset_factory, BaseModelFormSet
+from django.forms import BaseInlineFormSet
 from django.db.models import Sum, F
 from decimal import Decimal
 from django.utils import timezone
@@ -32,6 +32,8 @@ class CustomerForm(forms.ModelForm):
         fields = (
             "full_name",
             "phone",
+            "email",
+            "address",
         )
 
 
@@ -100,7 +102,10 @@ class PurchaseAgreementForm(forms.ModelForm):
         target_pk = None
         if self.instance._state.adding:
             initial_account = self.initial.get("account")
-            target_pk = initial_account.pk if initial_account else None
+            if initial_account:
+                target_pk = initial_account.pk
+            elif self.is_bound and self.data.get("account"):
+                target_pk = self.data.get("account")
         else:
             target_pk = self.instance.account.pk
 
@@ -109,9 +114,6 @@ class PurchaseAgreementForm(forms.ModelForm):
                 pk=target_pk
             )
             self.fields["account"].empty_label = None
-
-        else:
-            self.fields["account"].empty_label = "Select an account"
 
 
 class PurchaseAgreementLineItemForm(forms.ModelForm):
@@ -122,13 +124,21 @@ class PurchaseAgreementLineItemForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["product"].empty_label = "Select an Product"
+        self.fields["product"].empty_label = "Select a product"
+        self.fields["product"].queryset = Product.objects.filter(
+            type_variant=Product.TypeVariant.BOXED
+        ).select_related("brand")
+        self.fields["product"].label_from_instance = lambda obj: (
+            f"{obj.brand.name.title()} {obj.modelname.title()}"
+        )
 
 
-class BasePurchaseAgreementLineItemFormSet(BaseModelFormSet):
+class BasePurchaseAgreementLineItemFormSet(BaseInlineFormSet):
     def __init__(self, *args, **kwargs):
         self.available_balance = kwargs.pop("available_balance", None)
         super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.extra = 0
 
     def clean(self):
         super().clean()
@@ -173,6 +183,9 @@ class BasePurchaseAgreementLineItemFormSet(BaseModelFormSet):
             line_cost = quantity_ordered * price_per_unit
             new_total_cost += line_cost
 
+        if self.available_balance is None:
+            return
+
         balance_to_check = self.available_balance
         if old_cost > 0:
             balance_to_check += old_cost
@@ -184,8 +197,9 @@ class BasePurchaseAgreementLineItemFormSet(BaseModelFormSet):
             )
 
 
-PurchaseAgreementLineItemFormSet = modelformset_factory(
-    PurchaseAgreementLineItem,
+PurchaseAgreementLineItemFormSet = inlineformset_factory(
+    parent_model=PurchaseAgreement,
+    model=PurchaseAgreementLineItem,
     form=PurchaseAgreementLineItemForm,
     formset=BasePurchaseAgreementLineItemFormSet,
     can_delete=True,
@@ -227,25 +241,6 @@ class CfaFulfillmentForm(forms.ModelForm):
             "date": forms.DateInput(attrs={"type": "date"}),
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        target_pk = None
-        if self.instance._state.adding:
-            initial_cfa_agreement = self.initial.get("cfa_agreement")
-            target_pk = initial_cfa_agreement.pk if initial_cfa_agreement else None
-        else:
-            target_pk = self.instance.cfa_agreement.pk
-
-        if target_pk:
-            self.fields["cfa_agreement"].queryset = CfaAgreement.objects.filter(
-                pk=target_pk
-            )
-            self.fields["cfa_agreement"].empty_label = None
-
-        else:
-            self.fields["cfa_agreement"].empty_label = "Select an cfa_agreement"
-
 
 class BaseSaleItemForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
@@ -285,12 +280,12 @@ class BoxedSaleForm(BaseSaleItemForm):
             if not agreement_line_item:
                 self.add_error(
                     "agreement_line_item",
-                    "Line item is required for sales from deposit."
+                    "Line item is required for sales from deposit.",
                 )
             elif product and agreement_line_item.product != product:
                 self.add_error(
                     "product",
-                    f"Product must match the line item product ({agreement_line_item.product.modelname})."
+                    f"Product must match the line item product ({agreement_line_item.product.modelname}).",
                 )
 
         return cleaned_data
@@ -313,7 +308,11 @@ class CoupledSaleForm(BaseSaleItemForm):
                 )
             )
         else:
-             self.fields["transformation_item"].queryset = TransformationItem.objects.filter(status=TransformationItem.Status.AVAILABLE)
+            self.fields["transformation_item"].queryset = (
+                TransformationItem.objects.filter(
+                    status=TransformationItem.Status.AVAILABLE
+                )
+            )
 
     def clean(self):
         cleaned_data = super().clean()
@@ -325,19 +324,27 @@ class CoupledSaleForm(BaseSaleItemForm):
             if not agreement_line_item:
                 self.add_error(
                     "agreement_line_item",
-                    "Line item is required for sales from deposit."
+                    "Line item is required for sales from deposit.",
                 )
             elif transformation_item and agreement_line_item:
                 # Check that transformation_item's target_product matches line item's product
                 # The line item's product is a BOXED product, the transformation_item has a COUPLED product
                 # They should share the same base_product
-                line_item_base = agreement_line_item.product.base_product if agreement_line_item.product.base_product else agreement_line_item.product
-                trans_item_base = transformation_item.target_product.base_product if transformation_item.target_product.base_product else transformation_item.target_product
-                
+                line_item_base = (
+                    agreement_line_item.product.base_product
+                    if agreement_line_item.product.base_product
+                    else agreement_line_item.product
+                )
+                trans_item_base = (
+                    transformation_item.target_product.base_product
+                    if transformation_item.target_product.base_product
+                    else transformation_item.target_product
+                )
+
                 if line_item_base != trans_item_base:
                     self.add_error(
                         "transformation_item",
-                        f"Transformation item must match the line item product ({agreement_line_item.product.modelname})."
+                        f"Transformation item must match the line item product ({agreement_line_item.product.modelname}).",
                     )
 
         return cleaned_data
@@ -417,23 +424,28 @@ class RecordSaleForm(forms.ModelForm):
         self.fields["customer"].help_text = (
             "Select existing or leave blank and fill 'New Customer Name'."
         )
-        
+
         # Agreement is optional, but we might want to filter it based on customer if instance exists?
         # For now, standard behavior. View will handle errors if Agreement is missing when 'From Deposit' is selected.
         self.fields["agreement"].queryset = PurchaseAgreement.objects.none()
-        
-        if 'customer' in self.data:
-            try:
-                customer_id = self.data.get('customer')
-                if customer_id:
-                    self.fields['agreement'].queryset = PurchaseAgreement.objects.filter(account__customer_id=customer_id)
-                else:
-                    self.fields['agreement'].queryset = PurchaseAgreement.objects.none()
-            except (ValueError, TypeError):
-                pass 
-        elif self.instance.pk and self.instance.customer_id:
-             self.fields['agreement'].queryset = self.instance.customer.deposit_account.purchase_agreements.all()
 
+        if "customer" in self.data:
+            try:
+                customer_id = self.data.get("customer")
+                if customer_id:
+                    self.fields["agreement"].queryset = (
+                        PurchaseAgreement.objects.filter(
+                            account__customer_id=customer_id
+                        )
+                    )
+                else:
+                    self.fields["agreement"].queryset = PurchaseAgreement.objects.none()
+            except (ValueError, TypeError):
+                pass
+        elif self.instance.pk and self.instance.customer_id:
+            self.fields["agreement"].queryset = (
+                self.instance.customer.deposit_account.purchase_agreements.all()
+            )
 
     def clean(self):
         cleaned_data = super().clean()
@@ -446,9 +458,11 @@ class RecordSaleForm(forms.ModelForm):
             raise forms.ValidationError(
                 "You must either select a Customer or enter a New Customer Name."
             )
-            
+
         if payment_method == Sale.PaymentMethod.FROM_DEPOSIT and not agreement:
-            self.add_error('agreement', "Agreement is required when paying from deposit.")
+            self.add_error(
+                "agreement", "Agreement is required when paying from deposit."
+            )
 
         return cleaned_data
 
@@ -491,13 +505,42 @@ class AgreementSaleForm(forms.ModelForm):
             self.fields["payment_method"].initial = Sale.PaymentMethod.FROM_DEPOSIT
             self.fields["payment_method"].disabled = True
 
+
 # FormSets
 from django.forms import BaseInlineFormSet
 
 
+class AmendLineItemForm(forms.Form):
+    new_quantity = forms.IntegerField(min_value=1, label="New Quantity")
+    new_price_per_unit = forms.DecimalField(
+        max_digits=15, decimal_places=2, min_value=Decimal("0.01"), label="New Price per Unit (₦)"
+    )
+    reason = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={"placeholder": "e.g. Price increase agreed with customer"}),
+        label="Reason for amendment",
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.line_item = kwargs.pop("line_item", None)
+        super().__init__(*args, **kwargs)
+
+    def clean_new_quantity(self):
+        new_qty = self.cleaned_data["new_quantity"]
+        if self.line_item:
+            fulfilled = self.line_item.quantity_fulfilled_accross_all_versions
+            if new_qty < fulfilled:
+                raise ValidationError(
+                    f"Minimum quantity is {fulfilled} (already fulfilled)."
+                )
+        return new_qty
+
+
+
+
 class BaseSaleItemFormSet(BaseInlineFormSet):
     """Base formset that passes is_from_deposit to each form."""
-    
+
     def __init__(self, *args, **kwargs):
         self.is_from_deposit = kwargs.pop("is_from_deposit", False)
         super().__init__(*args, **kwargs)
@@ -509,9 +552,19 @@ class BaseSaleItemFormSet(BaseInlineFormSet):
 
 
 BoxedSaleFormSet = inlineformset_factory(
-    Sale, BoxedSale, form=BoxedSaleForm, formset=BaseSaleItemFormSet, extra=1, can_delete=True
+    Sale,
+    BoxedSale,
+    form=BoxedSaleForm,
+    formset=BaseSaleItemFormSet,
+    extra=1,
+    can_delete=True,
 )
 
 CoupledSaleFormSet = inlineformset_factory(
-    Sale, CoupledSale, form=CoupledSaleForm, formset=BaseSaleItemFormSet, extra=1, can_delete=True
+    Sale,
+    CoupledSale,
+    form=CoupledSaleForm,
+    formset=BaseSaleItemFormSet,
+    extra=1,
+    can_delete=True,
 )

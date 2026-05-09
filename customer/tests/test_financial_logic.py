@@ -8,6 +8,7 @@ from customer.models import (
 )
 from customer.services import (
     _refresh_balances, void_sale, record_deposit, cancel_agreement,
+    amend_line_item,
     BusinessRuleViolation,
 )
 from inventory.models import (
@@ -691,6 +692,7 @@ class WACFormulaTest(TestCase):
             expected_wac,
         )
 
+
     def test_wac_preserves_precision(self):
         """WAC with non-rounding results."""
         self.inv.quantity = 7
@@ -788,3 +790,276 @@ class WACFormulaTest(TestCase):
             self.inv.weighted_average_cost.quantize(Decimal("0.01")),
             expected,
         )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Amend Line Item Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+class AmendLineItemTest(TestCase):
+    """Test amend_line_item() service function."""
+
+    def setUp(self):
+        self.user = _create_user()
+        self.customer, self.account = _create_funded_customer(
+            self.user, deposit_amount=Decimal("1000000.00")
+        )
+        self.product, self.inv = _create_boxed_product(
+            self.user, qty=20, wac=Decimal("50000.00")
+        )
+
+    def test_amend_creates_new_version(self):
+        agreement = PurchaseAgreement.objects.create(
+            account=self.account, created_by=self.user
+        )
+        item = PurchaseAgreementLineItem.objects.create(
+            purchase_agreement=agreement,
+            product=self.product,
+            quantity_ordered=5,
+            price_per_unit=Decimal("100000.00"),
+            created_by=self.user,
+        )
+
+        new_item = amend_line_item(
+            line_item_id=item.pk,
+            new_quantity=8,
+            new_price_per_unit=Decimal("120000.00"),
+            reason="Customer requested more units",
+            user=self.user,
+        )
+
+        item.refresh_from_db()
+        self.assertFalse(item.is_current_version)
+        self.assertEqual(item.superseded_by, new_item)
+
+        self.assertTrue(new_item.is_current_version)
+        self.assertEqual(new_item.version, 2)
+        self.assertEqual(new_item.quantity_ordered, 8)
+        self.assertEqual(new_item.price_per_unit, Decimal("120000.00"))
+        self.assertEqual(new_item.line_number, item.line_number)
+        self.assertEqual(new_item.product, self.product)
+        self.assertIsNone(new_item.superseded_by)
+
+    def test_amend_raises_for_non_current_version(self):
+        agreement = PurchaseAgreement.objects.create(
+            account=self.account, created_by=self.user
+        )
+        item = PurchaseAgreementLineItem.objects.create(
+            purchase_agreement=agreement,
+            product=self.product,
+            quantity_ordered=5,
+            price_per_unit=Decimal("100000.00"),
+            created_by=self.user,
+        )
+
+        # First amendment
+        new_item = amend_line_item(
+            line_item_id=item.pk,
+            new_quantity=8,
+            new_price_per_unit=Decimal("120000.00"),
+            reason="Increase",
+            user=self.user,
+        )
+
+        # Trying to amend the old version should fail
+        with self.assertRaises(BusinessRuleViolation):
+            amend_line_item(
+                line_item_id=item.pk,
+                new_quantity=10,
+                new_price_per_unit=Decimal("130000.00"),
+                reason="Should fail",
+                user=self.user,
+            )
+
+    def test_amend_raises_for_cancelled_item(self):
+        agreement = PurchaseAgreement.objects.create(
+            account=self.account, created_by=self.user
+        )
+        item = PurchaseAgreementLineItem.objects.create(
+            purchase_agreement=agreement,
+            product=self.product,
+            quantity_ordered=5,
+            price_per_unit=Decimal("100000.00"),
+            created_by=self.user,
+        )
+        item.status = PurchaseAgreementLineItem.Status.CANCELLED
+        item.save(update_fields=["status"])
+
+        with self.assertRaises(BusinessRuleViolation):
+            amend_line_item(
+                line_item_id=item.pk,
+                new_quantity=8,
+                new_price_per_unit=Decimal("120000.00"),
+                reason="Should fail",
+                user=self.user,
+            )
+
+    def test_amend_raises_when_quantity_below_fulfilled(self):
+        agreement = PurchaseAgreement.objects.create(
+            account=self.account, created_by=self.user
+        )
+        item = PurchaseAgreementLineItem.objects.create(
+            purchase_agreement=agreement,
+            product=self.product,
+            quantity_ordered=5,
+            price_per_unit=Decimal("100000.00"),
+            created_by=self.user,
+        )
+
+        # Create a sale to fulfill 3 units
+        sale = Sale.objects.create(
+            customer=self.customer,
+            payment_method=Sale.PaymentMethod.FROM_DEPOSIT,
+            agreement=agreement,
+            created_by=self.user,
+        )
+        BoxedSale.objects.create(
+            sale=sale,
+            product=self.product,
+            agreement_line_item=item,
+            quantity=3,
+            price=Decimal("100000.00"),
+            created_by=self.user,
+        )
+
+        # Fulfilled across all versions = 3, so new quantity must be >= 3
+        with self.assertRaises(BusinessRuleViolation):
+            amend_line_item(
+                line_item_id=item.pk,
+                new_quantity=2,  # below 3 fulfilled
+                new_price_per_unit=Decimal("120000.00"),
+                reason="Should fail",
+                user=self.user,
+            )
+
+    def test_amend_updates_balances(self):
+        agreement = PurchaseAgreement.objects.create(
+            account=self.account, created_by=self.user
+        )
+        item = PurchaseAgreementLineItem.objects.create(
+            purchase_agreement=agreement,
+            product=self.product,
+            quantity_ordered=2,
+            price_per_unit=Decimal("100000.00"),
+            created_by=self.user,
+        )
+        _refresh_balances(self.account)
+        self.account.refresh_from_db()
+        # Allocated = 2 * 100000 = 200000
+        self.assertEqual(self.account.cached_allocated_balance, Decimal("200000.00"))
+        # Available = 1000000 - 200000 = 800000
+        self.assertEqual(self.account.cached_available_balance, Decimal("800000.00"))
+
+        # Amend to 5 units @ 120000 = 600000 allocated
+        amend_line_item(
+            line_item_id=item.pk,
+            new_quantity=5,
+            new_price_per_unit=Decimal("120000.00"),
+            reason="Increased order",
+            user=self.user,
+        )
+
+        self.account.refresh_from_db()
+        # Only the new version counts: 5 * 120000 = 600000
+        self.assertEqual(self.account.cached_allocated_balance, Decimal("600000.00"))
+        # Available = 1000000 - 600000 = 400000
+        self.assertEqual(self.account.cached_available_balance, Decimal("400000.00"))
+
+    def test_amend_preserves_line_number_for_fulfillment_tracking(self):
+        agreement = PurchaseAgreement.objects.create(
+            account=self.account, created_by=self.user
+        )
+        item = PurchaseAgreementLineItem.objects.create(
+            purchase_agreement=agreement,
+            product=self.product,
+            quantity_ordered=5,
+            price_per_unit=Decimal("100000.00"),
+            created_by=self.user,
+        )
+
+        # Fulfill 2 units against V1
+        sale = Sale.objects.create(
+            customer=self.customer,
+            payment_method=Sale.PaymentMethod.FROM_DEPOSIT,
+            agreement=agreement,
+            created_by=self.user,
+        )
+        BoxedSale.objects.create(
+            sale=sale,
+            product=self.product,
+            agreement_line_item=item,
+            quantity=2,
+            price=Decimal("100000.00"),
+            created_by=self.user,
+        )
+
+        self.assertEqual(item.quantity_fulfilled_accross_all_versions, 2)
+
+        # Amend to V2
+        new_item = amend_line_item(
+            line_item_id=item.pk,
+            new_quantity=8,
+            new_price_per_unit=Decimal("120000.00"),
+            reason="More units",
+            user=self.user,
+        )
+
+        # V2 should see the 2 fulfilled from V1 via cross-version tracking
+        self.assertEqual(new_item.quantity_fulfilled_accross_all_versions, 2)
+        self.assertEqual(new_item.remaining_quantity, 6)  # 8 - 2
+        self.assertEqual(new_item.line_number, item.line_number)
+
+    def test_amend_can_increase_quantity(self):
+        agreement = PurchaseAgreement.objects.create(
+            account=self.account, created_by=self.user
+        )
+        item = PurchaseAgreementLineItem.objects.create(
+            purchase_agreement=agreement,
+            product=self.product,
+            quantity_ordered=3,
+            price_per_unit=Decimal("100000.00"),
+            created_by=self.user,
+        )
+
+        new_item = amend_line_item(
+            line_item_id=item.pk,
+            new_quantity=10,
+            new_price_per_unit=Decimal("90000.00"),
+            reason="Customer wants more at lower unit price",
+            user=self.user,
+        )
+
+        self.assertEqual(new_item.quantity_ordered, 10)
+        self.assertEqual(new_item.price_per_unit, Decimal("90000.00"))
+        self.assertEqual(new_item.version, 2)
+        self.assertEqual(new_item.status, PurchaseAgreementLineItem.Status.ACTIVE)
+
+    def test_amend_raises_when_insufficient_balance(self):
+        # Customer has 1,000,000 deposited
+        agreement = PurchaseAgreement.objects.create(
+            account=self.account, created_by=self.user
+        )
+        item = PurchaseAgreementLineItem.objects.create(
+            purchase_agreement=agreement,
+            product=self.product,
+            quantity_ordered=2,
+            price_per_unit=Decimal("100000.00"),
+            created_by=self.user,
+        )
+        _refresh_balances(self.account)
+        self.account.refresh_from_db()
+        # Allocated = 200000, Available = 800000
+
+        # Try to amend to something way beyond available: 100 units @ 50000 = 5,000,000
+        # Old allocation = (2-0)*100000 = 200000
+        # New allocation = (100-0)*50000 = 5,000,000
+        # Increase = 4,800,000 > 800,000 available
+        with self.assertRaises(BusinessRuleViolation) as ctx:
+            amend_line_item(
+                line_item_id=item.pk,
+                new_quantity=100,
+                new_price_per_unit=Decimal("50000.00"),
+                reason="Too expensive",
+                user=self.user,
+            )
+        self.assertIn("Insufficient", str(ctx.exception))

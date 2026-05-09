@@ -26,13 +26,16 @@
              class="btn-primary btn-sm">Fulfill items</a>
         {% endif %}
         {% if agreement.status != 'CANCELLED' %}
-          <a href="{% url 'edit_purchase_agreement' agreement.pk %}?customer={{ customer.pk }}"
+          <a href="{% url 'agreement_detail' agreement.pk %}"
+          hx-target="#customer-detail-partial"
+          hx-swap="outerHTML"
              class="btn-secondary btn-sm">View detail</a>
         {% endif %}
         {% if agreement.can_cancel %}
-          <button hx-post="{% url 'cancel_purchase_agreement' agreement.pk %}"
-                  hx-confirm="Are you sure you want to cancel this agreement?"
-                  class="btn-secondary btn-sm text-rose-600">Cancel</button>
+          <button hx-get="{% url 'modal_cancel_purchase_agreement' agreement.pk %}"
+                  hx-target="#modal_container"
+                  hx-swap="innerHTML"
+                  class="btn-danger btn-sm">Cancel</button>
         {% endif %}
       </div>
     </div>
@@ -69,6 +72,9 @@
           <div class="flex gap-3">
             {% if agreement.can_edit %}
               <a href="{% url 'edit_purchase_agreement' agreement.pk %}?customer={{ customer.pk }}"
+                  class="btn-secondary btn-sm"
+                  hx-target="#customer-detail-partial"
+                  hx-swap="outerHTML"
                  class="text-brand-600 hover:underline">Edit</a>
             {% endif %}
           </div>
@@ -88,7 +94,10 @@
       </div>
       <h3 class="font-bold text-slate-700 text-lg mb-2">No agreements yet</h3>
       <p class="text-slate-400 text-sm max-w-sm mb-6">Create a purchase agreement to allocate customer funds toward motorcycle orders.</p>
-      <a href="{% url 'add_purchase_agreement' %}?customer={{ customer.pk }}" class="btn-primary">New Agreement</a>
+      <a href="{% url 'add_purchase_agreement' %}?customer={{ customer.pk }}"
+      hx-target="#customer-detail-partial"
+      hx-swap="outerHTML"
+      class="btn-primary">New Agreement</a>
     </div>
   </div>
 {% endfor %}

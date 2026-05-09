@@ -2,13 +2,15 @@
 {% load static humanize %}
 {% block content %}
   {% partialdef customer-detail-partial inline %}
-  <div class="p-6 lg:p-8 max-w-5xl mx-auto" id="customer-detail-partial"
-       hx-get="{{ request.path }}"
+  <div class="p-6 lg:p-8 max-w-5xl mx-auto"
+       id="customer-detail-partial"
+       hx-get="{{ request.get_full_path }}"
        hx-trigger="customerDetailChanged from:body"
        hx-swap="outerHTML">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row items-start gap-3 mb-8">
       <a href="{% url 'customers' %}"
+         hx-target="#customer-detail-partial"
          class="btn-back mt-1">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -30,7 +32,10 @@
                 hx-swap="innerHTML"
                 class="btn-secondary btn-sm">Withdraw</button>
         <a href="{% url 'add_purchase_agreement' %}?customer={{ customer.pk }}"
-           class="btn-secondary btn-sm">New Agreement</a>
+           class="btn-secondary btn-sm"
+           hx-target="#customer-detail-partial"
+           hx-swap="outerHTML"
+           >New Agreement</a>
         <button hx-get="{% url 'modal_cfa_agreement' customer.pk %}"
                 hx-target="#modal_container"
                 hx-swap="innerHTML"

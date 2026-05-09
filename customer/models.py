@@ -241,7 +241,7 @@ class DepositAccount(models.Model):
     def _calculate_cfa_allocated_balance(self):
         """Calculate allocated balance from CFA agreements"""
         annotated_agreements = self.cfa_agreements.exclude(
-            status=CfaAgreement.Status.CANCELLED
+            status__in=[CfaAgreement.Status.CANCELLED, CfaAgreement.Status.FULFILLED]
         ).annotate(
             fulfilled_value_naira=Coalesce(
                 Sum(
@@ -401,10 +401,18 @@ class Transaction(models.Model):
                 self.TransactionType.FULFILLMENT_WITHDRAWAL,
                 self.TransactionType.DEPOSIT_REFUND,
             ]:
-                raise ValidationError(
-                    "You cannot manually void a Fulfillment or Refund transaction"
-                    "Please Void the original Sale/Fulfillment record instead."
+                # Allow voiding if the source fulfillment is already voided
+                # (automatic reversal as part of void_cfa_fulfillment service)
+                source_is_voided = (
+                    self.source
+                    and hasattr(self.source, 'status')
+                    and self.source.status == 'VOIDED'
                 )
+                if not source_is_voided:
+                    raise ValidationError(
+                        "You cannot manually void a Fulfillment or Refund transaction. "
+                        "Please Void the original Sale/Fulfillment record instead."
+                    )
 
         if not self._state.adding and self.status == self.Status.VOIDED:
             original = Transaction.objects.get(pk=self.pk)
@@ -659,10 +667,14 @@ class PurchaseAgreementLineItem(models.Model):
     @property
     def remaining_quantity(self):
         """Current version quantity - all historical fulfillments"""
+        if self.quantity_ordered is None:
+            return 0
         return self.quantity_ordered - self.quantity_fulfilled_accross_all_versions
 
     @property
     def total_line(self):
+        if self.quantity_ordered is None or self.price_per_unit is None:
+            return 0
         return self.quantity_ordered * self.price_per_unit
 
     def update_status(self):
@@ -797,10 +809,19 @@ class CfaAgreement(models.Model):
         self.save(update_fields=["status"])
 
     def clean(self):
-        if self.account.available_balance < self.amount_allocated:
+        available = self.account.available_balance
+        # When editing, the current agreement's allocation is already deducted
+        # from available_balance. Add it back so we check against the NEW value.
+        if not self._state.adding and self.pk:
+            try:
+                original = CfaAgreement.objects.get(pk=self.pk)
+                available += original.amount_allocated
+            except CfaAgreement.DoesNotExist:
+                pass
+        if available < self.amount_allocated:
             raise ValidationError(
                 {
-                    "amount_allocated": f"Customer has insufficient allocation balance. Available: {self.account.available_balance:,.2f}"
+                    "amount_allocated": f"Customer has insufficient allocation balance. Available: {available:,.2f}"
                 }
             )
 
@@ -867,6 +888,10 @@ class CfaFulfillment(models.Model):
         return rounded_amount
 
     def clean(self):
+        if self.cfa_amount_disbursed is None:
+            return
+        if self.status == self.Status.VOIDED:
+            return
         if self.cfa_amount_disbursed > self.cfa_agreement.remaining_cfa:
             raise ValidationError(
                 {

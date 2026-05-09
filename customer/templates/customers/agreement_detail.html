@@ -1,0 +1,251 @@
+{% extends 'index.html' %}
+{% load static humanize %}
+{% block content %}
+  {% partialdef agreement-detail-partial inline %}
+  <div class="p-6 lg:p-8 max-w-4xl mx-auto"
+       id="agreement-detail-partial"
+       hx-get="{{ request.get_full_path }}"
+       hx-trigger="customerDetailChanged from:body"
+       hx-swap="outerHTML">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row items-start gap-3 mb-8">
+      <a href="{% url 'customer_detail' customer.pk %}"
+         class="btn-back mt-1"
+         hx-target="#agreement-detail-partial"
+         hx-swap="outerHTML">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </a>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-3 flex-wrap">
+          <h1 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">
+            Agreement {{ agreement.purchase_agreement_number }}
+          </h1>
+          {% if agreement.status == 'FULFILLED' %}
+            <span class="badge badge-fulfilled">{{ agreement.get_status_display }}</span>
+          {% elif agreement.status == 'PARTIALLY_FULFILLED' %}
+            <span class="badge badge-partial">{{ agreement.get_status_display }}</span>
+          {% elif agreement.status == 'CANCELLED' %}
+            <span class="badge badge-voided">{{ agreement.get_status_display }}</span>
+          {% else %}
+            <span class="badge badge-active">{{ agreement.get_status_display }}</span>
+          {% endif %}
+        </div>
+        <p class="text-slate-400 text-xs font-mono mt-1">{{ customer.full_name|title }} · {{ customer.customer_number }}</p>
+      </div>
+      {% if agreement.status == 'ACTIVE' or agreement.status == 'PARTIALLY_FULFILLED' %}
+        <div class="flex gap-2 flex-shrink-0 flex-wrap btn-responsive-wrap">
+          <a href="{% url 'record_sale' %}?customer={{ customer.pk }}&agreement={{ agreement.pk }}"
+             class="btn-primary btn-sm">Fulfill Items</a>
+          {% if agreement.can_edit %}
+            <a href="{% url 'edit_purchase_agreement' agreement.pk %}?customer={{ customer.pk }}"
+               hx-target="#agreement-detail-partial"
+               hx-swap="outerHTML"
+               class="btn-secondary btn-sm">Edit Agreement</a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+    <!-- Agreement Info Card -->
+    <div class="card card-p mb-6">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 text-sm">
+        <div>
+          <div class="text-xs text-slate-400 font-semibold mb-1.5">Created</div>
+          <div class="font-bold text-slate-800">{{ agreement.date|date:"M d, Y" }}</div>
+        </div>
+        <div>
+          <div class="text-xs text-slate-400 font-semibold mb-1.5">Total Value</div>
+          <div class="amount font-bold text-slate-800">₦{{ agreement.total_allocated_amount|floatformat:0|intcomma }}</div>
+        </div>
+        <div>
+          <div class="text-xs text-slate-400 font-semibold mb-1.5">Funds Locked</div>
+          {% if agreement.status == 'CANCELLED' %}
+            <div class="amount font-bold text-slate-400">₦0</div>
+            <div class="text-xs text-slate-400 mt-0.5">Released on cancellation</div>
+          {% else %}
+            <div class="amount font-bold text-brand-600">₦{{ agreement.total_allocated_amount|floatformat:0|intcomma }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <!-- Overall Progress -->
+    {% if agreement.status != 'CANCELLED' %}
+      <div class="card card-p mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Overall Progress</div>
+          <span class="text-xs font-bold text-slate-500">{{ agreement.total_quantity_fulfilled }} of {{ agreement.total_quantity_ordered }} units</span>
+        </div>
+        <div class="pbar mb-2">
+          <div class="pbar-fill
+                      {% if agreement.status == 'FULFILLED' %}pbar-fill-full{% endif %}"
+               style="width:{% widthratio agreement.total_quantity_fulfilled agreement.total_quantity_ordered 100 %}%">
+          </div>
+        </div>
+        <div class="flex justify-between text-xs text-slate-400 font-medium">
+          <span>{{ agreement.total_received_percent|floatformat:0 }}% fulfilled</span>
+          <span>{{ agreement.total_quantity_ordered|add:agreement.total_quantity_fulfilled|floatformat:0 }} remaining</span>
+        </div>
+      </div>
+    {% endif %}
+    <!-- Line Items -->
+    <div class="card card-p mb-6">
+      <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-5">Line Items</div>
+      <div class="space-y-5">
+        {% for data in line_items_data %}
+          <div class="bg-slate-50 rounded-xl p-5">
+            <!-- Line item header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-mono text-xs text-slate-400">{{ data.item.line_number }}</span>
+                  <span class="text-sm font-bold text-slate-800">
+                    {{ data.item.product.brand.name|title }} <span class="font-mono text-xs font-semibold text-slate-500">{{ data.item.product.modelname|upper }}</span>
+                  </span>
+                </div>
+                <div class="text-xs text-slate-400 mt-1 amount">
+                  ₦{{ data.item.price_per_unit|floatformat:0|intcomma }} / unit
+                  · Version {{ data.item.version }}
+                  {% if not data.item.is_current_version %}<span class="text-amber-600">(superseded)</span>{% endif %}
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                {% if data.item.is_current_version and agreement.status != 'CANCELLED' %}
+                  <button hx-get="{% url 'modal_amend_line_item' data.item.pk %}"
+                          hx-target="#modal_container"
+                          hx-swap="innerHTML"
+                          class="btn-secondary btn-sm">Amend</button>
+                {% endif %}
+                {% if data.item.status == 'FULFILLED' %}
+                  <span class="badge badge-fulfilled">100%</span>
+                {% elif data.item.status == 'PARTIALLY_FULFILLED' %}
+                  <span class="badge badge-partial">{{ data.progress_pct }}%</span>
+                {% elif data.item.status == 'ACTIVE' %}
+                  <span class="badge badge-active">{{ data.progress_pct }}%</span>
+                {% elif data.item.status == 'VOIDED' %}
+                  <span class="badge badge-voided">Voided</span>
+                {% elif data.item.status == 'CANCELLED' %}
+                  <span class="badge badge-voided">Cancelled</span>
+                {% endif %}
+              </div>
+            </div>
+            {% if data.item.status != 'VOIDED' and data.item.status != 'CANCELLED' %}
+              <!-- Progress bar -->
+              <div class="flex items-center gap-4 mb-4">
+                <div class="flex-1">
+                  <div class="flex justify-between text-xs text-slate-500 mb-1.5 font-medium">
+                    <span>{{ data.total_fulfilled }} of {{ data.item.quantity_ordered }} delivered</span>
+                    <span class="font-bold text-slate-700">{{ data.progress_pct }}%</span>
+                  </div>
+                  <div class="pbar">
+                    <div class="pbar-fill
+                                {% if data.item.status == 'FULFILLED' %}pbar-fill-full{% endif %}"
+                         style="width:{{ data.progress_pct }}%"></div>
+                  </div>
+                </div>
+                {% if data.remaining > 0 %}
+                  <div class="text-right text-xs text-slate-400 flex-shrink-0">
+                    <div class="amount text-slate-900 font-bold text-sm">₦{{ data.remaining_value|floatformat:0|intcomma }}</div>
+                    <div>remaining</div>
+                  </div>
+                {% endif %}
+              </div>
+              <!-- Fulfillment details -->
+              {% if data.boxed_details or data.coupled_details %}
+                <div class="border-t border-slate-200 pt-4">
+                  <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Fulfillment Details</div>
+                  {% if data.boxed_details %}
+                    <div class="space-y-2 mb-3">
+                      {% for bd in data.boxed_details %}
+                        <div class="flex items-center justify-between text-sm bg-white rounded-lg px-3 py-2">
+                          <div class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-slate-400"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 10V11m0 0L4 7" />
+                            </svg>
+                            <span class="text-slate-600">{{ bd.quantity }}× unit{{ bd.quantity|pluralize }} via</span>
+                            <a href="{% url 'sale_detail' bd.sale_pk %}"
+                               class="font-mono text-xs text-brand-600 hover:underline">{{ bd.sale_number }}</a>
+                          </div>
+                          <div class="text-right">
+                            <span class="amount font-bold text-slate-800">₦{{ bd.price|floatformat:0|intcomma }}</span>
+                            <span class="text-xs text-slate-400 ml-1">× {{ bd.quantity }}</span>
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                  {% if data.coupled_details %}
+                    <div class="space-y-2">
+                      {% for cd in data.coupled_details %}
+                        <div class="bg-white rounded-lg px-3 py-2">
+                          <div class="flex items-center justify-between text-sm mb-1">
+                            <div class="flex items-center gap-2">
+                              <svg class="w-4 h-4 text-emerald-500"
+                                   fill="none"
+                                   stroke="currentColor"
+                                   viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span class="text-slate-600">Coupled unit via</span>
+                              <a href="{% url 'sale_detail' cd.sale_pk %}"
+                                 class="font-mono text-xs text-brand-600 hover:underline">{{ cd.sale_number }}</a>
+                            </div>
+                            <span class="amount font-bold text-slate-800">₦{{ cd.price|floatformat:0|intcomma }}</span>
+                          </div>
+                          <div class="flex items-center gap-4 ml-6 text-xs text-slate-400 font-mono">
+                            <span>Engine: {{ cd.engine_number }}</span>
+                            <span>Chassis: {{ cd.chassis_number }}</span>
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      {% if agreement.status == 'CANCELLED' %}
+        <div class="alert-danger mt-5 text-xs font-medium">Agreement cancelled. No further actions available.</div>
+      {% endif %}
+    </div>
+    <!-- Superseded (Old Version) Line Items -->
+    {% if superseded_items %}
+      <div class="card card-p mb-6">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-5">Amendment History</div>
+        <div class="space-y-3">
+          {% for item in superseded_items %}
+            <div class="bg-slate-50 rounded-xl p-4 opacity-60">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono text-xs text-slate-400">{{ item.line_number }}</span>
+                    <span class="text-sm font-medium text-slate-600">{{ item.product.brand.name|title }} <span class="font-mono text-xs font-medium text-slate-400">{{ item.product.modelname|upper }}</span></span>
+                    <span class="badge badge-voided text-xs">Superseded</span>
+                  </div>
+                  <div class="text-xs text-slate-400 mt-1">
+                    {{ item.quantity_ordered }} units @ ₦{{ item.price_per_unit|floatformat:0|intcomma }}
+                    · Replaced by version {{ item.superseded_by.version }}
+                  </div>
+                </div>
+                <div class="text-right text-xs text-slate-400">
+                  <div>Version {{ item.version }}</div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      <div class="card card-p">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Amendment History</div>
+        <div class="text-sm text-slate-400 italic">No amendments. All line items are at version 1.</div>
+      </div>
+    {% endif %}
+  </div>
+{% endpartialdef %}
+{% endblock content %}

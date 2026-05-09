@@ -2,7 +2,10 @@
 {% load static humanize %}
 {% block content %}
   {% partialdef customer-list-partial inline %}
-  <div class="p-6 lg:p-8 max-w-screen-xl mx-auto" id="customer-list-partial">
+  <div class="p-6 lg:p-8 max-w-screen-xl mx-auto" id="customer-list-partial"
+       hx-get="{{ request.get_full_path }}"
+       hx-trigger="customerCreated from:body"
+       hx-swap="outerHTML">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
       <div>
@@ -12,14 +15,15 @@
           {{ customers.paginator.count }} account{{ customers.paginator.count|pluralize }} · ₦{{ total_deposited|floatformat:0|intcomma }} total deposited
         </p>
       </div>
-      <a href="{% url 'add_customer' %}"
-         class="btn-primary btn-sm"
-         hx-target="#main_body">
+      <button class="btn-primary btn-sm"
+              hx-get="{% url 'modal_new_customer' %}"
+              hx-target="#modal_container"
+              hx-swap="innerHTML">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
         New Customer
-      </a>
+      </button>
     </div>
     <!-- Filters -->
     <div class="flex items-center gap-3 mb-6">
@@ -66,6 +70,13 @@
                 {% if sort_by == 'balance_desc' %}selected{% endif %}>Sort: Balance High–Low</option>
         <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Sort: Newest first</option>
       </select>
+      <a href="{% url 'customers' %}"
+         hx-get="{% url 'customers' %}"
+         hx-target="#customerlist-table-partial"
+         hx-push-url="true"
+         class="text-xs text-slate-400 hover:text-rose-600 font-medium whitespace-nowrap transition-colors">
+        Clear filters
+      </a>
     </div>
     <!-- Table -->
     {% partialdef customerlist-table-partial inline %}

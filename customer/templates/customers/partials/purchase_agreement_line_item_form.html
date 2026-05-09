@@ -1,25 +1,149 @@
-{% load widget_tweaks %}
-<tr class="item-form-row border-b-0
-           {% if form.errors %}bg-red-50{% endif %}">
+{% load humanize %}
+{% if form.DELETE.value %}
+  {# Row is marked for deletion — show strikethrough, undo button #}
+  <div class="item-form-row border border-rose-300 bg-rose-50 rounded-xl p-5 opacity-60">
     {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
-    <td class="px-2 py-2 border-r border-b">
-        {% render_field form.product class="w-full text-sm text-gray-700 font-light px-2 py-1 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none" required=form.product.field.required %}
-    </td>
-    <td class="px-2 py-2 border-r border-b">
-        {% render_field form.quantity_ordered placeholder="1" class="w-full px-2 py-1 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-right" required=form.quantity_ordered.field.required min="1" %}
-    </td>
-    <td class="px-2 py-2 border-b">
-        {% render_field form.price_per_unit placeholder="0.00" class="w-full px-2 py-1 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-right" required=form.price_per_unit.field.required min="10000.00" %}
-    </td>
-    <td class="px-4 py-2">
-        <button type="button" class="remove-form-row text-red-600 hover:text-red-800">
-            <svg xmlns="http://www.w3.org/2000/svg"
-                 viewBox="0 0 20 20"
-                 fill="currentColor"
-                 class="size-5">
-                <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-            </svg>
+    <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 line-through pointer-events-none select-none">
+      <div class="sm:col-span-5">
+        <label class="field-label text-rose-400">Product</label>
+        <select name="{{ form.product.html_name }}" class="field-select" tabindex="-1">
+          {% for product in form.product.field.queryset %}
+            <option value="{{ product.pk }}"
+                    {% if form.product.value|stringformat:"s" == product.pk|stringformat:"s" %}selected{% endif %}>
+              {{ product.brand.name|title }} {{ product.modelname|title }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="sm:col-span-3">
+        <label class="field-label text-rose-400">Quantity</label>
+        <input type="number"
+               name="{{ form.quantity_ordered.html_name }}"
+               class="field-input font-mono"
+               tabindex="-1"
+               value="{{ form.quantity_ordered.value|default:'' }}">
+      </div>
+      <div class="sm:col-span-3">
+        <label class="field-label text-rose-400">Price per Unit (₦)</label>
+        <input type="number"
+               name="{{ form.price_per_unit.html_name }}"
+               class="field-input font-mono"
+               tabindex="-1"
+               value="{{ form.price_per_unit.value|default:'' }}">
+      </div>
+      <div class="sm:col-span-1 flex items-end justify-center pointer-events-auto">
+        <button type="button"
+                hx-post="{% url 'agreement_line_item_remove' forloop.counter0 %}"
+                hx-include="closest form"
+                hx-target="#formset-container"
+                hx-swap="outerHTML"
+                class="w-8 h-8 flex items-center justify-center rounded-lg
+                       text-rose-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                title="Undo removal">
+          ↩
         </button>
-        {% if form.initial %}<div class="hidden">{{ form.DELETE }}</div>{% endif %}
-    </td>
-</tr>
+      </div>
+    </div>
+    <div class="hidden">{{ form.DELETE }}</div>
+    {% if form.instance.pk %}
+      <div class="mt-3 pt-3 border-t border-rose-200">
+        <div class="flex items-center gap-2 text-xs text-rose-400">
+          <span class="font-mono">{{ form.instance.line_number }}</span>
+          <span>·</span>
+          <span>Will be deleted on save</span>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+{% else %}
+  {# Normal row #}
+  <div class="item-form-row border border-slate-200 rounded-xl p-5
+              {% if form.errors %}border-rose-300 bg-rose-50{% endif %}">
+    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+    <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
+      <div class="sm:col-span-5">
+        <label class="field-label">Product</label>
+        <select name="{{ form.product.html_name }}" class="field-select" required>
+          <option value="">Select a product</option>
+          {% for product in form.product.field.queryset %}
+            <option value="{{ product.pk }}"
+                    {% if form.product.value|stringformat:"s" == product.pk|stringformat:"s" %}selected{% endif %}>
+              {{ product.brand.name|title }} {{ product.modelname|title }}
+            </option>
+          {% endfor %}
+        </select>
+        {% if form.product.errors %}
+          {% for error in form.product.errors %}
+            <p class="text-xs text-rose-600 mt-1">{{ error }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <div class="sm:col-span-3">
+        <label class="field-label">Quantity</label>
+        <input type="number"
+               name="{{ form.quantity_ordered.html_name }}"
+               class="field-input font-mono"
+               placeholder="1" min="1" required
+               value="{{ form.quantity_ordered.value|default:'' }}">
+        {% if form.quantity_ordered.errors %}
+          {% for error in form.quantity_ordered.errors %}
+            <p class="text-xs text-rose-600 mt-1">{{ error }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <div class="sm:col-span-3">
+        <label class="field-label">Price per Unit (₦)</label>
+        <input type="number"
+               name="{{ form.price_per_unit.html_name }}"
+               class="field-input font-mono"
+               placeholder="0.00" step="0.01" min="0" required
+               value="{{ form.price_per_unit.value|default:'' }}">
+        {% if form.price_per_unit.errors %}
+          {% for error in form.price_per_unit.errors %}
+            <p class="text-xs text-rose-600 mt-1">{{ error }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <div class="sm:col-span-1 flex items-end justify-center">
+        <button type="button"
+                hx-post="{% url 'agreement_line_item_remove' forloop.counter0 %}"
+                hx-include="closest form"
+                hx-target="#formset-container"
+                hx-swap="outerHTML"
+                class="remove-form-row w-8 h-8 flex items-center justify-center rounded-lg
+                       text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                title="Remove line item">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="hidden">{{ form.DELETE }}</div>
+
+    {% if form.instance.pk %}
+      <div class="mt-3 pt-3 border-t border-slate-100">
+        <div class="flex items-center gap-2 text-xs text-slate-400">
+          <span class="font-mono">{{ form.instance.line_number }}</span>
+          <span>·</span>
+          <span>Line total:
+            <span class="amount font-bold text-slate-600">
+              ₦{{ form.instance.total_line|floatformat:0|intcomma }}
+            </span>
+          </span>
+          {% if form.instance.quantity_fulfilled_accross_all_versions > 0 %}
+            <span>·</span>
+            <span class="text-emerald-600 font-medium">
+              {{ form.instance.quantity_fulfilled_accross_all_versions }} fulfilled
+            </span>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endif %}
