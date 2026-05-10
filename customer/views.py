@@ -1,5 +1,4 @@
 from decimal import Decimal, InvalidOperation
-from datetime import datetime
 from django.shortcuts import render, get_object_or_404, redirect
 from render_block import render_block_to_string
 from django.urls import reverse
@@ -9,6 +8,7 @@ from django_htmx.http import HttpResponseClientRedirect
 from django.db.models import Prefetch, Sum, F, DecimalField, Value, Q, Count
 from django.db.models.functions import Coalesce
 from django.utils import timezone
+from .utils import parse_backdate
 from .models import (
     Customer,
     Transaction,
@@ -47,18 +47,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
-def parse_backdate(date_str):
-    """Parse a date string (YYYY-MM-DD) and return a timezone-aware datetime
-    with the user-selected date but the current local time."""
-    if not date_str:
-        return None
-    try:
-        parsed = datetime.strptime(date_str, "%Y-%m-%d")
-        now = timezone.localtime(timezone.now())
-        return now.replace(year=parsed.year, month=parsed.month, day=parsed.day)
-    except (ValueError, TypeError):
-        return None
 
 
 def customers(request):
@@ -813,14 +801,13 @@ def manage_purchase_agreements(request, pk=None):
                         agreement.updated_by = request.user
                         agreement.save()
 
-                        formset.instance = agreement  # ← ensures FK is set
+                        formset.instance = agreement
                         items = formset.save(commit=False)
 
                         for obj in formset.deleted_objects:
                             obj.delete()
 
                         for item in items:
-                            # No need to set purchase_agreement — inline handles it
                             item.created_by = request.user
                             item.updated_by = request.user
                             item.save()
@@ -1285,50 +1272,50 @@ def sale_detail(request, pk):
     return render(request, "customers/sales/sale_detail.html", context)
 
 
-def search_customers(request):
-    query = request.GET.get("q", "")
-    customers = []
-    if query:
-        customers = Customer.objects.filter(
-            Q(full_name__icontains=query)
-            | Q(phone__icontains=query)
-            | Q(customer_number__icontains=query)
-        )[:10]
-    return render(
-        request, "partials/search_results_customer.html", {"customers": customers}
-    )
+# def search_customers(request):
+#     query = request.GET.get("q", "")
+#     customers = []
+#     if query:
+#         customers = Customer.objects.filter(
+#             Q(full_name__icontains=query)
+#             | Q(phone__icontains=query)
+#             | Q(customer_number__icontains=query)
+#         )[:10]
+#     return render(
+#         request, "partials/search_results_customer.html", {"customers": customers}
+#     )
 
 
-def search_products(request):
-    query = request.GET.get("q", "")
-    products = []
-    if query:
-        products = Product.objects.filter(
-            Q(modelname__icontains=query)
-            | Q(sku__icontains=query)
-            | Q(brand__name__icontains=query),
-            type_variant=Product.TypeVariant.BOXED,
-        ).select_related("brand")[:10]
-    return render(
-        request, "partials/search_results_product.html", {"products": products}
-    )
+# def search_products(request):
+#     query = request.GET.get("q", "")
+#     products = []
+#     if query:
+#         products = Product.objects.filter(
+#             Q(modelname__icontains=query)
+#             | Q(sku__icontains=query)
+#             | Q(brand__name__icontains=query),
+#             type_variant=Product.TypeVariant.BOXED,
+#         ).select_related("brand")[:10]
+#     return render(
+#         request, "partials/search_results_product.html", {"products": products}
+#     )
 
 
-def search_transformation_items(request):
-    query = request.GET.get("q", "")
-    items = []
-    if query:
-        items = TransformationItem.objects.filter(
-            Q(item_number__icontains=query)
-            | Q(engine_number__icontains=query)
-            | Q(chassis_number__icontains=query)
-            | Q(target_product__brand__name__icontains=query)
-            | Q(target_product__modelname__icontains=query),
-            status=TransformationItem.Status.AVAILABLE,
-        ).select_related("target_product")[:10]
-    return render(
-        request, "partials/search_results_transformation_item.html", {"items": items}
-    )
+# def search_transformation_items(request):
+#     query = request.GET.get("q", "")
+#     items = []
+#     if query:
+#         items = TransformationItem.objects.filter(
+#             Q(item_number__icontains=query)
+#             | Q(engine_number__icontains=query)
+#             | Q(chassis_number__icontains=query)
+#             | Q(target_product__brand__name__icontains=query)
+#             | Q(target_product__modelname__icontains=query),
+#             status=TransformationItem.Status.AVAILABLE,
+#         ).select_related("target_product")[:10]
+#     return render(
+#         request, "partials/search_results_transformation_item.html", {"items": items}
+#     )
 
 
 def record_sale(request):

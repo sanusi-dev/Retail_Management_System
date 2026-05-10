@@ -2,7 +2,7 @@
 {% load static humanize %}
 {% block content %}
   {% partialdef sale-detail-partial inline %}
-  <div class="p-6 lg:p-8 max-w-3xl mx-auto"
+  <div class="p-6 lg:p-8 max-w-4xl mx-auto"
        id="sale-detail-partial"
        hx-get="{{ request.get_full_path }}"
        hx-trigger="saleDetailChanged from:body"
@@ -10,6 +10,8 @@
     <!-- Header -->
     <div class="flex items-center gap-3 mb-8">
       <a href="{% url 'sales' %}"
+         hx-target="#sale-detail-partial"
+         hx-swap="outerHTML"
          class="btn-back mt-1">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -17,9 +19,7 @@
       </a>
       <div class="flex-1">
         <h1 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">Sale {{ sale.sale_number }}</h1>
-        <p class="text-slate-400 font-mono text-xs mt-1">
-          {{ sale.get_status_display }} · {{ sale.sale_date|date:"j M Y" }}
-        </p>
+        <p class="text-slate-400 font-mono text-xs mt-1">{{ sale.get_status_display }} · {{ sale.sale_date|date:"j M Y" }}</p>
       </div>
       {% if sale.status == 'active' %}
         <button hx-get="{% url 'modal_void_sale' sale.pk %}"
@@ -28,7 +28,6 @@
                 class="btn-danger btn-sm">Void Sale</button>
       {% endif %}
     </div>
-
     <!-- Sale info -->
     <div class="card card-p mb-5">
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-6 text-sm">
@@ -45,6 +44,8 @@
           <div>
             <div class="text-xs text-slate-400 font-semibold mb-1.5">Agreement</div>
             <a href="{% url 'agreement_detail' sale.agreement.pk %}"
+            hx-target="#sale-detail-partial"
+            hx-swap="outerHTML"
                class="font-bold text-brand-600 hover:text-brand-700 transition-colors">{{ sale.agreement.purchase_agreement_number }}</a>
           </div>
         {% else %}
@@ -63,18 +64,16 @@
         </div>
         <div>
           <div class="text-xs text-slate-400 font-semibold mb-1.5">Status</div>
-      {% if sale.status == 'active' %}
+          {% if sale.status == 'active' %}
             <span class="badge badge-active">Active</span>
           {% else %}
             <span class="badge badge-voided">Voided</span>
           {% endif %}
         </div>
       </div>
-
       <!-- Items -->
       <div class="border-t border-slate-100 pt-5">
         <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Sale Items</div>
-
         {% for item in sale.boxed_sales.all %}
           <div class="bg-slate-50 rounded-xl p-5 mb-3">
             <div class="flex justify-between items-start">
@@ -87,15 +86,18 @@
                 </div>
               </div>
               <div class="text-right">
-                <div class="amount font-bold">₦{% widthratio item.price 1 item.quantity as boxed_total %}{{ boxed_total|intcomma }}</div>
+                <div class="amount font-bold">
+                  ₦{% widthratio item.price 1 item.quantity as boxed_total %}{{ boxed_total|intcomma }}
+                </div>
                 {% if item.agreement_line_item %}
-                  <div class="text-xs text-slate-400 mt-1">From {{ item.agreement_line_item.purchase_agreement.purchase_agreement_number }}</div>
+                  <div class="text-xs text-slate-400 mt-1">
+                    From {{ item.agreement_line_item.purchase_agreement.purchase_agreement_number }}
+                  </div>
                 {% endif %}
               </div>
             </div>
           </div>
         {% endfor %}
-
         {% for item in sale.coupled_sales.all %}
           <div class="bg-slate-50 rounded-xl p-5 mb-3">
             <div class="flex justify-between items-start">
@@ -110,14 +112,15 @@
               <div class="text-right">
                 <div class="amount font-bold">₦{{ item.price|floatformat:0|intcomma }}</div>
                 {% if item.agreement_line_item %}
-                  <div class="text-xs text-slate-400 mt-1">From {{ item.agreement_line_item.purchase_agreement.purchase_agreement_number }}</div>
+                  <div class="text-xs text-slate-400 mt-1">
+                    From {{ item.agreement_line_item.purchase_agreement.purchase_agreement_number }}
+                  </div>
                 {% endif %}
               </div>
             </div>
           </div>
         {% endfor %}
       </div>
-
       <div class="border-t border-slate-100 mt-5 pt-4 flex justify-between">
         <span class="text-sm text-slate-500 font-medium">
           {{ sale.boxed_sales.count|add:sale.coupled_sales.count }} item{{ sale.boxed_sales.count|add:sale.coupled_sales.count|pluralize }} · {{ sale.get_payment_method_display }}

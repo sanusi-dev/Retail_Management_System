@@ -10,13 +10,13 @@ urlpatterns = [
     path("sale_detail/<uuid:pk>/", sale_detail, name="sale_detail"),
     path("record_sale", record_sale, name="record_sale"),
     path("modal/void_sale/<uuid:pk>/", modal_void_sale, name="modal_void_sale"),
-    path("search/customers/", search_customers, name="search_customers"),
-    path("search/products/", search_products, name="search_products"),
-    path(
-        "search/transformation_items/",
-        search_transformation_items,
-        name="search_transformation_items",
-    ),
+    # path("search/customers/", search_customers, name="search_customers"),
+    # path("search/products/", search_products, name="search_products"),
+    # path(
+    #     "search/transformation_items/",
+    #     search_transformation_items,
+    #     name="search_transformation_items",
+    # ),
     path(
         "ajax/load-customer-agreements/",
         load_customer_agreements,
