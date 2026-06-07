@@ -6,25 +6,6 @@ from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 
 
-def weight_average_cost_calc(instance):
-
-    inventory = instance.inventory
-
-    inventory_qty, inventory_wac = inventory.quantity, inventory.weighted_average_cost
-    inventory_value = inventory_qty * inventory_wac
-    recieve_value = instance.received_quantity * instance.unit_cost_at_receipt
-
-    new_inventory_quantity = inventory_qty + instance.received_qunatity
-    new_inventory_value = inventory_value + recieve_value
-    new_wac = (
-        new_inventory_value / new_inventory_quantity
-        if new_inventory_value or new_inventory_quantity != 0
-        else 0
-    )
-
-    return inventory, new_wac, new_inventory_quantity
-
-
 def get_formset_data(purchase_order):
     if not purchase_order:
         EmptyFormset = modelformset_factory(

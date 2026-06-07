@@ -1,0 +1,21 @@
+{% load humanize %}
+<div id="formset-container">
+  {{ formset.management_form }}
+  <div class="space-y-4" id="items-container">
+    {% for form in formset %}
+      {% include 'supply_chain/po/partials/po_line_item_form.html' with form=form %}
+    {% endfor %}
+  </div>
+
+  <button type="button"
+          hx-post="{% url 'po_line_item_add' %}"
+          hx-include="closest form"
+          hx-target="#formset-container"
+          hx-swap="outerHTML"
+          class="mt-4 text-sm text-brand-600 hover:text-brand-700 font-bold flex items-center gap-1.5 transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+    </svg>
+    Add Line Item
+  </button>
+</div>

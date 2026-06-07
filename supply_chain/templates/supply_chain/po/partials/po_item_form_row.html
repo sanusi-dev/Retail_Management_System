@@ -3,7 +3,7 @@
            {% if form.errors %}bg-red-50{% endif %}">
    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
    <td class="px-2 py-2 border-r border-b">
-      {% render_field form.product class="w-full text-sm text-gray-700 font-light px-2 py-1 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none" required=form.product.field.required %}
+      {% render_field form.product class="w-full text-sm text-gray-700 font-light px-2 py-1 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none select2-product" data-placeholder="Select an item" required=form.product.field.required %}
    </td>
    <td class="px-2 py-2 border-r border-b">
       {% render_field form.ordered_quantity placeholder="1" class="w-full px-2 py-1 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-right" required=form.ordered_quantity.field.required min="1" %}

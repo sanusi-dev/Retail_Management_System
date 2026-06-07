@@ -1,0 +1,149 @@
+{% extends 'index.html' %}
+{% load static humanize %}
+{% block content %}
+  {% partialdef normal-sale-partial inline %}
+  <div class="p-6 lg:p-8 max-w-4xl mx-auto" id="normal-sale-partial">
+    <!-- Header -->
+    <div class="flex items-center gap-3 mb-8">
+      <a href="{% url 'sales' %}"
+         class="btn-back mt-1"
+         hx-target="#normal-sale-partial"
+         hx-swap="outerHTML show:window:top">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </a>
+      <h1 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">Create Normal Sale</h1>
+    </div>
+    <!-- Customer summary (when selected) -->
+    <div id="customer-summary"
+         class="summary-box mb-5
+                {% if not selected_customer %}hidden{% endif %}">
+      <div class="font-bold text-sm text-slate-800" id="customer-name">
+        {{ selected_customer.full_name|title|default:'' }}
+      </div>
+      <div class="text-xs text-slate-400 mt-1">
+        Available: <span class="amount font-bold text-emerald-600" id="customer-balance">₦{{ selected_customer.deposit_account.available_balance|floatformat:0|intcomma|default:'0' }}</span>
+      </div>
+    </div>
+    <form id="normal-sale-form"
+          hx-post="{% url 'create_normal_sale' %}"
+          hx-target="#normal-sale-partial"
+          hx-swap="outerHTML">
+      <!-- Non-field errors -->
+      {% if form.non_field_errors %}
+        <div class="alert-danger mb-4">
+          <div class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-1">Form Errors</div>
+          {% for error in form.non_field_errors %}<p class="text-sm text-rose-700 font-medium">{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+      {% if boxed_formset.non_form_errors %}
+        <div class="alert-danger mb-4">
+          <div class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-1">Boxed Item Errors</div>
+          {% for error in boxed_formset.non_form_errors %}
+            <p class="text-sm text-rose-700 font-medium">{{ error }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% if coupled_formset.non_form_errors %}
+        <div class="alert-danger mb-4">
+          <div class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-1">Serialized Item Errors</div>
+          {% for error in coupled_formset.non_form_errors %}
+            <p class="text-sm text-rose-700 font-medium">{{ error }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% if form.errors or boxed_formset.errors or coupled_formset.errors %}
+        <div class="text-xs text-rose-600 bg-rose-50 rounded-lg px-3 py-2 mb-4">
+          Please correct the errors highlighted below.
+        </div>
+      {% endif %}
+      <!-- Customer selection -->
+      <div class="card card-p mb-6">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-5">Customer</div>
+        <div class="flex items-start gap-3">
+          {% partialdef customer-select-partial inline %}
+          <div class="flex-1"
+               id="customer-select-wrapper"
+               hx-get="{% url 'ajax_customer_select' %}"
+               hx-trigger="customerCreated from:body"
+               hx-target="#customer-select-wrapper"
+               hx-swap="outerHTML"
+               hx-vals='{"customer": "{{ selected_customer_pk }}"}'>
+            <select name="customer"
+                    id="id_customer"
+                    class="field-select select2-customer"
+                    data-placeholder="Select a customer"
+                    data-selected="{{ selected_customer_pk|default:'' }}"
+                    style="width: 100%">
+              <option value="">Select a customer</option>
+              {% for cust in customers %}
+                <option value="{{ cust.pk }}"
+                        data-balance="{{ cust.deposit_account.available_balance|default:0 }}"
+                        {% if selected_customer_pk == cust.pk|stringformat:"s" %}selected{% endif %}>
+                  {{ cust.full_name|title }} — {{ cust.customer_number }} — Available: ₦{{ cust.deposit_account.available_balance|floatformat:0|intcomma }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        {% endpartialdef %}
+        <button type="button"
+                hx-get="{% url 'modal_new_customer' %}"
+                hx-target="#modal_container"
+                hx-swap="innerHTML"
+                class="btn-secondary flex-shrink-0"
+                title="Create new customer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span class="hidden sm:inline">New</span>
+        </button>
+      </div>
+      {% if form.customer.errors %}
+        {% for error in form.customer.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
+      {% endif %}
+    </div>
+    <!-- Payment Method -->
+    <div class="card card-p mb-6">
+      <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-5">Payment Method</div>
+      <select name="payment_method"
+              class="field-select select2-enabled"
+              required
+              data-placeholder="Select payment method">
+        <option value="">Select payment method</option>
+        {% for value, label in form.payment_method.field.choices %}
+          <option value="{{ value }}"
+                  {% if form.payment_method.value == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      {% if form.payment_method.errors %}
+        {% for error in form.payment_method.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
+      {% endif %}
+    </div>
+    <!-- Boxed Items -->
+    <div class="card card-p mb-6">
+      <div class="flex items-center justify-between mb-5">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Boxed Items</div>
+      </div>
+      {% include 'customers/sales/partials/boxed_sale_formset.html' with formset=boxed_formset %}
+    </div>
+    <!-- Serialized Items -->
+    <div class="card card-p mb-6">
+      <div class="flex items-center justify-between mb-5">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Serialized Items</div>
+      </div>
+      {% include 'customers/sales/partials/coupled_sale_formset.html' with formset=coupled_formset %}
+    </div>
+    <!-- Action Buttons -->
+    <div class="flex gap-3">
+      <a href="{% url 'sales' %}"
+         class="btn-secondary flex-1 text-center"
+         hx-target="#normal-sale-partial"
+         hx-swap="outerHTML show:window:top">Cancel</a>
+      <button type="submit"
+              class="btn-primary flex-1 shadow-md shadow-brand-600/15">Create Sale</button>
+    </div>
+  </form>
+</div>
+{% endpartialdef %}
+{% endblock content %}

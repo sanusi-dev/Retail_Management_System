@@ -1,0 +1,9 @@
+{% load humanize %}
+<div id="fulfillment-formset-container">
+  {{ formset.management_form }}
+  <div class="space-y-4" id="fulfillment-items-container">
+    {% for form, line_item in form_line_pairs %}
+      {% include 'customers/sales/partials/fulfillment_row.html' with form=form line_item=line_item %}
+    {% endfor %}
+  </div>
+</div>

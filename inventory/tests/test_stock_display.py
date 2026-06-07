@@ -62,7 +62,6 @@ class ProductStockDisplayTest(TestCase):
         # Assertions for what we WANT to see:
         
         # 1. Header should be "Stock" not "Stock (Boxed/Coupled)"
-        # self.assertIn('<th scope="col" class="px-6 py-3">Stock</th>', content) 
         # (Exact string match might be brittle with whitespace, but let's try strict check or check presence)
         
         # 2. Boxed product row should show "10" but NOT "Boxed:" or "Coupled:"
@@ -83,5 +82,3 @@ class ProductStockDisplayTest(TestCase):
         # We want it to just render "10" in the cell.
         
         # Let's run this test. If I assert "Boxed: 10" is NOT in content, it should fail now.
-        ## self.assertNotIn("Boxed:", content)
-        ## self.assertNotIn("Coupled:", content)

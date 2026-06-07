@@ -1,0 +1,82 @@
+{% partialdef transformation-formset-partial inline %}
+<div id="formset-container">
+  {{ formset.management_form }}
+  <div class="space-y-4" id="items-container">
+    {% for form in formset %}
+      <div class="item-form-row border border-slate-200 rounded-xl p-5
+                  {% if form.errors %}border-rose-300 bg-rose-50{% endif %}">
+        {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
+          <div class="sm:col-span-5">
+            <label class="field-label">Product</label>
+            <select name="{{ form.source_product.html_name }}"
+                    class="field-select select2-product"
+                    required
+                    data-placeholder="Select a product to transform">
+              <option value="">Select a product to transform</option>
+              {% for product in form.source_product.field.queryset %}
+                <option value="{{ product.pk }}"
+                        {% if form.source_product.value|stringformat:"s" == product.pk|stringformat:"s" %}selected{% endif %}>
+                  {{ product.brand.name|upper }} - {{ product.modelname|upper }} - {{ product.type_variant|upper }}
+                </option>
+              {% endfor %}
+            </select>
+            {% if form.source_product.errors %}
+              {% for error in form.source_product.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
+            {% endif %}
+          </div>
+          <div class="sm:col-span-3">
+            <label class="field-label">Engine No#</label>
+            <input type="text"
+                   name="{{ form.engine_number.html_name }}"
+                   class="field-input"
+                   placeholder="Engine number"
+                   required
+                   value="{{ form.engine_number.value|default:'' }}">
+            {% if form.engine_number.errors %}
+              {% for error in form.engine_number.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
+            {% endif %}
+          </div>
+          <div class="sm:col-span-3">
+            <label class="field-label">Chassis No#</label>
+            <input type="text"
+                   name="{{ form.chassis_number.html_name }}"
+                   class="field-input"
+                   placeholder="Chassis number"
+                   required
+                   value="{{ form.chassis_number.value|default:'' }}">
+            {% if form.chassis_number.errors %}
+              {% for error in form.chassis_number.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
+            {% endif %}
+          </div>
+          <div class="sm:col-span-1 flex items-end justify-center">
+            <button type="button"
+                    hx-post="{% url 'transformation_item_remove' forloop.counter0 %}"
+                    hx-include="closest form"
+                    hx-target="#formset-container"
+                    hx-swap="outerHTML"
+                    class="remove-form-row w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                    title="Remove line item">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="hidden">{{ form.DELETE }}</div>
+      </div>
+    {% endfor %}
+  </div>
+  <button type="button"
+          hx-post="{% url 'transformation_item_add' %}"
+          hx-include="closest form"
+          hx-target="#formset-container"
+          hx-swap="outerHTML"
+          class="mt-4 text-sm text-brand-600 hover:text-brand-700 font-bold flex items-center gap-1.5 transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+    </svg>
+    Add Item
+  </button>
+</div>
+{% endpartialdef %}

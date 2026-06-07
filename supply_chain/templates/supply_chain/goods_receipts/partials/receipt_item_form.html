@@ -1,60 +1,54 @@
-{% load widget_tweaks %}
-<div class="bg-white mt-5 py-5 max-w-4xl">
-   <div class="mb-6">
-      <div class="overflow-x-auto">
-         <table class="w-full">
-            <thead class="bg-white">
-               <tr>
-                  <th class="w-2/5 pl-2 pr-2 py-2 text-left text-xs font-normal text-gray-900 uppercase tracking-wider border-t border-b border-r">
-                     Product Name
-                  </th>
-                  <th class="w-1/5 px-2 py-2 text-right text-xs font-normal text-gray-900 uppercase tracking-wider border-t border-b border-r">
-                     Ordered
-                  </th>
-                  <th class="w-1/5 px-2 py-2 text-right text-xs font-normal text-gray-900 uppercase tracking-wider border-r border-t border-b">
-                     Received
-                  </th>
-                  <th class="w-1/5 px-2 py-2 text-right text-xs font-normal text-gray-900 uppercase tracking-wider border-t border-b">
-                     Quantity to Receive
-                  </th>
-                  <th class="w-1/5 px-4 py-2 text-left text-xs font-normal text-gray-900 uppercase tracking-wider"></th>
-               </tr>
-            </thead>
-            <tbody id="items-container" class="bg-white divide-y divide-gray-200">
-               {% if formset %}
-                  {{ formset.management_form }}
-                  {% for form, po_item in zipped_data %}
-                     <tr class="item-form-row border-b-0">
-                        <td class="px-2 py-2 border-r border-b uppercase">{{ po_item.product.modelname }}</td>
-                        <td class="px-2 py-2 border-r border-b text-right">{{ po_item.ordered_quantity }}</td>
-                        <td class="px-2 py-2 border-r border-b text-right">{{ po_item.received_quantity }}</td>
-                        <td class="px-2 py-2 border-b">
-                           {% render_field form.received_quantity placeholder="1" class="w-full px-2 py-1 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-right" min="1" step="1" required=form.received_quantity.field.required %}
-                        </td>
-                        <td class="px-4 py-2">
-                           <button type="button" class="remove-form-row text-red-600 hover:text-red-800">
-                              <svg xmlns="http://www.w3.org/2000/svg"
-                                   viewBox="0 0 20 20"
-                                   fill="currentColor"
-                                   class="size-5">
-                                 <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-                              </svg>
-                           </button>
-                        </td>
-                        <td class="hidden">
-                           {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
-                        </td>
-                     </tr>
-                  {% endfor %}
-               {% else %}
-                  <tr class="bg-white hover:bg-gray-50">
-                     <td colspan="4" class="px-6 py-3 text-center text-xs font-light">
-                        <p>Select a Purchase Order to record receives</p>
-                     </td>
-                  </tr>
-               {% endif %}
-            </tbody>
-         </table>
-      </div>
-   </div>
+{% load humanize %}
+<div id="formset-container">
+  {{ formset.management_form }}
+  {% if zipped_data %}
+    <div class="space-y-4" id="items-container">
+      {% for form, po_item in zipped_data %}
+        <div class="item-form-row border border-slate-200 rounded-xl p-5
+                    {% if form.errors %}border-rose-300 bg-rose-50{% endif %}">
+          {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
+            <div class="sm:col-span-5">
+              <label class="field-label">Product</label>
+              <div class="text-sm text-slate-800 font-medium py-2.5">
+                {{ po_item.product.brand.name|title }} {{ po_item.product.modelname|title }} ({{ po_item.product.type_variant|title }})
+              </div>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="field-label">Ordered</label>
+              <div class="text-sm text-slate-500 font-mono py-2.5">
+                {{ po_item.ordered_quantity|intcomma }}
+              </div>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="field-label">Received</label>
+              <div class="text-sm text-slate-500 font-mono py-2.5">
+                {{ po_item.received_quantity|default:0|intcomma }}
+              </div>
+            </div>
+            <div class="sm:col-span-3">
+              <label class="field-label">Qty to Receive</label>
+              <input type="number"
+                     name="{{ form.received_quantity.html_name }}"
+                     class="field-input font-mono"
+                     placeholder="1"
+                     min="1"
+                     step="1"
+                     required
+                     value="{{ form.received_quantity.value|default:'' }}">
+              {% if form.received_quantity.errors %}
+                {% for error in form.received_quantity.errors %}
+                  <p class="text-xs text-rose-600 mt-1">{{ error }}</p>
+                {% endfor %}
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center py-8 text-sm text-slate-400">
+      <p>Select a Purchase Order to record receives</p>
+    </div>
+  {% endif %}
 </div>

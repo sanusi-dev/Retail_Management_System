@@ -1,0 +1,16 @@
+{% load humanize %}
+<select name="customer"
+        id="id_customer"
+        class="field-select select2-customer"
+        data-placeholder="Select a customer"
+        data-selected="{{ selected_customer_pk|default:'' }}"
+        style="width: 100%;">
+  <option value="">Select a customer</option>
+  {% for cust in customers %}
+    <option value="{{ cust.pk }}"
+            data-balance="{{ cust.deposit_account.available_balance|default:0 }}"
+            {% if selected_customer_pk == cust.pk|stringformat:"s" %}selected{% endif %}>
+      {{ cust.full_name|title }} — {{ cust.customer_number }} — Available: ₦{{ cust.deposit_account.available_balance|floatformat:0|intcomma }}
+    </option>
+  {% endfor %}
+</select>

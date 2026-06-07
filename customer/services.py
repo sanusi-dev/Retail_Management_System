@@ -338,9 +338,11 @@ def create_sale(sale, boxed_items, coupled_items, user, request=None):
     """
     from customer.models import (
         Sale, BoxedSale, CoupledSale, Transaction, PurchaseAgreementLineItem,
+        BoxedSaleLayerConsumption,
     )
     from inventory.models import Inventory, InventoryTransaction, TransformationItem
-    from utils.utils import create_inventory_transaction
+    from inventory.services import _deplete_fifo_layers
+    from inventory.utils import create_inventory_transaction
 
     with db_transaction.atomic():
         sale.save()
@@ -349,7 +351,8 @@ def create_sale(sale, boxed_items, coupled_items, user, request=None):
         for item in boxed_items:
             item.sale = sale
             if sale.payment_method == Sale.PaymentMethod.FROM_DEPOSIT and item.agreement_line_item:
-                item.price = item.agreement_line_item.price_per_unit
+                if item.price is None:
+                    item.price = item.agreement_line_item.price_per_unit
             item.save()
 
             # Decrement inventory (replaces update_inventory_on_sale_save signal)
@@ -357,12 +360,26 @@ def create_sale(sale, boxed_items, coupled_items, user, request=None):
             inventory.quantity -= item.quantity
             inventory.save(update_fields=["quantity"])
 
+            # FIFO depletion and cost capture
+            fifo_cost, consumptions = _deplete_fifo_layers(item.product, item.quantity)
+            item.cost_basis = fifo_cost
+            item.save(update_fields=["cost_basis"])
+
+            # Record each layer consumed for granular reversal (Fix 1)
+            for entry in consumptions:
+                BoxedSaleLayerConsumption.objects.create(
+                    boxed_sale=item,
+                    cost_layer=entry["layer"],
+                    quantity_consumed=entry["quantity"],
+                    unit_cost=entry["unit_cost"],
+                )
+
             create_inventory_transaction(
                 inventory=inventory,
                 source=item,
                 transaction_type=InventoryTransaction.TransactionType.SALE,
                 quantity_change=-item.quantity,
-                cost_impact=inventory.weighted_average_cost * item.quantity,
+                cost_impact=fifo_cost,
             )
 
             # Update agreement status (replaces update_status_on_boxed_sale_change signal)
@@ -390,7 +407,8 @@ def create_sale(sale, boxed_items, coupled_items, user, request=None):
         for item in coupled_items:
             item.sale = sale
             if sale.payment_method == Sale.PaymentMethod.FROM_DEPOSIT and item.agreement_line_item:
-                item.price = item.agreement_line_item.price_per_unit
+                if item.price is None:
+                    item.price = item.agreement_line_item.price_per_unit
             item.save()
 
             # Mark transformation item as sold (replaces mark_item_sold signal)
@@ -439,7 +457,7 @@ def void_sale(sale_id, void_reason, user, request=None):
         Sale, BoxedSale, CoupledSale, Transaction, PurchaseAgreementLineItem,
     )
     from inventory.models import Inventory, InventoryTransaction, TransformationItem
-    from utils.utils import create_inventory_transaction
+    from inventory.utils import create_inventory_transaction
 
     with db_transaction.atomic():
         sale = Sale.objects.select_for_update().get(pk=sale_id)
@@ -458,12 +476,29 @@ def void_sale(sale_id, void_reason, user, request=None):
             inventory.quantity += boxed_sale.quantity
             inventory.save(update_fields=["quantity"])
 
+            # Restore original FIFO layers via consumption records (Fix 1)
+            consumptions = boxed_sale.layer_consumptions.all()
+            if consumptions.exists():
+                reversal_cost = Decimal("0.00")
+                for c in consumptions:
+                    c.cost_layer.remaining_quantity += c.quantity_consumed
+                    c.cost_layer.save(update_fields=["remaining_quantity"])
+                    reversal_cost += Decimal(str(c.quantity_consumed)) * c.unit_cost
+            elif boxed_sale.cost_basis is not None:
+                # Legacy: sale recorded cost_basis but not layer_consumptions
+                from inventory.services import _restore_fifo_layer
+                reversal_cost = boxed_sale.cost_basis
+                unit_cost = boxed_sale.cost_basis / boxed_sale.quantity
+                _restore_fifo_layer(boxed_sale.product, boxed_sale.quantity, unit_cost)
+            else:
+                reversal_cost = inventory.weighted_average_cost * boxed_sale.quantity
+
             create_inventory_transaction(
                 inventory=inventory,
                 source=boxed_sale,
                 transaction_type=InventoryTransaction.TransactionType.SALE_REVERSAL,
                 quantity_change=boxed_sale.quantity,
-                cost_impact=inventory.weighted_average_cost * boxed_sale.quantity,
+                cost_impact=reversal_cost,
             )
             boxed_total_value += boxed_sale.price * boxed_sale.quantity
 

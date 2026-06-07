@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.utils import timezone
-from utils.utils import create_inventory_transaction
+from inventory.utils import create_inventory_transaction
 from decimal import Decimal
 
 
@@ -71,6 +71,9 @@ class Product(models.Model):
         related_name="variants",
     )
     status = models.CharField(max_length=10, choices=Status, default=Status.ACTIVE)
+    assembly_cost = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0.00
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
@@ -237,6 +240,43 @@ class Inventory(models.Model):
         return self.product.modelname
 
 
+class InventoryCostLayer(models.Model):
+    """FIFO cost layer — each receipt batch creates one layer. Oldest layers are depleted first on sale/transformation."""
+
+    cost_layer_id = models.UUIDField(
+        default=uuid.uuid4, primary_key=True, editable=False
+    )
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="cost_layers"
+    )
+    quantity = models.PositiveIntegerField()
+    remaining_quantity = models.PositiveIntegerField()
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2)
+    goods_receipt_item = models.ForeignKey(
+        "supply_chain.GoodsReceiptItem",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cost_layers",
+    )
+    is_voided = models.BooleanField(
+        default=False,
+        help_text="True when the receipt that created this layer has been voided",
+    )
+    voided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["product", "created_at"]),
+            models.Index(fields=["goods_receipt_item"]),
+        ]
+
+    def __str__(self):
+        return f"{self.product.modelname} qty={self.remaining_quantity} @ {self.unit_cost}"
+
+
 class InventoryTransaction(models.Model):
     class TransactionType(models.TextChoices):
         RECEIPT = "receipt", "Receipt"
@@ -301,7 +341,7 @@ class Transformation(models.Model):
         null=True,
         related_name="created_%(class)s_set",
     )
-    updated_by = models.ForeignKey(
+    updated_by = models.ForeignKey( 
         CustomUser,
         on_delete=models.SET_NULL,
         blank=True,
@@ -350,7 +390,10 @@ class TransformationItem(models.Model):
         related_name="transformation_items",
     )
     source_product = models.ForeignKey(
-        Product, on_delete=models.PROTECT, related_name="transform_from"
+        Product,
+        on_delete=models.PROTECT,
+        related_name="transform_from",
+        limit_choices_to={"type_variant": Product.TypeVariant.BOXED},
     )
     target_product = models.ForeignKey(
         Product,
@@ -358,18 +401,27 @@ class TransformationItem(models.Model):
         blank=True,
         null=True,
         related_name="transform_to",
+        limit_choices_to={"type_variant": Product.TypeVariant.COUPLED},
     )
     engine_number = models.CharField(
-        max_length=100, unique=True, null=False, blank=False
+        max_length=100, null=False, blank=False
     )
     chassis_number = models.CharField(
-        max_length=100, unique=True, null=False, blank=False
+        max_length=100, null=False, blank=False
     )
     allocated_service_fee = models.DecimalField(
         max_digits=10, decimal_places=2, default=0.00
     )
     unit_cost_at_transformation = models.DecimalField(
         max_digits=10, decimal_places=2, default=0.00
+    )
+    consumed_layer = models.ForeignKey(
+        InventoryCostLayer,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transformation_consumptions",
+        help_text="The FIFO cost layer consumed during this transformation",
     )
     status = models.CharField(
         max_length=20, choices=Status, default=Status.AVAILABLE, blank=True
@@ -394,22 +446,56 @@ class TransformationItem(models.Model):
     def __str__(self):
         return f"{self.item_number} - {self.target_product.brand} - {self.target_product.modelname.upper()} - ENG: ...{self.engine_number[-5:]} | CHA: ...{self.chassis_number[-5:]}"
 
+    def clean(self):
+        if self.source_product and self.source_product.type_variant != Product.TypeVariant.BOXED:
+            raise ValidationError(
+                {"source_product": "Source product must be a boxed variant."}
+            )
+        if self.target_product and self.target_product.type_variant != Product.TypeVariant.COUPLED:
+            raise ValidationError(
+                {"target_product": "Target product must be a coupled variant."}
+            )
+        # Engine/chassis numbers must be unique among non-voided items only
+        if self.status != self.Status.VOIDED:
+            existing_engine = TransformationItem.objects.filter(
+                engine_number=self.engine_number,
+            ).exclude(status=self.Status.VOIDED).exclude(pk=self.pk)
+            if existing_engine.exists():
+                raise ValidationError(
+                    {"engine_number": "Engine number already exists on an active item."}
+                )
+            existing_chassis = TransformationItem.objects.filter(
+                chassis_number=self.chassis_number,
+            ).exclude(status=self.Status.VOIDED).exclude(pk=self.pk)
+            if existing_chassis.exists():
+                raise ValidationError(
+                    {"chassis_number": "Chassis number already exists on an active item."}
+                )
+
     def create_reversal(self):
         inventory = self.source_product.inventory
         inventory.quantity += 1
         inventory.save(update_fields=["quantity"])
 
+        source_cost = max(Decimal("0.00"), self.unit_cost_at_transformation - self.allocated_service_fee)
         create_inventory_transaction(
             inventory=inventory,
             source=self,
             transaction_type=InventoryTransaction.TransactionType.TRANSFORMATION_REVERSAL,
             quantity_change=1,
-            cost_impact=inventory.weighted_average_cost,
+            cost_impact=source_cost,
         )
+
+        # Restore to original FIFO layer if tracked (Fix 3)
+        if self.consumed_layer:
+            self.consumed_layer.remaining_quantity += 1
+            self.consumed_layer.save(update_fields=["remaining_quantity"])
+
         self.status = self.Status.VOIDED
         self.save(update_fields=["status"])
 
     def save(self, *args, **kwargs):
         if not self.item_number:
             self.item_number = f"ITEM-{uuid.uuid4().hex[:8].upper()}"
+        self.full_clean()
         super().save(*args, **kwargs)

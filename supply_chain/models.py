@@ -7,7 +7,7 @@ from django.db.models import F, Sum, Q
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
-from utils.utils import create_inventory_transaction
+from inventory.utils import create_inventory_transaction
 
 
 class Supplier(models.Model):
@@ -54,8 +54,12 @@ class Supplier(models.Model):
         return reverse("suppliers")
 
     @property
+    def get_absolute_url(self):
+        return reverse("supplier_detail", kwargs={"pk": self.pk})
+
+    @property
     def get_edit_url(self):
-        return reverse("edit_supplier", kwargs={"pk": self.pk})
+        return reverse("modal_edit_supplier", kwargs={"pk": self.pk})
 
     @property
     def can_delete(self):
@@ -396,7 +400,7 @@ class Payment(models.Model):
 
     @property
     def get_void_url(self):
-        return reverse("void_payment", kwargs={"pk": self.pk})
+        return reverse("modal_void_payment", kwargs={"pk": self.pk})
 
     @property
     def can_void(self):

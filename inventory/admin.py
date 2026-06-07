@@ -214,9 +214,6 @@ class InventoryTransactionAdmin(AuditAdminMixin, admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
 
-    # def has_delete_permission(self, request, obj=None):
-    #     return False
-
     def get_product(self, obj):
         return obj.inventory.product.sku
 

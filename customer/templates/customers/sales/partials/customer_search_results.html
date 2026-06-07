@@ -1,0 +1,20 @@
+{% load humanize %}
+{% if customers %}
+  <div class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+    {% for c in customers %}
+      <button type="button"
+              class="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-0 text-sm"
+              onclick="selectCustomerForSale('{{ c.pk }}', '{{ c.full_name|escapejs }}', '{{ c.deposit_account.available_balance }}')">
+        <div class="font-semibold text-slate-800">{{ c.full_name|title }}</div>
+        <div class="text-xs text-slate-400 mt-0.5">
+          {{ c.customer_number }} · Available: <span class="amount text-emerald-600 font-bold">₦{{ c.deposit_account.available_balance|floatformat:0|intcomma }}</span>
+        </div>
+      </button>
+    {% endfor %}
+  </div>
+{% elif query %}
+  <div class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg p-4 text-sm text-slate-500">
+    No customers found for "<span class="font-semibold">{{ query }}</span>".
+    <div class="mt-2 text-xs text-slate-400">Type the full name above and submit to create a new customer automatically.</div>
+  </div>
+{% endif %}

@@ -29,7 +29,6 @@ INSTALLED_APPS = [
     "core",
     "django_htmx",
     "widget_tweaks",
-    # 'debug_toolbar',
 ]
 
 AUTH_USER_MODEL = "account.CustomUser"
@@ -45,7 +44,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
-    # 'debug_toolbar.middleware.DebugToolbarMiddleware',
     "middleware.HtmxMessageMiddleware",  # must be last — reads messages into HX-Trigger
 ]
 
@@ -119,7 +117,6 @@ LOGS_DIR = BASE_DIR / "logs"
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    # log formats
     "formatters": {
         "verbose": {
             "format": "{levelname} {asctime} [{name}] {module} {funcName} - {message}",
@@ -131,7 +128,6 @@ LOGGING = {
             "style": "{",
         },
     },
-    # handlers
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
@@ -141,7 +137,7 @@ LOGGING = {
         "file": {
             "class": "logging.handlers.RotatingFileHandler",
             "filename": LOGS_DIR / "django_app.log",
-            "maxBytes": 1024 * 1024 * 10,  # 10MB
+            "maxBytes": 1024 * 1024 * 10,
             "backupCount": 5,
             "formatter": "verbose",
             "level": "DEBUG",
@@ -149,27 +145,41 @@ LOGGING = {
         "error_file": {
             "class": "logging.handlers.RotatingFileHandler",
             "filename": LOGS_DIR / "errors.log",
-            "maxBytes": 1024 * 1024 * 10,  # 10MB
+            "maxBytes": 1024 * 1024 * 10,
             "backupCount": 5,
             "formatter": "verbose",
             "level": "ERROR",
         },
     },
-    # Root logger
+    # Root catches everything not explicitly handled — your app loggers land here
     "root": {
-        "handlers": ["console", "file"],
+        "handlers": (
+            ["console", "file", "error_file"] if DEBUG else ["file", "error_file"]
+        ),
         "level": "DEBUG",
     },
-    # Django loggers
     "loggers": {
+        # Django's own internal logging — noisy, keep it at INFO
         "django": {
-            "handlers": ["console", "file", "error_file"],
+            "handlers": ["console", "file"] if DEBUG else ["file"],
             "level": "INFO",
             "propagate": False,
         },
+        # Request errors (500s) and security warnings
         "django.request": {
             "handlers": ["error_file"],
             "level": "ERROR",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["error_file"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        # Suppress noisy DB query logs unless you explicitly need them
+        "django.db.backends": {
+            "handlers": ["console"] if DEBUG else [],
+            "level": "DEBUG",
             "propagate": False,
         },
     },

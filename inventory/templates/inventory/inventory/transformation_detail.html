@@ -1,240 +1,106 @@
 {% extends 'index.html' %}
-{% load static %}
-{% load color_filters %}
-{% load humanize %}
-{% load field_name %}
+{% load static color_filters humanize %}
 {% block content %}
-   {% include "partials/spinner.html" with id="body_spinner" %}
-   <div class="flex flex-col h-[calc(100vh-4rem)] overflow-hidden" id="main_body">
-      <div class="flex flex-row h-full">
-         {% block _side_bar %}
-            <div x-data="{ activeTransformation: '{{ transformation.pk }}' }"
-                 class="flex-none w-[340px] h-full bg-white border-r flex flex-col z-20">
-               <div class="flex-none border-b bg-gradient-to-r from-purple-50 to-white">
-                  <div class="h-16 flex items-center justify-between px-5 py-2">
-                     <div>
-                        <h4 class="text-gray-900 text-lg font-semibold">Transformations</h4>
-                        <p class="text-xs text-gray-500">{{ transformation_list.paginator.count }} total</p>
-                     </div>
-                     <a href="{% url 'add_transformation' %}"
-                        hx-boost="true"
-                        hx-target="#main_body"
-                        hx-indicator="#body_spinner"
-                        class="p-2 text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-all shadow-md hover:shadow-lg transform hover:scale-105">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                             viewBox="0 0 20 20"
-                             fill="currentColor"
-                             class="w-5 h-5">
-                           <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-                        </svg>
-                     </a>
-                  </div>
-                  <!-- Search Box -->
-                  <div class="px-4 pb-3">
-                      <div class="relative">
-                          <input type="text"
-                                 name="q"
-                                 value="{{ search_query }}"
-                                 hx-get="{% url 'transformation_detail' transformation.pk %}"
-                                 hx-trigger="keyup changed delay:500ms, search"
-                                 hx-target="#sidebar_pagination"
-                                 hx-push-url="true"
-                                 placeholder="Search transformations..."
-                                 class="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white">
-                          <svg class="w-4 h-4 absolute left-3 top-2.5 text-gray-400"
-                               fill="none"
-                               viewBox="0 0 24 24"
-                               stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                      </div>
-                  </div>
-               </div>
-               {% block side_bar_list %}
-                  <div id="sidebar_pagination" class="flex-1 flex flex-col min-h-0 overflow-hidden">
-                     <div id="side_bar" class="flex-1 overflow-y-auto min-h-0">
-                        {% for transformation in transformation_list %}
-                           <a href="{% url 'transformation_detail' pk=transformation.pk %}"
-                              class="h-16 flex items-center justify-between px-5 border-b hover:bg-gray-100 transition-colors duration-150"
-                              hx-boost="true"
-                              hx-target="#main_content"
-                              hx-indicator="#side_bar_spinner"
-                              @click="activeTransformation = '{{ transformation.pk }}'"
-                              x-bind:class="{'bg-blue-50 border-r-2 border-r-blue-500': activeTransformation === '{{ transformation.pk }}' }">
-                              <div class="flex flex-col">
-                                 <h4 class="font-medium text-sm uppercase
-                                            {% if transformation.status == transformation.Status.VOIDED %}
-                                               text-red-800
-                                            {% else %}
-                                               text-gray-800
-                                            {% endif %}">{{ transformation.transformation_number|title }}</h4>
-                                 <p class="text-xs text-gray-600 mt-2">{{ transformation.transformation_date | date:"j M y" }}</p>
-                              </div>
-                              <h4 class="text-gray-800 font-medium text-sm">QTY - {{ transformation.total_transformed_qty }}</h4>
-                           </a>
-                        {% endfor %}
-                     </div>
-                     <div class="flex-shrink-0 bg-white border-t border-gray-200 p-3">
-                        {% include "partials/pagination.html" with page_obj=transformation_list target="sidebar_pagination" %}
-                     </div>
-                  </div>
-               {% endblock side_bar_list %}
-            </div>
-         {% endblock _side_bar %}
-         <div class="flex-1 bg-gray-50 relative flex flex-col" id="content-wrapper">
-            {% include "partials/spinner.html" with id="side_bar_spinner" %}
-            <div id="main_content">
-               {% block main_content %}
-                  {% block _header %}
-                     <div class="flex-none bg-white py-3 px-5 h-16 border border-b">
-                        <div class="flex justify-between items-start">
-                           <h1 class="text-lg font-medium text-gray-900">{{ transformation.transformation_number|upper }}</h1>
-                           <div class="flex inline-items items-center gap-2">
-                              <a href="{{ transformation.get_edit_url }}"
-                                 hx-boost="true"
-                                 hx-target="#main_body"
-                                 hx-indicator="#body_spinner"
-                                 class="text-gray-600 bg-gray-100 px-1 py-1 border border-gray-300 rounded-md">
-                                 <svg xmlns="http://www.w3.org/2000/svg"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      stroke-width="1.5"
-                                      stroke="currentColor"
-                                      class="size-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
-                                 </svg>
-                              </a>
-                              {% comment %}
-                              <a href="{{ transformation.get_void_url }}" hx-boost="true" hx-target="#main_body" hx-indicator="#body_spinner" class="text-gray-600 bg-gray-100 px-1 py-1 border border-gray-300 rounded-md">
-                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-6">
-                                    <path d="M13.488 2.513a1.75 1.75 0 0 0-2.475 0L6.75 6.774a2.75 2.75 0 0 0-.596.892l-.848 2.047a.75.75 0 0 0 .98.98l2.047-.848a2.75 2.75 0 0 0 .892-.596l4.261-4.262a1.75 1.75 0 0 0 0-2.474Z" />
-                                    <path d="M4.75 3.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h6.5c.69 0 1.25-.56 1.25-1.25V9A.75.75 0 0 1 14 9v2.25A2.75 2.75 0 0 1 11.25 14h-6.5A2.75 2.75 0 0 1 2 11.25v-6.5A2.75 2.75 0 0 1 4.75 2H7a.75.75 0 0 1 0 1.5H4.75Z" />
-                                 </svg>
-                              </a>
-                              <button hx-delete="{{ transformation.get_delete_url }}" hx-swap="outerHTML" hx-target="#main_body" hx-indicator="#body_spinner" hx-confirm="Are you sure you want to delete this purchase recieve?" class="text-gray-600 bg-gray-100 px-1 py-1 border border-gray-300 rounded-md">
-                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                                 </svg>
-                              </button> {% endcomment %}
-                              {% block void %}
-                                 <div id="void">
-                                    {% if not can_void %}
-                                       <div class="flex items-center gap-2 text-red-600 bg-red-50 px-3 py-1.5 border border-red-200 rounded-md text-sm font-medium opacity-75 cursor-not-allowed">
-                                          <svg xmlns="http://www.w3.org/2000/svg"
-                                               fill="none"
-                                               viewBox="0 0 24 24"
-                                               stroke-width="1.5"
-                                               stroke="currentColor"
-                                               class="w-5 h-5">
-                                             <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                          </svg>
-                                          <span>Voided</span>
-                                       </div>
-                                    {% else %}
-                                       <button hx-post="{{ transformation.get_void_url }}"
-                                               hx-target="#void"
-                                               hx-swap="outerHTML"
-                                               hx-confirm="Are you sure you want to void this transformation? This action cannot be undone."
-                                               class="flex items-center gap-2 text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 border border-red-200 rounded-md transition-colors duration-200 text-sm font-medium">
-                                          <svg xmlns="http://www.w3.org/2000/svg"
-                                               fill="none"
-                                               viewBox="0 0 24 24"
-                                               stroke-width="1.5"
-                                               stroke="currentColor"
-                                               class="w-5 h-5">
-                                             <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                          </svg>
-                                          <span>Void</span>
-                                       </button>
-                                    {% endif %}
-                                 </div>
-                              {% endblock void %}
-                              <button onclick="history.back()"
-                                      class="text-gray-600 hover:text-gray-600 transition-colors">
-                                 <svg xmlns="http://www.w3.org/2000/svg"
-                                      fill="none"
-                                      viewBox="0 0 24 24"
-                                      stroke-width="1.5"
-                                      stroke="currentColor"
-                                      class="size-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                 </svg>
-                              </button>
-                           </div>
-                        </div>
-                     </div>
-                  {% endblock _header %}
-                  {% block _content %}
-                     <div id="_content"
-                          class="flex-1 pb-10 h-screen overflow-y-auto flex flex-col bg-gray-50">
-                        <div class="flex-1 p-6 mb-16">
-                           <div class="bg-white shadow-sm max-w-5xl mx-auto mb-16">
-                              <!-- Header Section -->
-                              <div class="flex justify-between items-start p-8 border-b border-gray-200">
-                                 <div>
-                                    <h1 class="text-2xl font-bold text-gray-900 mb-2">TRANSFORMATIONS</h1>
-                                    <div>
-                                       <span class="px-2 py-0.5 bg-green-600 text-sm font-medium {{ transformation.status | status_color }} ml-0 uppercase">{{ transformation.status }}</span>
-                                    </div>
-                                 </div>
-                              </div>
-                              <!-- Status and Info Section -->
-                              <div class="p-8 border-b border-gray-200">
-                                 <div class="flex gap-8">
-                                    <div class="flex-none">
-                                       <div class="flex items-center gap-4 mb-2">
-                                          <span class="text-sm font-medium text-gray-600 w-32">Date</span>
-                                          <span class="text-gray-900 text-sm">{{ transformation.transformation_date | date:"j F Y" }}</span>
-                                       </div>
-                                       <div class="flex items-center gap-4">
-                                          <span class="text-sm font-medium text-gray-600 w-32">Service Cost</span>
-                                          <span class="text-gray-900 text-sm">NGN {{ transformation.service_fee | floatformat:2|intcomma }}</span>
-                                       </div>
-                                    </div>
-                                 </div>
-                              </div>
-                              <!-- Items Table -->
-                              <div class="p-8">
-                                 <table class="w-full">
-                                    <thead class="bg-gray-100">
-                                       <tr class="border-b border-gray-200">
-                                          <th class="text-left px-4 py-3 text-sm font-medium text-gray-600 uppercase tracking-wide">Product</th>
-                                          <th class="text-right px-4 py-3 text-sm font-medium text-gray-600 uppercase tracking-wide">Item No#</th>
-                                          <th class="text-right px-4 py-3 text-sm font-medium text-gray-600 uppercase tracking-wide">Engine No#</th>
-                                          <th class="text-right px-4 py-3 text-sm font-medium text-gray-600 uppercase tracking-wide">Chassis No#</th>
-                                          <th class="text-right px-4 py-3 text-sm font-medium text-gray-600 uppercase tracking-wide">Status</th>
-                                       </tr>
-                                    </thead>
-                                    <tbody>
-                                       {% for item in transformation.transformation_items.all %}
-                                          <tr class="border-b border-gray-100">
-                                             <td class="px-4 py-4">
-                                                <p class="text-sm font-medium text-blue-600 uppercase">{{ item.target_product.modelname }}</p>
-                                             </td>
-                                             <td class="text-right px-4 py-4">
-                                                <p class="text-sm text-gray-900 uppercase">{{ item.item_number }}</p>
-                                             </td>
-                                             <td class="text-right px-4 py-4">
-                                                <p class="text-sm text-gray-900 uppercase">{{ item.engine_number }}</p>
-                                             </td>
-                                             <td class="text-right px-4 py-4">
-                                                <p class="text-sm text-gray-900 uppercase">{{ item.chassis_number }}</p>
-                                             </td>
-                                             <td class="text-right px-4 py-4">
-                                                <p class="text-sm text-gray-900 uppercase {{ item.status|status_color }}">{{ item.status }}</p>
-                                             </td>
-                                          </tr>
-                                       {% endfor %}
-                                    </tbody>
-                                 </table>
-                              </div>
-                           </div>
-                        </div>
-                     </div>
-                  {% endblock _content %}
-               {% endblock main_content %}
-            </div>
-         </div>
+  {% partialdef transformation-detail-partial inline %}
+  <div class="p-6 lg:p-8 max-w-5xl mx-auto"
+       id="transformation-detail-partial"
+       hx-get="{{ request.get_full_path }}"
+       hx-trigger="transformationDetailChanged from:body"
+       hx-swap="outerHTML">
+    {# Header #}
+    <div class="flex items-center gap-3 mb-8">
+      <a href="{% url 'transformations' %}"
+         hx-target="#transformation-detail-partial"
+         hx-swap="outerHTML"
+         class="btn-back mt-1">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+      <div class="flex-1">
+        <div class="flex items-center gap-3">
+          <h1 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">{{ transformation.transformation_number|upper }}</h1>
+          {% if transformation.status == 'active' %}
+            <span class="badge badge-active">Active</span>
+          {% else %}
+            <span class="badge badge-voided">Voided</span>
+          {% endif %}
+        </div>
+        <p class="text-slate-400 text-sm mt-1 font-medium">{{ transformation.transformation_date|date:"j F Y" }}</p>
       </div>
-   </div>
+      <div id="void">
+        {% if not can_void %}
+          <div class="flex items-center gap-2 text-rose-600 bg-rose-50 px-3 py-1.5 border border-rose-200 rounded-md text-sm font-medium opacity-75 cursor-not-allowed">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            <span>Voided</span>
+          </div>
+        {% else %}
+          <button hx-get="{% url 'modal_void_transformation' transformation.pk %}"
+                  hx-target="#modal_container"
+                  hx-swap="innerHTML"
+                  class="btn-danger btn-sm">Void Job</button>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Info cards #}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8 stat-grid">
+      <div class="stat-card">
+        <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Items Assembled</div>
+        <div class="amount text-2xl lg:text-3xl font-semibold text-slate-900">{{ transformation.total_transformed_qty }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Service Fee</div>
+        <div class="amount text-2xl lg:text-3xl font-semibold text-slate-900">₦{{ transformation.service_fee|floatformat:0|intcomma }}</div>
+        <div class="text-xs text-slate-400 mt-2">₦{{ transformation.service_fee|floatformat:0|intcomma }} per item</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Date</div>
+        <div class="amount text-2xl lg:text-3xl font-semibold text-slate-900">{{ transformation.transformation_date|date:"j M Y" }}</div>
+      </div>
+    </div>
+
+    {# Items table #}
+    <div class="card overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <div class="font-bold text-sm text-slate-800">Assembled Items</div>
+        <div class="text-xs text-slate-400 font-medium">{{ transformation.transformation_items.count }} total</div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="text-left">Item #</th>
+              <th class="text-left">Product</th>
+              <th class="text-left">Engine #</th>
+              <th class="text-left">Chassis #</th>
+              <th class="text-right">Unit Cost</th>
+              <th class="text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in transformation.transformation_items.all %}
+            <tr>
+              <td class="font-mono text-xs text-slate-400">{{ item.item_number }}</td>
+              <td class="font-medium text-slate-700 uppercase">{{ item.target_product.modelname }}</td>
+              <td class="font-mono text-xs">{{ item.engine_number }}</td>
+              <td class="font-mono text-xs">{{ item.chassis_number }}</td>
+              <td class="text-right amount text-slate-600">₦{{ item.unit_cost_at_transformation|floatformat:0|intcomma }}</td>
+              <td class="text-center">
+                {% if item.status == 'available' %}
+                  <span class="badge badge-available">Available</span>
+                {% elif item.status == 'sold' %}
+                  <span class="badge badge-sold">Sold</span>
+                {% elif item.status == 'reserved' %}
+                  <span class="badge badge-reserved">Reserved</span>
+                {% else %}
+                  <span class="badge badge-voided">{{ item.status|title }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endpartialdef %}
 {% endblock content %}

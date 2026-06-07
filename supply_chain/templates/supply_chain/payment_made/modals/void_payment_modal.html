@@ -1,0 +1,49 @@
+{% load humanize %}
+<div id="modal-backdrop"
+     class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+
+  <div id="modal-dialog"
+       class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto"
+       hx-target="this">
+
+    <div class="flex justify-between items-center mb-5">
+      <h3 class="font-bold text-lg text-slate-800">Void Payment {{ payment.trxn_ref }}?</h3>
+      <button id="modal-close-btn"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="alert-danger mb-5">
+      <div class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-3">What voiding this payment will do</div>
+      <ul class="text-sm text-rose-700 space-y-1.5 font-medium">
+        <li>&#8226; <span class="amount font-bold">₦{{ payment.amount_paid|floatformat:0|intcomma }}</span> will be reversed</li>
+        <li>&#8226; Purchase Order {{ payment.purchase_order.po_number }} payment status will be recalculated</li>
+      </ul>
+    </div>
+
+    {% if error %}
+      <div class="text-xs text-rose-600 bg-rose-50 rounded-lg px-3 py-2 mb-4">
+        {{ error }}
+      </div>
+    {% endif %}
+
+    <form hx-post="{% url 'modal_void_payment' payment.pk %}"
+          hx-target="#modal-dialog"
+          hx-swap="innerHTML">
+      {% csrf_token %}
+      <div class="mb-5">
+        <label class="field-label">Reason for voiding <span class="text-rose-500">*</span></label>
+        <textarea name="void_reason"
+                  class="field-input resize-none"
+                  rows="2"
+                  required
+                  placeholder="Required — e.g. Payment was made in error…"></textarea>
+      </div>
+      <div class="flex gap-3">
+        <button type="button" id="modal-cancel-btn" class="btn-secondary flex-1">Cancel</button>
+        <button type="submit" class="btn-danger flex-1 shadow-md shadow-rose-600/15">Confirm Void</button>
+      </div>
+    </form>
+  </div>
+</div>

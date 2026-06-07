@@ -72,7 +72,7 @@
       {% else %}
         <div class="card card-p mb-6">
           <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-5">Customer Account</div>
-          <select name="account" class="field-select" required>
+          <select name="account" class="field-select select2-customer" required data-placeholder="Select a customer account">
             <option value="">Select a customer account</option>
             {% for acc in form.account.field.queryset %}
               <option value="{{ acc.pk }}"
@@ -90,7 +90,7 @@
          <input type="date"
                 name="date"
                 class="field-input"
-                value="{% if form.date.value %}{{ form.date.value }}{% else %}{% now 'Y-m-d' %}{% endif %}">
+                value="{% if form.date.value %}{{ form.date.value|date:'Y-m-d'|default:form.date.value }}{% else %}{% now 'Y-m-d' %}{% endif %}">
          {% if form.date.errors %}
            {% for error in form.date.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
          {% endif %}
@@ -146,63 +146,6 @@
       </div>
     </form>
   </div>
-  <script>
-    function updateAgreementTotal() {
-      let total = 0;
-      document.querySelectorAll('.item-form-row').forEach(function (row) {
-        // Skip rows marked for deletion
-        const deleteInput = row.querySelector('input[name$="-DELETE"]');
-        if (deleteInput && deleteInput.checked) return;
 
-        const qty = parseFloat(
-          row.querySelector('input[name$="-quantity_ordered"]')?.value
-        ) || 0;
-        const price = parseFloat(
-          row.querySelector('input[name$="-price_per_unit"]')?.value
-        ) || 0;
-        total += qty * price;
-      });
-
-      const totalEl = document.getElementById('agreement-total');
-      if (totalEl) {
-        totalEl.textContent = '₦' + total.toLocaleString('en-NG', {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0,
-        });
-      }
-
-      const balanceAfterEl = document.getElementById('balance-after');
-      const availableEl = document.getElementById('balance-after-row');
-      if (balanceAfterEl && availableEl) {
-        const available = parseFloat(availableEl.dataset.available || '0');
-        const remaining = available - total;
-        balanceAfterEl.textContent = '₦' + remaining.toLocaleString('en-NG', {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0,
-        });
-        balanceAfterEl.classList.toggle('text-rose-600', remaining < 0);
-        balanceAfterEl.classList.toggle('text-slate-800', remaining >= 0);
-      }
-    }
-
-    // Recalculate when user types in quantity or price fields
-    document.addEventListener('input', function (e) {
-      if (
-        e.target.name?.endsWith('-quantity_ordered') ||
-        e.target.name?.endsWith('-price_per_unit')
-      ) {
-        updateAgreementTotal();
-      }
-    });
-
-    // Recalculate after HTMX swaps in the formset container (add/remove row)
-    document.addEventListener('htmx:afterSwap', function (e) {
-      if (e.detail.target?.id === 'formset-container') {
-        updateAgreementTotal();
-      }
-    });
-
-    document.addEventListener('DOMContentLoaded', updateAgreementTotal);
-  </script>
 {% endpartialdef %}
 {% endblock content %}

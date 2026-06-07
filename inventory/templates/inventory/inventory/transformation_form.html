@@ -1,136 +1,161 @@
 {% extends 'index.html' %}
-{% load static %}
-{% load widget_tweaks %}
+{% load static widget_tweaks %}
 {% block content %}
-   {% include "partials/spinner.html" with id="body_spinner" %}
-   <div class="flex h-full flex-col" id="main_body">
-      <form hx-boost="true"
-            action="{{ form_action_url }}"
-            method="post"
-            hx-push-url="true"
-            hx-target="#main_body"
-            hx-indicator="#body_spinner"
-            class="flex flex-col h-full">
-         <div class="flex-none bg-white py-5 px-5 h-20">
-            <div class="flex justify-between items-center">
-               <h1 class="flex items-center text-2xl font-normal text-gray-900">
-                  <svg xmlns="http://www.w3.org/2000/svg"
-                       fill="none"
-                       viewBox="0 0 24 24"
-                       stroke-width="1.5"
-                       stroke="currentColor"
-                       class="size-6 mr-2">
-                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                  </svg>
-                  New Transformation
-               </h1>
-               <button onclick="history.back()"
-                       class="text-gray-600 hover:text-gray-600 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg"
-                       fill="none"
-                       viewBox="0 0 24 24"
-                       stroke-width="1.5"
-                       stroke="currentColor"
-                       class="size-6">
-                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                  </svg>
-               </button>
-            </div>
-         </div>
-         {% include "supply_chain/po/partials/error.html" with form=tranformation_form formset=item_formset %}
-         <div class="flex-none bg-gray-50 py-5 px-5 h-40">
-            <div class="flex items-center gap-4 max-w-2xl mt-3">
-               <label for="{{ transformation_form.transformation_date.id_for_label }}"
-                      class="text-sm font-normal text-gray-600 w-32 flex-shrink-0">Date</label>
-               <div class="flex-1">
-                  {% render_field transformation_form.transformation_date class="w-full font-light px-3 py-1.5 bg-white border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none" %}
-               </div>
-            </div>
-            <div class="flex items-center gap-4 max-w-2xl mt-3">
-               <label for="{{ transformation_form.service_fee.id_for_label }}"
-                      class="text-sm font-normal text-gray-600 w-32 flex-shrink-0">Service Fee</label>
-               <div class="flex-1">
-                  {% render_field transformation_form.service_fee class="w-full font-light px-3 py-1.5 bg-white border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none" %}
-               </div>
-            </div>
-         </div>
-         <div class="flex-1 overflow-y-auto px-5 pb-20">
-            <div class="bg-white mt-5 py-5 max-w-4xl">
-               <div class="mb-6">
-                  <div class="border-t border-b rounded-t-xl bg-gray-50 w-179.5">
-                     <h3 class="text-sm font-normal text-gray-900 pl-3 py-2">Item Table</h3>
+  {% partialdef transformation-form-partial inline %}
+  <div class="p-6 lg:p-8 max-w-4xl mx-auto" id="transformation-form-partial">
+    <div class="flex items-center gap-3 mb-8">
+      <a href="{% url 'transformations' %}"
+         class="btn-back mt-1"
+         hx-target="#transformation-form-partial"
+         hx-swap="outerHTML">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </a>
+      <h1 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">New Transformation</h1>
+    </div>
+    <form id="transformation-form"
+          hx-post="{% url "add_transformation" %}"
+          hx-target="#transformation-form-partial"
+          hx-swap="outerHTML">
+      {% if transformation_form.non_field_errors %}
+        <div class="alert-danger mb-4">
+          <div class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-1">Form Errors</div>
+          {% for error in transformation_form.non_field_errors %}
+            <p class="text-sm text-rose-700 font-medium">{{ error }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% if formset.non_form_errors %}
+        <div class="alert-danger mb-4">
+          <div class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-1">Line Item Errors</div>
+          {% for error in formset.non_form_errors %}<p class="text-sm text-rose-700 font-medium">{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+      {% if transformation_form.errors or formset.errors %}
+        <div class="text-xs text-rose-600 bg-rose-50 rounded-lg px-3 py-2 mb-4">
+          Please correct the errors highlighted below.
+        </div>
+      {% endif %}
+      <div class="card card-p mb-6">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-5">Transformation Details</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="field-label">Date</label>
+            {% render_field transformation_form.transformation_date class="field-input" %}
+            {% if transformation_form.transformation_date.errors %}
+              {% for error in transformation_form.transformation_date.errors %}
+                <p class="text-xs text-rose-600 mt-1">{{ error }}</p>
+              {% endfor %}
+            {% endif %}
+          </div>
+          <div>
+            <label class="field-label">Service Fee</label>
+            {% render_field transformation_form.service_fee class="field-input" placeholder="0.00" %}
+            {% if transformation_form.service_fee.errors %}
+              {% for error in transformation_form.service_fee.errors %}
+                <p class="text-xs text-rose-600 mt-1">{{ error }}</p>
+              {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="card card-p mb-6">
+        <div class="flex items-center justify-between mb-5">
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Items</div>
+        </div>
+        {% partialdef transformation-formset-partial inline %}
+        <div id="formset-container">
+          {{ formset.management_form }}
+          <div class="space-y-4" id="items-container">
+            {% for form in formset %}
+              <div class="item-form-row border border-slate-200 rounded-xl p-5
+                          {% if form.errors %}border-rose-300 bg-rose-50{% endif %}">
+                {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
+                  <div class="sm:col-span-5">
+                    <label class="field-label">Product</label>
+                    <select name="{{ form.source_product.html_name }}"
+                            class="field-select select2-product"
+                            required
+                            data-placeholder="Select a product to transform">
+                      <option value="">Select a product to transform</option>
+                      {% for product in form.source_product.field.queryset %}
+                        <option value="{{ product.pk }}"
+                                {% if form.source_product.value|stringformat:"s" == product.pk|stringformat:"s" %}selected{% endif %}>
+                          {{ product.brand.name|upper }} - {{ product.modelname|upper }} - {{ product.type_variant|upper }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                    {% if form.source_product.errors %}
+                      {% for error in form.source_product.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
+                    {% endif %}
                   </div>
-                  <div class="overflow-x-auto">
-                     <table class="w-full table-fixed">
-                        <thead class="bg-white">
-                           <tr>
-                              <th class="w-2/5 pl-2 pr-2 py-2 text-left text-xs font-normal text-gray-800 uppercase tracking-wider border-b border-r">
-                                 Product
-                              </th>
-                              <th class="w-1/5 px-2 py-2 text-right text-xs font-normal text-gray-800 uppercase tracking-wider border-b border-r">
-                                 engine no#
-                              </th>
-                              <th class="w-1/5 px-2 py-2 text-right text-xs font-normal text-gray-800 uppercase tracking-wider border-b">
-                                 chassis no#
-                              </th>
-                              <th class="w-1/5 px-4 py-2 text-left text-xs font-normal text-gray-800 uppercase tracking-wider"></th>
-                           </tr>
-                        </thead>
-                        <tbody id="items-container" class="bg-white divide-y divide-gray-200">
-                           {{ item_formset.management_form }}
-                           {% for form in item_formset %}
-                              {% block formset %}
-                                 <tr class="item-form-row border-b-0
-                                            {% if form.errors %}bg-red-50{% endif %}">
-                                    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
-                                    <td class="px-2 py-2 border-r border-b">
-                                       {% render_field form.source_product class="w-full text-sm text-gray-700 font-light px-2 py-1 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none" required=form.product.field.required %}
-                                    </td>
-                                    <td class="px-2 py-2 border-r border-b">
-                                       {% render_field form.engine_number placeholder="engine no#" class="w-full px-2 py-1 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-right" required=form.engine_number.field.required %}
-                                    </td>
-                                    <td class="px-2 py-2 border-r border-b">
-                                       {% render_field form.chassis_number placeholder="chassis no#" class="w-full px-2 py-1 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-right" required=form.chassis_number.field.required %}
-                                    </td>
-                                    <td class="px-4 py-2">
-                                       <button type="button" class="remove-form-row text-red-600 hover:text-red-800">
-                                          <svg xmlns="http://www.w3.org/2000/svg"
-                                               viewBox="0 0 20 20"
-                                               fill="currentColor"
-                                               class="size-5">
-                                             <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-                                          </svg>
-                                       </button>
-                                    </td>
-                                 </tr>
-                              {% endblock formset %}
-                           {% endfor %}
-                        </tbody>
-                     </table>
+                  <div class="sm:col-span-3">
+                    <label class="field-label">Engine No#</label>
+                    <input type="text"
+                           name="{{ form.engine_number.html_name }}"
+                           class="field-input"
+                           placeholder="Engine number"
+                           required
+                           value="{{ form.engine_number.value|default:'' }}">
+                    {% if form.engine_number.errors %}
+                      {% for error in form.engine_number.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
+                    {% endif %}
                   </div>
-                  <div class="mt-2">
-                     <button type="button"
-                             id="add-item-btn"
-                             hx-get="{% url 'item_form' %}"
-                             hx-target="#items-container"
-                             hx-swap="beforeend"
-                             hx-indicator="this"
-                             hx-push-url="false"
-                             class="add-form-row text-blue-500 bg-gray-200 font-light rounded-md text-sm px-2 py-1 text-center inline-flex items-center me-2 mb-2">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                             viewBox="0 0 16 16"
-                             fill="currentColor"
-                             class="size-6 **bg-blue-500 rounded-md p-1 mr-1">
-                           <path fill-rule="evenodd" d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14Zm.75-10.25v2.5h2.5a.75.75 0 0 1 0 1.5h-2.5v2.5a.75.75 0 0 1-1.5 0v-2.5h-2.5a.75.75 0 0 1 0-1.5h2.5v-2.5a.75.75 0 0 1 1.5 0Z" clip-rule="evenodd" />
-                        </svg>
-                        Add New Row
-                     </button>
+                  <div class="sm:col-span-3">
+                    <label class="field-label">Chassis No#</label>
+                    <input type="text"
+                           name="{{ form.chassis_number.html_name }}"
+                           class="field-input"
+                           placeholder="Chassis number"
+                           required
+                           value="{{ form.chassis_number.value|default:'' }}">
+                    {% if form.chassis_number.errors %}
+                      {% for error in form.chassis_number.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
+                    {% endif %}
                   </div>
-               </div>
-            </div>
-         </div>
-         {% url 'purchases' as cancel_url %}
-         {% include 'partials/form_buttons.html' with cancel_url=cancel_url %}
-      </form>
-   </div>
+                  <div class="sm:col-span-1 flex items-end justify-center">
+                    <button type="button"
+                            hx-post="{% url 'transformation_item_remove' forloop.counter0 %}"
+                            hx-include="closest form"
+                            hx-target="#formset-container"
+                            hx-swap="outerHTML"
+                            class="remove-form-row w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                            title="Remove line item">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="hidden">{{ form.DELETE }}</div>
+              </div>
+            {% endfor %}
+          </div>
+          <button type="button"
+                  hx-post="{% url 'transformation_item_add' %}"
+                  hx-include="closest form"
+                  hx-target="#formset-container"
+                  hx-swap="outerHTML"
+                  class="mt-4 text-sm text-brand-600 hover:text-brand-700 font-bold flex items-center gap-1.5 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Item
+          </button>
+        </div>
+      {% endpartialdef %}
+    </div>
+    <div class="flex gap-3">
+      <a href="{% url 'transformations' %}"
+         hx-target="#transformation-form-partial"
+         hx-swap="outerHTML"
+         class="btn-secondary flex-1 text-center">Cancel</a>
+      <button type="submit"
+              class="btn-primary flex-1 shadow-md shadow-brand-600/15">Create Transformation</button>
+    </div>
+  </form>
+</div>
+{% endpartialdef %}
 {% endblock content %}

@@ -80,13 +80,13 @@ Use `core.utils.audit(user, action, obj, detail=None, request=None)` from servic
 ### Cross-App Model Dependencies
 
 - `customer` models import from `inventory` (Product, TransformationItem, Inventory) and `account` (CustomUser)
-- `supply_chain` models import from `inventory` and uses `utils.utils.create_inventory_transaction`
-- `inventory` models import from `account` and `utils.utils`
+- `supply_chain` models import from `inventory` and uses `inventory.utils.create_inventory_transaction`
+- `inventory` models import from `account` and `inventory.utils`
 - `loan` models import from `customer` and `account`
 
 ### Inventory Transactions
 
-All stock movements create `InventoryTransaction` records via `utils.utils.create_inventory_transaction()`. Transaction types: receipt, sale, transformation, and their reversals.
+All stock movements create `InventoryTransaction` records via `inventory.utils.create_inventory_transaction()`. Transaction types: receipt, sale, transformation, and their reversals.
 
 ### HTMX Message Middleware
 

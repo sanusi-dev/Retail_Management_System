@@ -40,7 +40,9 @@
                 hx-target="#modal_container"
                 hx-swap="innerHTML"
                 class="btn-secondary btn-sm">New CFA</button>
-        <a href="{% url 'record_sale' %}?customer={{ customer.pk }}"
+        <a href="{% url 'create_normal_sale' %}?customer={{ customer.pk }}"
+            hx-target="#customer-detail-partial"
+              hx-swap="outerHTML"
            class="btn-primary btn-sm">New Sale</a>
       </div>
     </div>

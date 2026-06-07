@@ -10,7 +10,7 @@
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
       <h1 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">Sales</h1>
-      <a href="{% url 'record_sale' %}" class="btn-primary btn-sm"
+      <a href="{% url 'create_normal_sale' %}" class="btn-primary btn-sm"
       hx-target="#sales-list-partial"
       hx-swap="outerHTML">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,11 +76,9 @@
              hx-push-url="true"
              hx-include="[name='q'], [name='status'], [name='payment'], [name='date_from']">
       <a href="{% url 'sales' %}"
-         hx-get="{% url 'sales' %}"
-         hx-target="#sales-table-partial"
-         hx-push-url="true"
-         class="btn btn-xs text-slate-400 hover:text-rose-600 font-medium whitespace-nowrap transition-colors">
-        Clear filters
+         hx-target="#sales-list-partial"
+         class="text-xs text-slate-400 hover:text-rose-600 font-medium whitespace-nowrap transition-colors">
+        Clear
       </a>
     </div>
     {% partialdef sales-table-partial inline %}
@@ -90,11 +88,11 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>Sale #</th>
-                <th>Customer</th>
-                <th>Payment</th>
-                <th>Items</th>
-                <th>Date</th>
+                <th class="text-left">Sale #</th>
+                <th class="text-left">Customer</th>
+                <th class="text-left">Payment</th>
+                <th class="text-left">Items</th>
+                <th class="text-left">Date</th>
                 <th class="text-right">Total</th>
                 <th class="text-center">Status</th>
               </tr>
@@ -168,7 +166,7 @@
       </div>
       {% if sales.paginator.num_pages > 1 %}
         <div class="flex justify-end mt-4">
-          {% include 'partials/pagination.html' with page_obj=sales target="sales-table-partial" %}
+          {% include 'partials/pagination.html' with page_obj=sales hx_target="#sales-table-partial" %}
         </div>
       {% endif %}
     </div>

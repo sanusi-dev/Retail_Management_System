@@ -1,5 +1,4 @@
 {% load color_filters %}
-{% comment %} <div id="_content" class="flex-1 h-screen overflow-y-auto"> {% endcomment %}
 <div class="flex-1 overflow-y-auto min-h-0">
    <div class="m-6" x-data="{ open: false }">
       <button @click="open = !open"
@@ -30,9 +29,9 @@
                      <tr>
                         <th scope="col" class="px-6 py-3 border-b border-gray-200">Date</th>
                         <th scope="col" class="px-6 py-3 border-b border-gray-200">Purchase Order#</th>
-                        <th scope="col" class="px-6 py-3 border-b border-gray-200 text-right">Quantity</th>
-                        <th scope="col" class="px-6 py-3 text-right border-b border-gray-200">Price</th>
-                        <th scope="col" class="px-6 py-3 text-right border-b border-gray-200">Total</th>
+                        <th scope="col" class="text-right">Quantity</th>
+                        <th scope="col" class="!text-right border-b border-gray-200">Price</th>
+                        <th scope="col" class="!text-right border-b border-gray-200">Total</th>
                         <th scope="col" class="px-6 py-3 border-b border-gray-200">Status</th>
                      </tr>
                   </thead>
@@ -42,7 +41,7 @@
                            <tr class="bg-white border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
                                hx-get="{{ item.purchase_order.get_list_url }}"
                                hx-target="#main_body"
-                               hx-indicator="#body_spinner"
+                              
                                hx-push-url="true">
                               <td class="px-6 py-3 capitalize">{{ item.purchase_order.order_date|date:"j F Y g:i A" }}</td>
                               <td class="px-6 py-3 capitalize">{{ item.purchase_order.po_number }}</td>
@@ -94,9 +93,9 @@
                      <tr>
                         <th scope="col" class="px-6 py-3 border-b border-gray-200">Date</th>
                         <th scope="col" class="px-6 py-3 border-b border-gray-200">Purchase Order#</th>
-                        <th scope="col" class="px-6 py-3 border-b border-gray-200 text-right">Quantity</th>
-                        <th scope="col" class="px-6 py-3 text-right border-b border-gray-200">Price</th>
-                        <th scope="col" class="px-6 py-3 text-right border-b border-gray-200">Total</th>
+                        <th scope="col" class="text-right">Quantity</th>
+                        <th scope="col" class="!text-right border-b border-gray-200">Price</th>
+                        <th scope="col" class="!text-right border-b border-gray-200">Total</th>
                         <th scope="col" class="px-6 py-3 border-b border-gray-200">Status</th>
                      </tr>
                   </thead>
@@ -106,7 +105,7 @@
                            <tr class="bg-white border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
                                hx-get="{{ item.purchase_order.get_list_url }}"
                                hx-target="#main_body"
-                               hx-indicator="#body_spinner"
+                              
                                hx-push-url="true">
                               <td class="px-6 py-3 capitalize">{{ item.purchase_order.order_date|date:"j F Y g:i A" }}</td>
                               <td class="px-6 py-3 capitalize">{{ item.purchase_order.po_number }}</td>
@@ -158,9 +157,9 @@
                      <tr>
                         <th scope="col" class="px-6 py-3 border-b border-gray-200">Date</th>
                         <th scope="col" class="px-6 py-3 border-b border-gray-200">Purchase Order#</th>
-                        <th scope="col" class="px-6 py-3 border-b border-gray-200 text-right">Quantity</th>
-                        <th scope="col" class="px-6 py-3 text-right border-b border-gray-200">Price</th>
-                        <th scope="col" class="px-6 py-3 text-right border-b border-gray-200">Total</th>
+                        <th scope="col" class="text-right">Quantity</th>
+                        <th scope="col" class="!text-right border-b border-gray-200">Price</th>
+                        <th scope="col" class="!text-right border-b border-gray-200">Total</th>
                         <th scope="col" class="px-6 py-3 border-b border-gray-200">Status</th>
                      </tr>
                   </thead>
@@ -170,7 +169,7 @@
                            <tr class="bg-white border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
                                hx-get="{{ item.purchase_order.get_list_url }}"
                                hx-target="#main_body"
-                               hx-indicator="#body_spinner"
+                              
                                hx-push-url="true">
                               <td class="px-6 py-3 capitalize">{{ item.purchase_order.order_date|date:"j F Y g:i A" }}</td>
                               <td class="px-6 py-3 capitalize">{{ item.purchase_order.po_number }}</td>

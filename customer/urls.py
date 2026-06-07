@@ -8,25 +8,43 @@ urlpatterns = [
     path("transactions", customer_transactions, name="customer_transactions"),
     path("sales", sales, name="sales"),
     path("sale_detail/<uuid:pk>/", sale_detail, name="sale_detail"),
-    path("record_sale", record_sale, name="record_sale"),
+    path("sales/create-sale/", create_normal_sale, name="create_normal_sale"),
+    path(
+        "sales/normal/boxed-add/",
+        normal_sale_boxed_add,
+        name="normal_sale_boxed_add",
+    ),
+    path(
+        "sales/normal/boxed-remove/<int:index>/",
+        normal_sale_boxed_remove,
+        name="normal_sale_boxed_remove",
+    ),
+    path(
+        "sales/normal/coupled-add/",
+        normal_sale_coupled_add,
+        name="normal_sale_coupled_add",
+    ),
+    path(
+        "sales/normal/coupled-remove/<int:index>/",
+        normal_sale_coupled_remove,
+        name="normal_sale_coupled_remove",
+    ),
+    path(
+        "sales/normal/search-customers/",
+        search_customers_for_sale,
+        name="search_customers_for_sale",
+    ),
+    path(
+        "ajax/customer-select/",
+        ajax_customer_select,
+        name="ajax_customer_select",
+    ),
+    path(
+        "fulfill-agreement/<uuid:customer_id>/<uuid:agreement_id>/",
+        fulfill_agreement,
+        name="fulfill_agreement",
+    ),
     path("modal/void_sale/<uuid:pk>/", modal_void_sale, name="modal_void_sale"),
-    # path("search/customers/", search_customers, name="search_customers"),
-    # path("search/products/", search_products, name="search_products"),
-    # path(
-    #     "search/transformation_items/",
-    #     search_transformation_items,
-    #     name="search_transformation_items",
-    # ),
-    path(
-        "ajax/load-customer-agreements/",
-        load_customer_agreements,
-        name="ajax_load_customer_agreements",
-    ),
-    path(
-        "ajax/load-agreement-line-items/",
-        load_agreement_line_items,
-        name="ajax_load_agreement_line_items",
-    ),
     path(
         "add_purchase_agreement",
         manage_purchase_agreements,

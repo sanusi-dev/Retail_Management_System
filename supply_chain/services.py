@@ -44,8 +44,8 @@ def process_receipt(form, formset, user):
     Replaces update_inventory, create_inventory_trxn, update_po_status,
     update_po_item_status signals.
     """
-    from inventory.models import Inventory, InventoryTransaction
-    from utils.utils import create_inventory_transaction
+    from inventory.models import Inventory, InventoryTransaction, InventoryCostLayer
+    from inventory.utils import create_inventory_transaction
 
     with transaction.atomic():
         receipt = form.save(commit=False)
@@ -91,6 +91,15 @@ def process_receipt(form, formset, user):
             inventory.weighted_average_cost = wac
             inventory.save(update_fields=["quantity", "weighted_average_cost", "updated_at"])
 
+            # Create FIFO cost layer for this receipt batch
+            InventoryCostLayer.objects.create(
+                product=item.product,
+                quantity=qty,
+                remaining_quantity=qty,
+                unit_cost=cost,
+                goods_receipt_item=item,
+            )
+
             # Create inventory transaction (replaces create_inventory_trxn signal)
             if not item.reverses:
                 create_inventory_transaction(
@@ -117,7 +126,7 @@ def can_void_receipt(receipt):
         current_qty = item.product.inventory.quantity
         if current_qty < item.received_quantity:
             return False
-    return True
+    return True 
 
 
 def void_and_correct(receipt_id, user, request=None):
@@ -126,8 +135,8 @@ def void_and_correct(receipt_id, user, request=None):
     Replaces reverse_inventory_on_receipt_void, update_po_status,
     update_po_item_status signals.
     """
-    from inventory.models import Inventory, InventoryTransaction
-    from utils.utils import create_inventory_transaction
+    from inventory.models import Inventory, InventoryTransaction, InventoryCostLayer
+    from inventory.utils import create_inventory_transaction
 
     with transaction.atomic():
         receipt = (
@@ -139,6 +148,24 @@ def void_and_correct(receipt_id, user, request=None):
         for item in receipt.receipt_items.all():
             # Create reversal item (this already creates the InventoryTransaction via model method)
             item.create_reversal(user)
+
+            # Handle FIFO cost layer — mark as voided (one layer per receipt item)
+            from django.utils import timezone
+            cost_layer = InventoryCostLayer.objects.filter(
+                goods_receipt_item=item,
+            ).select_for_update().first()
+
+            if cost_layer:
+                if cost_layer.remaining_quantity < item.received_quantity:
+                    sold = item.received_quantity - cost_layer.remaining_quantity
+                    raise BusinessRuleViolation(
+                        f"Cannot void receipt: {sold} units from GR item {item.pk} "
+                        f"have already been sold and cannot be reversed."
+                    )
+                cost_layer.is_voided = True
+                cost_layer.remaining_quantity = 0
+                cost_layer.voided_at = timezone.now()
+                cost_layer.save(update_fields=["is_voided", "remaining_quantity", "voided_at"])
 
             # Restore inventory and recalculate WAC (replaces reverse_inventory signal)
             inventory = Inventory.objects.select_for_update().get(product=item.product)

@@ -1,0 +1,154 @@
+{% extends 'index.html' %}
+{% load static humanize audit_filters %}
+{% block content %}
+  {% partialdef auditlog-list-partial inline %}
+  <div class="p-6 lg:p-8 max-w-screen-xl mx-auto"
+       id="auditlog-list-partial"
+       hx-get="{{ request.get_full_path }}"
+       hx-trigger="auditLogChanged from:body"
+       hx-swap="outerHTML">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+      <div>
+        <h1 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">Audit Log</h1>
+        <p class="text-slate-400 text-sm mt-1 font-medium">
+          {{ logs.paginator.count }} entry{{ logs.paginator.count|pluralize:"ies" }} — all irreversible actions in the system
+        </p>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex flex-col sm:flex-row gap-3 mb-6 flex-wrap items-end">
+      <!-- Search -->
+      <div class="search-field relative flex-1 min-w-40 max-w-xs">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input type="text"
+               name="q"
+               value="{{ search_query|default:'' }}"
+               placeholder="Search actions…"
+               class="field-input"
+               hx-get="{% url 'audit_log' %}"
+               hx-push-url="true"
+               hx-target="#auditlog-table-partial"
+               hx-include="[name='action'], [name='user'], [name='start_date'], [name='end_date']"
+               hx-trigger="keyup changed delay:300ms, search">
+      </div>
+
+      <!-- Action filter -->
+      <select name="action"
+              class="field-select !w-auto"
+              hx-get="{% url 'audit_log' %}"
+              hx-target="#auditlog-table-partial"
+              hx-push-url="true"
+              hx-include="[name='user'], [name='start_date'], [name='end_date']">
+        <option value="" {% if not action_filter %}selected{% endif %}>All actions</option>
+        {% for act in distinct_actions %}
+          <option value="{{ act }}" {% if action_filter == act %}selected{% endif %}>{{ act }}</option>
+        {% endfor %}
+      </select>
+
+      <!-- User filter -->
+      <select name="user"
+              class="field-select !w-auto"
+              hx-get="{% url 'audit_log' %}"
+              hx-target="#auditlog-table-partial"
+              hx-push-url="true"
+              hx-include="[name='action'], [name='start_date'], [name='end_date']">
+        <option value="" {% if not user_filter %}selected{% endif %}>All users</option>
+        {% for u in distinct_users %}
+          <option value="{{ u.pk }}" {% if user_filter == u.pk|stringformat:'s' %}selected{% endif %}>
+            {{ u.get_full_name|default:u.username }}
+          </option>
+        {% endfor %}
+      </select>
+
+      <!-- Date range -->
+      <div class="flex gap-2">
+        <input type="date"
+               name="start_date"
+               value="{{ start_date }}"
+               class="field-input w-auto"
+               hx-get="{% url 'audit_log' %}"
+               hx-target="#auditlog-table-partial"
+               hx-push-url="true"
+               hx-include="[name='q'], [name='action'], [name='user'], [name='end_date']"
+               hx-trigger="change">
+        <input type="date"
+               name="end_date"
+               value="{{ end_date }}"
+               class="field-input w-auto"
+               hx-get="{% url 'audit_log' %}"
+               hx-target="#auditlog-table-partial"
+               hx-push-url="true"
+               hx-include="[name='q'], [name='action'], [name='user'], [name='start_date']"
+               hx-trigger="change">
+      </div>
+
+      <!-- Clear -->
+      <a href="{% url 'audit_log' %}"
+         hx-target="#auditlog-list-partial"
+         class="text-sm text-slate-400 hover:text-rose-600 font-medium whitespace-nowrap transition-colors mb-1">
+        Clear
+      </a>
+    </div>
+
+    <!-- Table -->
+    {% partialdef auditlog-table-partial inline %}
+    <div class="card overflow-hidden" id="auditlog-table-partial">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="text-left">Timestamp</th>
+              <th class="text-left">User</th>
+              <th class="text-left">Action</th>
+              <th class="text-left">Record</th>
+              <th class="text-left">Detail</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+              <tr>
+                <td class="text-slate-400 font-mono text-xs whitespace-nowrap">
+                  {{ log.timestamp|date:"j M Y H:i" }}
+                </td>
+                <td class="font-bold text-slate-800 whitespace-nowrap">
+                  {% if log.user %}
+                    {{ log.user.get_full_name|default:log.user.username|title }}
+                  {% else %}
+                    <span class="text-slate-400 font-normal">System</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge {{ log.action|audit_badge_class }}">{{ log.action }}</span>
+                </td>
+                <td>
+                  <span class="font-mono text-xs text-brand-600 font-bold">{{ log.object_repr }}</span>
+                  {% if log.object_type %}
+                    <span class="text-xs text-slate-400 block mt-0.5">{{ log.object_type }}</span>
+                  {% endif %}
+                </td>
+                <td class="text-xs text-slate-500 font-medium">
+                  {{ log.detail|format_audit_detail:log.action }}
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="py-16 text-center">
+                  <div class="text-slate-400 text-sm">No audit log entries found</div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="px-5 py-3 border-t border-slate-100">
+        {% include "partials/pagination.html" with page_obj=logs hx_target="#auditlog-table-partial" params=params %}
+      </div>
+    </div>
+  {% endpartialdef %}
+  </div>
+{% endpartialdef %}
+{% endblock %}

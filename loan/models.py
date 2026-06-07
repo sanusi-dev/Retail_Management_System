@@ -23,7 +23,6 @@ class Loan(models.Model):
     customer = models.ForeignKey(
         Customer, on_delete=models.PROTECT, related_name="customer_loans"
     )
-    # sale = models.ForeignKey(Sale, on_delete=models.PROTECT, related_name='loan_sales', null=True)
     loan_type = models.CharField(max_length=20, choices=LoanType)
     principal_amount = models.DecimalField(max_digits=10, decimal_places=2)
     loan_date = models.DateTimeField(auto_now_add=True)
@@ -50,23 +49,6 @@ class Loan(models.Model):
 
     def __str__(self):
         return str(self.loan_id)
-
-    # class Meta:
-    #     constraints = [
-    #         CheckConstraint(
-    #             check=(
-    #                 Q(loan_type="sales loan", sale_id__isnull=False)
-    #                 | Q(loan_type="normal loan", sale_id__isnull=True)
-    #             ),
-    #             name="chk_loan_type_sale_logic",
-    #         ),
-    #         CheckConstraint(
-    #             check=Q(principal_amount__gt=0), name="chk_positive_principal_amount"
-    #         ),
-    #         CheckConstraint(
-    #             check=(Q(due_date__gte=F("loan_date"))), name="chk_due_date_logic"
-    #         ),
-    #     ]
 
 
 class LoanRepayments(models.Model):

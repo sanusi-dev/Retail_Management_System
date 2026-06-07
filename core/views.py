@@ -1,4 +1,6 @@
-
+from core.models import AuditLog
+from account.models import CustomUser
+from django.core.paginator import Paginator
 from django.db.models import Sum, Count, F, Q, DecimalField, Value
 from django.db.models.functions import TruncMonth, TruncDay, Coalesce
 from django.utils import timezone
@@ -300,13 +302,100 @@ def dashboard(request):
     }
     
     if request.htmx:
-        return HttpResponse(
-            render_block_to_string(
-                "dashboard.html",
-                "content",
-                context,
-                request=request,
-            )
-        )
+        return render(request, "dashboard.html#dashboard-metrics-partial", context)
     
     return render(request, "dashboard.html", context)
+
+
+def audit_log(request):
+    search_query = request.GET.get("q", "")
+    action_filter = request.GET.get("action", "")
+    user_filter = request.GET.get("user", "")
+    start_date = request.GET.get("start_date", "")
+    end_date = request.GET.get("end_date", "")
+    sort_by = request.GET.get("sort", "newest")
+
+    logs = AuditLog.objects.select_related("user").all()
+
+    if search_query:
+        logs = logs.filter(
+            Q(action__icontains=search_query)
+            | Q(object_repr__icontains=search_query)
+            | Q(object_type__icontains=search_query)
+        )
+
+    if action_filter:
+        logs = logs.filter(action=action_filter)
+
+    if user_filter:
+        logs = logs.filter(user_id=user_filter)
+
+    if start_date:
+        logs = logs.filter(timestamp__date__gte=start_date)
+
+    if end_date:
+        logs = logs.filter(timestamp__date__lte=end_date)
+
+    if sort_by == "oldest":
+        logs = logs.order_by("timestamp")
+    else:
+        logs = logs.order_by("-timestamp")
+
+    PAGE_SIZE = 50
+    paginator = Paginator(logs, PAGE_SIZE)
+    page_number = request.GET.get("page", 1)
+    page_obj = paginator.get_page(page_number)
+
+    distinct_actions = (
+        AuditLog.objects.values_list("action", flat=True)
+        .distinct()
+        .order_by("action")
+    )
+    distinct_users = CustomUser.objects.filter(
+        auditlog__isnull=False
+    ).distinct().order_by("first_name", "last_name")
+
+    params = {}
+    if search_query:
+        params["q"] = search_query
+    if action_filter:
+        params["action"] = action_filter
+    if user_filter:
+        params["user"] = user_filter
+    if start_date:
+        params["start_date"] = start_date
+    if end_date:
+        params["end_date"] = end_date
+    if sort_by != "newest":
+        params["sort"] = sort_by
+
+    context = {
+        "logs": page_obj,
+        "search_query": search_query,
+        "action_filter": action_filter,
+        "user_filter": user_filter,
+        "start_date": start_date,
+        "end_date": end_date,
+        "sort_by": sort_by,
+        "distinct_actions": distinct_actions,
+        "distinct_users": distinct_users,
+        "params": params,
+    }
+
+    if request.htmx:
+        if any(
+            key in request.GET
+            for key in ["page", "q", "action", "user", "start_date", "end_date", "sort"]
+        ):
+            return render(
+                request,
+                "core/audit_log.html#auditlog-table-partial",
+                context,
+            )
+        return render(
+            request,
+            "core/audit_log.html#auditlog-list-partial",
+            context,
+        )
+
+    return render(request, "core/audit_log.html", context)

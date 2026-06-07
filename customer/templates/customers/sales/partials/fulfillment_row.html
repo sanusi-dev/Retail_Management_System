@@ -1,0 +1,56 @@
+{% load humanize %}
+<div class="item-form-row border border-slate-200 rounded-xl p-5
+            {% if form.errors %}border-rose-300 bg-rose-50{% endif %}">
+  {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+
+  {% if form.non_field_errors %}
+    <div class="text-xs text-rose-600 bg-rose-50 rounded-lg px-3 py-2 mb-3">
+      {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+    </div>
+  {% endif %}
+
+  {# ── Product header ── #}
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="font-bold text-sm text-slate-800">
+        {{ line_item.product.brand.name|title }} {{ line_item.product.modelname|title }}
+      </span>
+      <span class="text-xs text-slate-400 font-mono">
+        ₦{{ line_item.price_per_unit|floatformat:0|intcomma }}/unit
+      </span>
+    </div>
+    <div class="text-xs text-slate-400 font-medium">
+      Ordered: <span class="font-bold text-slate-700">{{ line_item.quantity_ordered }}</span>
+      · Remaining: <span class="font-bold text-brand-600">{{ line_item.remaining_quantity }}</span>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
+    {# Boxed quantity #}
+    <div class="sm:col-span-3">
+      <label class="field-label">Boxed Quantity</label>
+      <input type="number"
+             name="{{ form.quantity.html_name }}"
+             class="field-input font-mono"
+             placeholder="0"
+             min="0"
+             value="{{ form.quantity.value|default:'0' }}">
+      {% if form.quantity.errors %}
+        {% for error in form.quantity.errors %}
+          <p class="text-xs text-rose-600 mt-1">{{ error }}</p>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    {# Coupled units multi-select #}
+    <div class="sm:col-span-9">
+      <label class="field-label">Coupled Units <span class="text-slate-400 font-normal">(pick 1 or more serialized items)</span></label>
+      {{ form.transformation_items }}
+      {% if form.transformation_items.errors %}
+        {% for error in form.transformation_items.errors %}
+          <p class="text-xs text-rose-600 mt-1">{{ error }}</p>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+</div>

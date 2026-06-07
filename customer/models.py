@@ -13,14 +13,13 @@ from django.db.models import (
     Count,
 )
 from django.db.models.functions import Coalesce
-from django.utils import timezone
 from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 from decimal import Decimal, ROUND_HALF_UP
 from django.utils import timezone
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from inventory.models import Product, TransformationItem, Inventory
+from inventory.models import Product, TransformationItem, Inventory, InventoryCostLayer
 from django.urls import reverse
 
 
@@ -191,6 +190,7 @@ class DepositAccount(models.Model):
                 line_number=OuterRef("line_number"),
                 purchase_agreement__in=self.purchase_agreements.all(),
             )
+            .values("line_number")  # group across all versions
             .annotate(
                 active_boxed_sales=Coalesce(
                     Sum(
@@ -511,16 +511,16 @@ class PurchaseAgreement(models.Model):
 
     @property
     def total_allocated_amount(self):
-        amount = self.agreement_line_items.aggregate(
+        amount = self.agreement_line_items.filter(is_current_version=True).aggregate(
             total=Sum(F("quantity_ordered") * F("price_per_unit"))
         )
         return amount["total"] or Decimal("0.00")
 
     @property
     def total_quantity_ordered(self):
-        amount = self.agreement_line_items.aggregate(total=Sum(F("quantity_ordered")))[
-            "total"
-        ]
+        amount = self.agreement_line_items.filter(is_current_version=True).aggregate(
+            total=Sum(F("quantity_ordered"))
+        )["total"]
         return amount or Decimal("0.00")
 
     @property
@@ -532,7 +532,12 @@ class PurchaseAgreement(models.Model):
             + Count("coupled_sales", distinct=True)
         )["total"]
 
-        return total_boxed_and_coupled_sale
+        return total_boxed_and_coupled_sale or Decimal("0.00")
+
+    @property
+    def total_quantity_remaining(self):
+        remaining = self.total_quantity_ordered - self.total_quantity_fulfilled
+        return max(remaining, Decimal("0.00"))
 
     @property
     def total_received_percent(self):
@@ -1113,6 +1118,40 @@ class CoupledSale(models.Model):
         self.full_clean()
         super().save(*args, **kwargs)
 
+    @property
+    def profit(self):
+        cost = self.transformation_item.unit_cost_at_transformation or Decimal("0.00")
+        price = self.price or Decimal("0.00")
+        return price - cost
+
+
+class BoxedSaleLayerConsumption(models.Model):
+    """Tracks exactly which FIFO cost layers were consumed by a BoxedSale."""
+
+    boxed_sale = models.ForeignKey(
+        "BoxedSale",
+        on_delete=models.CASCADE,
+        related_name="layer_consumptions",
+    )
+    cost_layer = models.ForeignKey(
+        InventoryCostLayer,
+        on_delete=models.PROTECT,
+        related_name="sale_consumptions",
+    )
+    quantity_consumed = models.PositiveIntegerField()
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["boxed_sale"]),
+            models.Index(fields=["cost_layer"]),
+        ]
+
+    def __str__(self):
+        return f"Sale {self.boxed_sale.boxed_sale_number} — {self.quantity_consumed} @ {self.unit_cost}"
+
 
 class BoxedSale(models.Model):
     boxed_sale_id = models.UUIDField(
@@ -1128,6 +1167,10 @@ class BoxedSale(models.Model):
     )
     quantity = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    cost_basis = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        help_text="Total FIFO cost of units sold at sale time",
+    )
     agreement_line_item = models.ForeignKey(
         PurchaseAgreementLineItem,
         on_delete=models.PROTECT,
@@ -1252,3 +1295,11 @@ class BoxedSale(models.Model):
 
         self.full_clean()
         super().save(*args, **kwargs)
+
+    @property
+    def profit(self):
+        price = self.price or Decimal("0.00")
+        if self.cost_basis is not None:
+            return (price * self.quantity) - self.cost_basis
+        wac = self.product.inventory.weighted_average_cost or Decimal("0.00")
+        return (price - wac) * self.quantity

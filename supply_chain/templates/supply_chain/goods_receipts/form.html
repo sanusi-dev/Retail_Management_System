@@ -1,72 +1,123 @@
 {% extends 'index.html' %}
-{% load static %}
-{% load widget_tweaks %}
+{% load static humanize %}
 {% block content %}
-    {% include "partials/spinner.html" with id="body_spinner" %}
-    <div class="flex h-full flex-col" id="main_body">
-        <form hx-boost="true"
-              action="{{ form_action_url }}"
-              method="post"
-              hx-push-url="true"
-              hx-target="#main_body"
-              hx-indicator="#body_spinner"
-              class="flex flex-col h-full">
-            <div class="flex-none bg-white py-5 px-5 h-20">
-                <div class="flex justify-between items-center">
-                    <h1 class="flex text-2xl font-normal text-gray-900 items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                             fill="none"
-                             viewBox="0 0 24 24"
-                             stroke-width="1.5"
-                             stroke="currentColor"
-                             class="size-6 mr-2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 0 0-2.25 2.25v9a2.25 2.25 0 0 0 2.25 2.25h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25H15M9 12l3 3m0 0 3-3m-3 3V2.25" />
-                        </svg>
-                        New Purchase Receive
-                    </h1>
-                    <button onclick="history.back()"
-                            class="text-gray-600 hover:text-gray-600 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                             fill="none"
-                             viewBox="0 0 24 24"
-                             stroke-width="1.5"
-                             stroke="currentColor"
-                             class="size-6">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            {% include "supply_chain/po/partials/error.html" with form=form formset=formset %}
-            <div class="flex-none bg-gray-50 py-5 px-5 h-45">
-                <div class="flex items-center gap-4 max-w-2xl">
-                    <label for="{{ form.purchase_order.id_for_label }}"
-                           class="text-sm font-normal text-red-600 w-32 flex-shrink-0">Purchase Order#*</label>
-                    <div class="flex-1">
-                        {% url "receipt_item_form" as receipt_item_url %}
-                        {% render_field form.purchase_order class="w-full font-light px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 outline-none ml-10" hx-target="#formset-container" hx-swap="innerHTML" hx-trigger="change" hx-get=receipt_item_url hx-push-url="false" hx-indicator="#formset-container-spinner" %}
-                    </div>
-                </div>
-                <div class="flex items-center gap-4 max-w-2xl mt-3">
-                    <label for="{{ form.delivery_date.id_for_label }}"
-                           class="text-sm font-normal text-gray-600 w-32 flex-shrink-0">Receive Date</label>
-                    <div class="flex-1">
-                        {% render_field form.delivery_date class="w-full font-light px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none ml-10" %}
-                    </div>
-                </div>
-                <div class="flex items-center gap-4 max-w-2xl mt-3">
-                    <label for="{{ form.delivery_cost.id_for_label }}"
-                           class="text-sm font-normal text-gray-600 w-32 flex-shrink-0">Delivery Cost</label>
-                    <div class="flex-1">
-                        {% render_field form.delivery_cost class="w-full font-light px-3 py-1.5 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none ml-10" %}
-                    </div>
-                </div>
-            </div>
-            <div class="flex-1 overflow-y-auto px-5 pb-20" id="formset-container">
-                {% include "supply_chain/goods_receipts/partials/receipt_item_form.html" %}
-            </div>
-            {% url 'receipts' as cancel_url %}
-            {% include 'partials/form_buttons.html' with cancel_url=cancel_url %}
-        </form>
+  {% partialdef receipt-form-partial inline %}
+  <div class="p-6 lg:p-8 max-w-4xl mx-auto" id="receipt-form-partial">
+    <!-- Header -->
+    <div class="flex items-center gap-3 mb-8">
+      <a href="{% url 'receipts' %}"
+         class="btn-back mt-1"
+         hx-target="#receipt-form-partial"
+         hx-swap="outerHTML">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </a>
+      <h1 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">New Goods Receipt</h1>
     </div>
+    <!-- Form -->
+    <form id="receipt-form"
+          hx-post="{{ form_action_url }}"
+          hx-target="#receipt-form-partial"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      <!-- Non-field errors -->
+      {% if form.non_field_errors %}
+        <div class="alert-danger mb-4">
+          <div class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-1">Form Errors</div>
+          {% for error in form.non_field_errors %}<p class="text-sm text-rose-700 font-medium">{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+      {% if formset.non_form_errors %}
+        <div class="alert-danger mb-4">
+          <div class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-1">Line Item Errors</div>
+          {% for error in formset.non_form_errors %}<p class="text-sm text-rose-700 font-medium">{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+      {% if form.errors or formset.errors %}
+        <div class="text-xs text-rose-600 bg-rose-50 rounded-lg px-3 py-2 mb-4">
+          Please correct the errors highlighted below.
+        </div>
+      {% endif %}
+      <!-- Purchase Order Card -->
+      <div class="card card-p mb-6">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-5">Purchase Order</div>
+        {% url "receipt_item_form" as receipt_item_url %}
+        {% if purchase_order %}
+          <input type="hidden" name="purchase_order" value="{{ purchase_order.pk }}">
+          <div class="font-bold text-slate-800">{{ purchase_order.po_number }} — {{ purchase_order.supplier.company_name|title }}</div>
+        {% else %}
+          <select name="{{ form.purchase_order.html_name }}"
+                  class="field-select select2-enabled"
+                  required
+                  data-placeholder="Select a Purchase Order"
+                  hx-get="{{ receipt_item_url }}"
+                  hx-target="#formset-wrapper"
+                  hx-swap="innerHTML"
+                  hx-trigger="change"
+                  hx-push-url="false"
+                  hx-indicator=".receipt-spinner">
+            <option value="">Select a Purchase Order</option>
+            {% for po in form.purchase_order.field.queryset %}
+              <option value="{{ po.pk }}"
+                      {% if form.purchase_order.value|stringformat:"s" == po.pk|stringformat:"s" %}selected{% endif %}>
+                {{ po.po_number }} — {{ po.supplier.company_name|title }}
+              </option>
+            {% endfor %}
+          </select>
+        {% endif %}
+        {% if form.purchase_order.errors %}
+          {% for error in form.purchase_order.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
+        {% endif %}
+      </div>
+      <!-- Date & Cost Card -->
+      <div class="card card-p mb-6">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-5">Receipt Details</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label class="field-label">Delivery Date</label>
+            <input type="date"
+                   name="{{ form.delivery_date.html_name }}"
+                   class="field-input"
+                   value="{% if form.delivery_date.value %}{{ form.delivery_date.value|date:'Y-m-d'|default:form.delivery_date.value }}{% else %}{% now 'Y-m-d' %}{% endif %}">
+            {% if form.delivery_date.errors %}
+              {% for error in form.delivery_date.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
+            {% endif %}
+          </div>
+          <div>
+            <label class="field-label">Delivery Cost</label>
+            <input type="number"
+                   name="{{ form.delivery_cost.html_name }}"
+                   class="field-input font-mono"
+                   placeholder="0.00"
+                   step="0.01"
+                   min="0"
+                   value="{{ form.delivery_cost.value|default:'' }}">
+            {% if form.delivery_cost.errors %}
+              {% for error in form.delivery_cost.errors %}<p class="text-xs text-rose-600 mt-1">{{ error }}</p>{% endfor %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <!-- Items Card -->
+      <div class="card card-p mb-6">
+        <div class="flex items-center justify-between mb-5">
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Received Items</div>
+        </div>
+        <div id="formset-wrapper">
+          {% include "supply_chain/goods_receipts/partials/receipt_item_form.html" %}
+        </div>
+      </div>
+      <!-- Action Buttons -->
+      <div class="flex gap-3">
+        <a href="{% url 'receipts' %}"
+           hx-target="#receipt-form-partial"
+           hx-swap="outerHTML"
+           class="btn-secondary flex-1 text-center">Cancel</a>
+        <button type="submit"
+                class="btn-primary flex-1 shadow-md shadow-brand-600/15">Record Receipt</button>
+      </div>
+    </form>
+  </div>
+  {% endpartialdef %}
 {% endblock content %}

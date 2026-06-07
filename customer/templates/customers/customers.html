@@ -2,7 +2,8 @@
 {% load static humanize %}
 {% block content %}
   {% partialdef customer-list-partial inline %}
-  <div class="p-6 lg:p-8 max-w-screen-xl mx-auto" id="customer-list-partial"
+  <div class="p-6 lg:p-8 max-w-screen-xl mx-auto"
+       id="customer-list-partial"
        hx-get="{{ request.get_full_path }}"
        hx-trigger="customerCreated from:body"
        hx-swap="outerHTML">
@@ -26,9 +27,9 @@
       </button>
     </div>
     <!-- Filters -->
-    <div class="flex items-center gap-3 mb-6">
+    <div class="flex items-end gap-3 mb-6 flex-wrap">
       <!-- Search -->
-      <div class="search-field relative flex-1">
+      <div class="search-field relative flex-1 min-w-48 max-w-xs">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
@@ -45,7 +46,7 @@
       </div>
       <!-- Filter & Sort -->
       <select name="filter"
-              class="field-select flex-1"
+              class="field-select !w-auto"
               hx-get="{% url 'customers' %}"
               hx-target="#customerlist-table-partial"
               hx-push-url="true"
@@ -59,7 +60,7 @@
                 {% if filter_by == 'no_activity' %}selected{% endif %}>No activity (new)</option>
       </select>
       <select name="sort"
-              class="field-select flex-1"
+              class="field-select !w-auto"
               hx-get="{% url 'customers' %}"
               hx-target="#customerlist-table-partial"
               hx-push-url="true"
@@ -71,11 +72,9 @@
         <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Sort: Newest first</option>
       </select>
       <a href="{% url 'customers' %}"
-         hx-get="{% url 'customers' %}"
-         hx-target="#customerlist-table-partial"
-         hx-push-url="true"
-         class="text-xs text-slate-400 hover:text-rose-600 font-medium whitespace-nowrap transition-colors">
-        Clear filters
+         hx-target="#customer-list-partial"
+         class="text-sm text-slate-400 hover:text-rose-600 font-medium whitespace-nowrap transition-colors">
+        Clear
       </a>
     </div>
     <!-- Table -->
@@ -91,7 +90,7 @@
               <th class="text-right">Available</th>
               <th class="text-center">Agreements</th>
               <th class="text-center">CFA</th>
-              <th class="text-center">Sales</th>
+              <th class="text-right">Sales</th>
             </tr>
           </thead>
           <tbody id="table-body">
@@ -100,7 +99,7 @@
                   hx-target="#customer-list-partial"
                   hx-push-url="true"
                   class="cursor-pointer">
-                <td>
+                <td class="text-left">
                   <div class="font-bold text-slate-800">{{ customer.full_name|title }}</div>
                   <div class="text-xs text-slate-400 font-mono mt-0.5">
                     {{ customer.customer_number }} · {{ customer.phone|default:"N/A" }}
@@ -133,7 +132,7 @@
                     <span class="text-slate-300 text-xs">—</span>
                   {% endif %}
                 </td>
-                <td class="text-center text-sm text-slate-500 font-semibold">{{ customer.sale_count }}</td>
+                <td class="text-right text-sm text-slate-500 font-semibold">{{ customer.sale_count }}</td>
               </tr>
             {% empty %}
               <tr>

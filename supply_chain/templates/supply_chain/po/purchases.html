@@ -1,270 +1,188 @@
-{% extends "index.html" %}
-{% load static %}
-{% load color_filters %}
-{% load humanize %}
+{% extends 'index.html' %}
+{% load static humanize %}
 {% block content %}
-    {% include "partials/spinner.html" with id="body_spinner" %}
-    <div class="flex h-full flex-col" id="main_body">
-        {% block header %}
-            <div class="h-16 flex items-center justify-between px-6 gap-4 bg-white border-b border-gray-200">
-                <div class="flex items-center gap-4 flex-1">
-                    <!-- Search Bar -->
-                    <div class="relative w-full max-w-lg">
-                        <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-                            <svg class="w-4 h-4 text-gray-400"
-                                 aria-hidden="true"
-                                 xmlns="http://www.w3.org/2000/svg"
-                                 fill="none"
-                                 viewBox="0 0 20 20">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
-                            </svg>
-                        </div>
-                        <input type="search"
-                               name="q"
-                               value="{{ search_query|default:'' }}"
-                               class="block w-full py-2.5 pl-10 pr-4 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all placeholder:text-gray-400 focus:bg-white"
-                               placeholder="Search purchase orders..."
-                               hx-get="{% url 'purchases' %}"
-                               hx-target="#table_container"
-                               hx-indicator="#body_spinner"
-                               hx-push-url="true"
-                               hx-trigger="keyup changed delay:300ms, search">
-                    </div>
-                </div>
-                <!-- New PO Button -->
-                <a href="{% url 'add_po' %}"
-                   hx-boost="true"
-                   hx-target="#main_body"
-                   hx-indicator="#body_spinner"
-                   class="px-4 py-2.5 text-sm font-medium text-center inline-flex items-center text-white bg-brand-600 rounded-lg hover:bg-brand-700 focus:ring-4 focus:outline-none focus:ring-brand-300 transition-all shadow-md hover:shadow-lg whitespace-nowrap">
-                    <svg xmlns="http://www.w3.org/2000/svg"
-                         viewBox="0 0 20 20"
-                         fill="currentColor"
-                         class="w-4 h-4 mr-2">
-                        <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-                    </svg>
-                    New Purchase Order
-                </a>
-            </div>
-        {% endblock header %}
-        {% block body %}
-            <div id="table_container"
-                 class="relative flex flex-col h-[calc(100vh-8rem)] bg-gray-50/50">
-                <div class="flex-1 overflow-y-auto pb-25">
-                    <table class="w-full text-sm text-left text-gray-500">
-                        <thead class="text-xs text-gray-500 font-semibold uppercase bg-gray-50/50 border-b border-gray-200 sticky top-0 z-10 backdrop-blur-sm">
-                            <tr>
-                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                                    hx-get="{% url 'purchases' %}?sort=order_date&direction={% if sort_field == 'order_date' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
-                                    hx-target="#table_container"
-                                    hx-indicator="#body_spinner"
-                                    hx-push-url="true">
-                                   <div class="flex items-center gap-1">
-                                       Date
-                                       {% if sort_field == 'order_date' %}
-                                           {% if direction == 'asc' %}
-                                               <i class="fa-solid fa-sort-up"></i>
-                                           {% else %}
-                                               <i class="fa-solid fa-sort-down"></i>
-                                           {% endif %}
-                                       {% else %}
-                                           <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                                       {% endif %}
-                                   </div>
-                                </th>
-                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                                    hx-get="{% url 'purchases' %}?sort=po_number&direction={% if sort_field == 'po_number' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
-                                    hx-target="#table_container"
-                                    hx-indicator="#body_spinner"
-                                    hx-push-url="true">
-                                   <div class="flex items-center gap-1">
-                                       Purchase Order #
-                                       {% if sort_field == 'po_number' %}
-                                           {% if direction == 'asc' %}
-                                               <i class="fa-solid fa-sort-up"></i>
-                                           {% else %}
-                                               <i class="fa-solid fa-sort-down"></i>
-                                           {% endif %}
-                                       {% else %}
-                                           <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                                       {% endif %}
-                                   </div>
-                                </th>
-                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                                    hx-get="{% url 'purchases' %}?sort=supplier__company_name&direction={% if sort_field == 'supplier__company_name' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
-                                    hx-target="#table_container"
-                                    hx-indicator="#body_spinner"
-                                    hx-push-url="true">
-                                   <div class="flex items-center gap-1">
-                                       Supplier
-                                       {% if sort_field == 'supplier__company_name' %}
-                                           {% if direction == 'asc' %}
-                                               <i class="fa-solid fa-sort-up"></i>
-                                           {% else %}
-                                               <i class="fa-solid fa-sort-down"></i>
-                                           {% endif %}
-                                       {% else %}
-                                           <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                                       {% endif %}
-                                   </div>
-                                </th>
-                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider text-center cursor-pointer hover:bg-gray-100 transition-colors"
-                                    hx-get="{% url 'purchases' %}?sort=status&direction={% if sort_field == 'status' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
-                                    hx-target="#table_container"
-                                    hx-indicator="#body_spinner"
-                                    hx-push-url="true">
-                                   <div class="flex items-center justify-center gap-1">
-                                       Status
-                                       {% if sort_field == 'status' %}
-                                           {% if direction == 'asc' %}
-                                               <i class="fa-solid fa-sort-up"></i>
-                                           {% else %}
-                                               <i class="fa-solid fa-sort-down"></i>
-                                           {% endif %}
-                                       {% else %}
-                                           <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                                       {% endif %}
-                                   </div>
-                                </th>
-                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider text-center cursor-pointer hover:bg-gray-100 transition-colors"
-                                    hx-get="{% url 'purchases' %}?sort=delivery_status&direction={% if sort_field == 'delivery_status' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
-                                    hx-target="#table_container"
-                                    hx-indicator="#body_spinner"
-                                    hx-push-url="true">
-                                   <div class="flex items-center justify-center gap-1">
-                                       Delivery
-                                       {% if sort_field == 'delivery_status' %}
-                                           {% if direction == 'asc' %}
-                                               <i class="fa-solid fa-sort-up"></i>
-                                           {% else %}
-                                               <i class="fa-solid fa-sort-down"></i>
-                                           {% endif %}
-                                       {% else %}
-                                           <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                                       {% endif %}
-                                   </div>
-                                </th>
-                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider text-center cursor-pointer hover:bg-gray-100 transition-colors"
-                                    hx-get="{% url 'purchases' %}?sort=payment_status&direction={% if sort_field == 'payment_status' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
-                                    hx-target="#table_container"
-                                    hx-indicator="#body_spinner"
-                                    hx-push-url="true">
-                                   <div class="flex items-center justify-center gap-1">
-                                       Payment
-                                       {% if sort_field == 'payment_status' %}
-                                           {% if direction == 'asc' %}
-                                               <i class="fa-solid fa-sort-up"></i>
-                                           {% else %}
-                                               <i class="fa-solid fa-sort-down"></i>
-                                           {% endif %}
-                                       {% else %}
-                                           <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                                       {% endif %}
-                                   </div>
-                                </th>
-                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider text-right">Received</th>
-                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider text-right cursor-pointer hover:bg-gray-100 transition-colors"
-                                    hx-get="{% url 'purchases' %}?sort=total_amount&direction={% if sort_field == 'total_amount' and direction == 'asc' %}desc{% else %}asc{% endif %}&q={{ search_query }}"
-                                    hx-target="#table_container"
-                                    hx-indicator="#body_spinner"
-                                    hx-push-url="true">
-                                   <div class="flex items-center justify-end gap-1">
-                                       Total Amount
-                                       {% if sort_field == 'total_amount' %}
-                                           {% if direction == 'asc' %}
-                                               <i class="fa-solid fa-sort-up"></i>
-                                           {% else %}
-                                               <i class="fa-solid fa-sort-down"></i>
-                                           {% endif %}
-                                       {% else %}
-                                           <i class="fa-solid fa-sort text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                                       {% endif %}
-                                   </div>
-                                </th>
-                                <th scope="col" class="px-6 py-4 font-semibold tracking-wider text-right">Paid Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-sm font-light divide-y divide-gray-100" id="tbody">
-                            {% if purchases %}
-                                {% for po in purchases %}
-                                    <tr class="bg-white hover:bg-blue-50/50 cursor-pointer transition-colors duration-150 group"
-                                        hx-get="{{ po.get_absolute_url }}"
-                                        hx-target="#main_body"
-                                        hx-indicator="#body_spinner"
-                                        hx-push-url="true">
-                                        <!-- Date -->
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="flex flex-col">
-                                                <span class="text-xs font-medium text-gray-700">{{ po.order_date|date:"j M Y" }}</span>
-                                            </div>
-                                        </td>
-                                        <!-- PO Number -->
-                                        <td class="px-6 py-4 whitespace-nowrap font-mono text-xs font-medium text-blue-600 group-hover:underline">
-                                            {{ po.po_number|upper }}
-                                        </td>
-                                        <!-- Supplier -->
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="font-medium text-gray-800">{{ po.supplier.name|upper }}</span>
-                                        </td>
-                                        <!-- Status -->
-                                        <td class="px-6 py-4 text-center">
-                                            <span class="{{ po.status|status_color }} px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border border-opacity-20">
-                                                {{ po.status|upper }}
-                                            </span>
-                                        </td>
-                                        <!-- Delivery Status -->
-                                        <td class="px-6 py-4 text-center">
-                                            <span class="{{ po.delivery_status|status_color }} px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border border-opacity-20">
-                                                {{ po.delivery_status|upper }}
-                                            </span>
-                                        </td>
-                                        <!-- Payment Status -->
-                                        <td class="px-6 py-4 text-center">
-                                            <span class="{{ po.payment_status|status_color }} px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border border-opacity-20">
-                                                {{ po.payment_status|upper }}
-                                            </span>
-                                        </td>
-                                        <!-- Received -->
-                                        <td class="px-6 py-4 text-right">
-                                            <span class="text-xs text-gray-600">{{ po.total_recieved|default:"—" }}</span>
-                                        </td>
-                                        <!-- Total Amount -->
-                                        <td class="px-6 py-4 text-right font-mono font-medium text-gray-900">
-                                            NGN{{ po.total_amount|floatformat:2|intcomma }}
-                                        </td>
-                                        <!-- Paid Amount -->
-                                        <td class="px-6 py-4 text-right">
-                                            {% if po.total_payment_made > 0 %}
-                                                <span class="font-mono text-xs text-emerald-600 font-medium">NGN{{ po.total_payment_made|floatformat:2|intcomma }}</span>
-                                            {% else %}
-                                                <span class="text-xs text-gray-400">—</span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            {% else %}
-                                <tr class="bg-white border-b border-gray-100">
-                                    <td colspan="9" class="px-6 py-16 text-center text-gray-400">
-                                        <div class="flex flex-col items-center justify-center gap-3">
-                                            <div class="p-3 bg-gray-50 rounded-full">
-                                                <i class="fa-solid fa-file-contract text-3xl text-gray-300"></i>
-                                            </div>
-                                            <p class="text-lg font-medium text-gray-500">No purchase orders available</p>
-                                            <p class="text-sm">Create a new purchase order to get started</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
-                </div>
-                <!-- Pagination -->
-                <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-20 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
-                    <div class="flex justify-end">
-                        {% include 'partials/pagination.html' with page_obj=purchases target="table_container" %}
-                    </div>
-                </div>
-            </div>
-        {% endblock body %}
+  {% partialdef po-list-partial inline %}
+  <div class="p-6 lg:p-8 max-w-screen-xl mx-auto"
+       id="po-list-partial"
+       hx-get="{{ request.get_full_path }}"
+       hx-trigger="poListChanged from:body"
+       hx-swap="outerHTML">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+      <h1 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">Purchase Orders</h1>
+      <a href="{% url 'add_po' %}"
+         hx-target="#po-list-partial"
+         hx-swap="outerHTML"
+         class="btn-primary btn-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        New Purchase Order
+      </a>
     </div>
+    <!-- Filters -->
+    <div class="flex items-end gap-3 mb-6 flex-wrap">
+      <div class="search-field relative flex-1 min-w-48 max-w-xs">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input type="search"
+               name="q"
+               value="{{ search_query|default:'' }}"
+               placeholder="Search by PO# or supplier…"
+               class="field-input"
+               hx-get="{% url 'purchases' %}"
+               hx-target="#po-table-partial"
+               hx-trigger="keyup changed delay:200ms, search"
+               hx-push-url="true"
+               hx-include="[name='status'],[name='payment'],[name='delivery'],[name='supplier']">
+      </div>
+      <select name="status"
+              class="field-select !w-auto"
+              hx-get="{% url 'purchases' %}"
+              hx-target="#po-table-partial"
+              hx-push-url="true"
+              hx-include="[name='q'],[name='payment'],[name='delivery'],[name='supplier']">
+        <option value="" {% if not filter_status %}selected{% endif %}>All statuses</option>
+        <option value="active" {% if filter_status == 'active' %}selected{% endif %}>Active</option>
+        <option value="closed" {% if filter_status == 'closed' %}selected{% endif %}>Closed</option>
+        <option value="cancelled"
+                {% if filter_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+      </select>
+      <select name="payment"
+              class="field-select !w-auto"
+              hx-get="{% url 'purchases' %}"
+              hx-target="#po-table-partial"
+              hx-push-url="true"
+              hx-include="[name='q'],[name='status'],[name='delivery'],[name='supplier']">
+        <option value="" {% if not filter_payment %}selected{% endif %}>All payment statuses</option>
+        <option value="pending"
+                {% if filter_payment == 'pending' %}selected{% endif %}>Pending payment</option>
+        <option value="partial"
+                {% if filter_payment == 'partial' %}selected{% endif %}>Partially paid</option>
+        <option value="fulfilled"
+                {% if filter_payment == 'fulfilled' %}selected{% endif %}>Fully paid</option>
+      </select>
+      <select name="delivery"
+              class="field-select !w-auto"
+              hx-get="{% url 'purchases' %}"
+              hx-target="#po-table-partial"
+              hx-push-url="true"
+              hx-include="[name='q'],[name='status'],[name='payment'],[name='supplier']">
+        <option value="" {% if not filter_delivery %}selected{% endif %}>All delivery statuses</option>
+        <option value="pending"
+                {% if filter_delivery == 'pending' %}selected{% endif %}>Awaiting delivery</option>
+        <option value="partially received"
+                {% if filter_delivery == 'partially received' %}selected{% endif %}>Partially received</option>
+        <option value="received"
+                {% if filter_delivery == 'received' %}selected{% endif %}>Received</option>
+      </select>
+      <select name="supplier"
+              class="field-select !w-auto"
+              hx-get="{% url 'purchases' %}"
+              hx-target="#po-table-partial"
+              hx-push-url="true"
+              hx-include="[name='q'],[name='status'],[name='payment'],[name='delivery']">
+        <option value="" {% if not filter_supplier %}selected{% endif %}>All suppliers</option>
+        {% for supplier in all_suppliers %}
+          <option value="{{ supplier.pk }}"
+                  {% if filter_supplier == supplier.pk|stringformat:'s' %}selected{% endif %}>{{ supplier.company_name|default:supplier.full_name }}</option>
+        {% endfor %}
+      </select>
+      <a href="{% url 'purchases' %}"
+         hx-target="#po-list-partial"
+         class="text-xs text-slate-400 hover:text-rose-600 font-medium whitespace-nowrap transition-colors">Clear</a>
+    </div>
+    {% partialdef po-table-partial inline %}
+    <div id="po-table-partial">
+      <div class="card overflow-hidden">
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="text-left">PO #</th>
+                <th class="text-left">Supplier</th>
+                <th class="text-right">Total</th>
+                <th class="text-right">Paid</th>
+                <th class="text-center">Payment</th>
+                <th class="text-center">Delivery</th>
+                <th class="text-left">Date</th>
+                <th class="text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for po in purchases %}
+                <tr class="cursor-pointer hover:bg-slate-50 transition-colors"
+                    hx-get="{% url 'po_detail' po.pk %}"
+                    hx-target="#po-list-partial"
+                    hx-swap="outerHTML"
+                    hx-push-url="true">
+                  <td class="font-mono text-xs text-brand-600 font-semibold">{{ po.po_number }}</td>
+                  <td class="font-bold text-slate-800">{{ po.supplier.name|upper }}</td>
+                  <td class="text-right amount font-bold text-slate-800">₦{{ po.total_amount|floatformat:0|intcomma }}</td>
+                  <td class="text-right amount text-slate-500">₦{{ po.total_payment_made|floatformat:0|intcomma }}</td>
+                  <td class="text-center">
+                    {% if po.payment_status == 'fulfilled' %}
+                      <span class="badge badge-fulfilled">Paid</span>
+                    {% elif po.payment_status == 'partial' %}
+                      <span class="badge badge-partial">Partial</span>
+                    {% else %}
+                      <span class="badge badge-pending">Pending</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    {% if po.delivery_status == 'received' %}
+                      <span class="badge badge-fulfilled">Received</span>
+                    {% elif po.delivery_status == 'partially received' %}
+                      <span class="badge badge-partial">Partial</span>
+                    {% else %}
+                      <span class="badge badge-pending">Pending</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-slate-400">{{ po.order_date|date:"j M Y" }}</td>
+                  <td class="text-center">
+                    {% if po.status == 'active' %}
+                      <span class="badge badge-active">Active</span>
+                    {% elif po.status == 'closed' %}
+                      <span class="badge badge-fulfilled">Closed</span>
+                    {% else %}
+                      <span class="badge badge-voided">{{ po.get_status_display }}</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="8">
+                    <div class="empty-state">
+                      <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-5">
+                        <svg class="w-8 h-8 text-slate-300"
+                             fill="none"
+                             stroke="currentColor"
+                             viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                      </div>
+                      <h3 class="font-bold text-slate-700 text-lg mb-2">No purchase orders found</h3>
+                      <p class="text-slate-400 text-sm max-w-sm mb-6">
+                        {% if search_query %}
+                          No results match your search. Try a different query.
+                        {% else %}
+                          Create a new purchase order to get started.
+                        {% endif %}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="px-5 py-3 border-t border-slate-100">
+          {% include "partials/pagination.html" with page_obj=purchases hx_target="#po-table-partial" params=params %}
+        </div>
+      </div>
+    </div>
+  {% endpartialdef %}
+</div>
+{% endpartialdef %}
 {% endblock content %}

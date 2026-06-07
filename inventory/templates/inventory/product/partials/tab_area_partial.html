@@ -1,0 +1,324 @@
+{% load humanize %}
+{# Tabs #}
+<div id="tab_area">
+  <div class="flex border-b border-slate-200 mb-6 overflow-x-auto">
+    <a href="{% url 'product_detail' product.pk %}?tab=units"
+       hx-target="#tab_area"
+       class="tab-btn
+              {% if tab == 'units' %}active{% endif %}">
+      {% if coupled_variant %}
+        Serialized Units
+      {% else %}
+        Stock History
+      {% endif %}
+    </a>
+    <a href="{% url 'product_detail' product.pk %}?tab=history"
+       hx-target="#tab_area"
+       class="tab-btn
+              {% if tab == 'history' %}active{% endif %}">Stock History</a>
+    <a href="{% url 'product_detail' product.pk %}?tab=sales"
+       hx-target="#tab_area"
+       class="tab-btn
+              {% if tab == 'sales' %}active{% endif %}">Sales</a>
+    <a href="{% url 'product_detail' product.pk %}?tab=costlayer"
+       hx-target="#tab_area"
+       class="tab-btn
+              {% if tab == 'costlayer' %}active{% endif %}">Costlayer</a>
+  </div>
+  <div id="tab_content">
+    {% if tab == 'units' or not tab %}
+      {% if coupled_variant and serialized_items %}
+        <div class="card overflow-hidden">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <div class="font-bold text-sm text-slate-800">Assembled Units</div>
+            <div class="text-xs text-slate-400 font-medium">
+              {{ coupled_count }} total · {{ coupled_available }} available · {{ coupled_sold }} sold · {{ coupled_reserved }} reserved
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="text-left">Item #</th>
+                  <th class="text-left">Engine #</th>
+                  <th class="text-left">Chassis #</th>
+                  <th class="text-left">Assembly Job</th>
+                  <th class="text-right">Unit Cost</th>
+                  <th class="text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in serialized_items %}
+                  <tr class="{% if item.status == 'sold' %}opacity-50{% endif %}">
+                    <td class="font-mono text-xs text-slate-400">{{ item.item_number }}</td>
+                    <td class="font-mono text-xs">{{ item.engine_number }}</td>
+                    <td class="font-mono text-xs">{{ item.chassis_number }}</td>
+                    <td class="font-mono text-xs text-brand-600 font-bold">{{ item.transformation.transformation_number|upper }}</td>
+                    <td class="text-right amount text-sm">₦{{ item.unit_cost_at_transformation|floatformat:0|intcomma }}</td>
+                    <td class="text-center">
+                      {% if item.status == 'available' %}
+                        <span class="badge badge-available">Available</span>
+                      {% elif item.status == 'sold' %}
+                        <span class="badge badge-sold">Sold</span>
+                      {% elif item.status == 'reserved' %}
+                        <span class="badge badge-reserved">Reserved</span>
+                      {% else %}
+                        <span class="badge badge-voided">{{ item.status|title }}</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% elif coupled_variant %}
+        <div class="card">
+          <div class="empty-state">
+            <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-5">
+              <svg class="w-8 h-8 text-slate-300"
+                   fill="none"
+                   stroke="currentColor"
+                   viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 10V11m0 0L4 7" />
+              </svg>
+            </div>
+            <h3 class="font-bold text-slate-700 text-lg mb-2">No assembled units yet</h3>
+            <p class="text-slate-400 text-sm max-w-sm mb-6">
+              Create an assembly job to convert boxed units into coupled (serialized) units.
+            </p>
+            <a href="{% url 'add_transformation' %}"
+               hx-boost="true"
+               hx-target="#main_body"
+               class="btn-primary">New Assembly Job</a>
+          </div>
+        </div>
+      {% else %}
+        <div class="card">
+          <div class="empty-state">
+            <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-5">
+              <svg class="w-8 h-8 text-slate-300"
+                   fill="none"
+                   stroke="currentColor"
+                   viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 10V11m0 0L4 7" />
+              </svg>
+            </div>
+            <h3 class="font-bold text-slate-700 text-lg mb-2">Non-serialized product</h3>
+            <p class="text-slate-400 text-sm max-w-sm mb-6">This product type does not support assembly into serialized units.</p>
+          </div>
+        </div>
+      {% endif %}
+    {% elif tab == 'history' %}
+      {% if stock_history %}
+        <div class="card overflow-hidden">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="text-left">Date</th>
+                  <th class="text-left">Type</th>
+                  <th class="text-right">Qty Change</th>
+                  <th class="text-right">Cost Impact</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for txn in stock_history %}
+                  <tr>
+                    <td class="text-slate-400">{{ txn.created_at|date:"j M Y" }}</td>
+                    <td class="font-medium text-slate-700">{{ txn.transaction_type|title }}</td>
+                    <td class="text-right font-bold
+                               {% if txn.quantity_change > 0 %}
+                                 text-emerald-600
+                               {% elif txn.quantity_change < 0 %}
+                                 text-rose-500
+                               {% else %}
+                                 text-slate-500
+                               {% endif %}">
+                      {% if txn.quantity_change > 0 %}+{% endif %}
+                      {{ txn.quantity_change }}
+                    </td>
+                    <td class="text-right amount">₦{{ txn.cost_impact|floatformat:0|intcomma }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% else %}
+        <div class="card">
+          <div class="empty-state">
+            <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-5">
+              <svg class="w-8 h-8 text-slate-300"
+                   fill="none"
+                   stroke="currentColor"
+                   viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+            </div>
+            <h3 class="font-bold text-slate-700 text-lg mb-2">No stock history yet</h3>
+            <p class="text-slate-400 text-sm max-w-sm">
+              Stock movements will appear here once goods are received, sold, or transformed.
+            </p>
+          </div>
+        </div>
+      {% endif %}
+    {% elif tab == 'sales' %}
+      {% if boxed_sales or coupled_sales %}
+        <div class="space-y-6">
+          {% if coupled_sales %}
+            <div class="card overflow-hidden">
+              <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                <div class="font-bold text-sm text-slate-800">Coupled Sales</div>
+                <div class="text-xs text-slate-400 font-medium">{{ coupled_sales|length }} transactions</div>
+              </div>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th class="text-left">Sale #</th>
+                      <th class="text-left">Customer</th>
+                      <th class="text-left">Engine #</th>
+                      <th class="text-left">Date</th>
+                      <th class="text-right">Sale Price</th>
+                      <th class="text-right">Unit Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for cs in coupled_sales %}
+                      <tr>
+                        <td class="font-mono text-xs text-slate-400">{{ cs.sale.sale_number|upper }}</td>
+                        <td class="font-medium text-slate-700">{{ cs.sale.customer.full_name }}</td>
+                        <td class="font-mono text-xs">{{ cs.transformation_item.engine_number }}</td>
+                        <td class="text-slate-400">{{ cs.sale.sale_date|date:"j M Y" }}</td>
+                        <td class="text-right amount font-bold text-slate-800">₦{{ cs.price|floatformat:0|intcomma }}</td>
+                        <td class="text-right amount text-slate-400">
+                          ₦{{ cs.transformation_item.unit_cost_at_transformation|floatformat:0|intcomma }}
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% endif %}
+          {% if boxed_sales %}
+            <div class="card overflow-hidden">
+              <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                <div class="font-bold text-sm text-slate-800">Boxed Sales</div>
+                <div class="text-xs text-slate-400 font-medium">{{ boxed_sales|length }} transactions</div>
+              </div>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th class="text-left">Sale #</th>
+                      <th class="text-left">Customer</th>
+                      <th class="text-center">Qty</th>
+                      <th class="text-left">Date</th>
+                      <th class="text-right">Unit Price</th>
+                      <th class="text-right">WAC</th>
+                      <th class="text-right">Profit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for bs in boxed_sales %}
+                      <tr>
+                        <td class="font-mono text-xs text-slate-400">{{ bs.sale.sale_number|upper }}</td>
+                        <td class="font-medium text-slate-700">{{ bs.sale.customer.full_name }}</td>
+                        <td class="text-center font-bold">{{ bs.quantity }}</td>
+                        <td class="text-slate-400">{{ bs.sale.sale_date|date:"j M Y" }}</td>
+                        <td class="text-right amount font-bold text-slate-800">₦{{ bs.price|floatformat:0|intcomma }}</td>
+                        <td class="text-right amount text-slate-400">₦{{ boxed_wac|floatformat:0|intcomma }}</td>
+                        <td class="text-right amount text-emerald-600 font-bold">₦{{ bs.profit|floatformat:0|intcomma }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="card">
+          <div class="empty-state">
+            <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-5">
+              <svg class="w-8 h-8 text-slate-300"
+                   fill="none"
+                   stroke="currentColor"
+                   viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
+              </svg>
+            </div>
+            <h3 class="font-bold text-slate-700 text-lg mb-2">No sales yet</h3>
+            <p class="text-slate-400 text-sm max-w-sm">Sales for this product will appear here once recorded.</p>
+          </div>
+        </div>
+      {% endif %}
+    {% elif tab == 'costlayer' %}
+      {% if cost_layers %}
+        <div class="card overflow-hidden">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <div class="font-bold text-sm text-slate-800">Cost Layers</div>
+            <div class="text-xs text-slate-400 font-medium">{{ cost_layers|length }} layers</div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="text-left">Date</th>
+                  <th class="text-left">Source</th>
+                  <th class="text-center">Initial Qty</th>
+                  <th class="text-center">Remaining</th>
+                  <th class="text-right">Unit Cost</th>
+                  <th class="text-right">Value</th>
+                  <th class="text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for l in cost_layers %}
+                  <tr class="{% if l.layer.is_voided %}opacity-50{% endif %}">
+                    <td class="text-slate-400 text-xs">{{ l.layer.created_at|date:"j M Y" }}</td>
+                    <td class="font-mono text-xs">
+                      {% if l.layer.goods_receipt_item %}
+                        <span class="text-brand-600 font-bold">{{ l.layer.goods_receipt_item.goods_receipt.gr_number|upper }}</span>
+                      {% else %}
+                        <span class="text-slate-400">—</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-center font-bold">{{ l.layer.quantity }}</td>
+                    <td class="text-center">{{ l.layer.remaining_quantity }}</td>
+                    <td class="text-right amount">₦{{ l.layer.unit_cost|floatformat:0|intcomma }}</td>
+                    <td class="text-right amount text-slate-700">₦{{ l.value|floatformat:0|intcomma }}</td>
+                    <td class="text-center">
+                      {% if l.layer.is_voided %}
+                        <span class="badge badge-voided">Voided</span>
+                      {% else %}
+                        <span class="badge badge-available">Active</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% else %}
+        <div class="card">
+          <div class="empty-state">
+            <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-5">
+              <svg class="w-8 h-8 text-slate-300"
+                   fill="none"
+                   stroke="currentColor"
+                   viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            </div>
+            <h3 class="font-bold text-slate-700 text-lg mb-2">No cost layers yet</h3>
+            <p class="text-slate-400 text-sm max-w-sm">Cost layers are created when goods are received. Receive inventory to populate cost tracking.</p>
+          </div>
+        </div>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>

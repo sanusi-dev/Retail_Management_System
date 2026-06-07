@@ -31,14 +31,12 @@ from .forms import (
     CfaAgreementForm,
     CfaFulfillmentForm,
     NormalSaleForm,
-    RecordSaleForm,
-    AgreementSaleForm,
     BoxedSaleFormSet,
     CoupledSaleFormSet,
     AmendLineItemForm,
+    AgreementFulfillmentFormSet,
 )
 from . import services as customer_services
-from inventory.models import Product, TransformationItem
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.template.loader import render_to_string
@@ -126,7 +124,7 @@ def customers(request):
             customer_list = customer_list.order_by("full_name")
 
     # pagination
-    PAGE_SIZE = 20
+    PAGE_SIZE = 100
     paginator = Paginator(customer_list, PAGE_SIZE)
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
@@ -1074,7 +1072,8 @@ def agreement_detail(request, pk):
     customer = agreement.account.customer
 
     line_items = (
-        agreement.agreement_line_items.select_related("product", "product__inventory")
+        agreement.agreement_line_items.filter(is_current_version=True)
+        .select_related("product", "product__inventory")
         .prefetch_related(
             "boxed_sales",
             "boxed_sales__sale",
@@ -1142,14 +1141,58 @@ def agreement_detail(request, pk):
     superseded_items = (
         agreement.agreement_line_items.filter(is_current_version=False)
         .select_related("product")
+        .prefetch_related(
+            "boxed_sales",
+            "boxed_sales__sale",
+            "coupled_sales",
+            "coupled_sales__sale",
+            "coupled_sales__transformation_item",
+        )
         .order_by("line_number", "-version")
     )
+
+    # Build fulfillment data for superseded items (links to sale detail)
+    superseded_items_data = []
+    for item in superseded_items:
+        boxed_sales = item.boxed_sales.filter(sale__status=Sale.Status.ACTIVE)
+        coupled_sales = item.coupled_sales.filter(
+            sale__status=Sale.Status.ACTIVE
+        ).select_related("transformation_item")
+
+        boxed_details = [
+            {
+                "sale_pk": bs.sale.pk,
+                "sale_number": bs.sale.sale_number,
+                "quantity": bs.quantity,
+                "price": bs.price,
+            }
+            for bs in boxed_sales
+        ]
+
+        coupled_details = [
+            {
+                "sale_pk": cs.sale.pk,
+                "sale_number": cs.sale.sale_number,
+                "price": cs.price,
+                "engine_number": cs.transformation_item.engine_number,
+                "chassis_number": cs.transformation_item.chassis_number,
+            }
+            for cs in coupled_sales
+        ]
+
+        total_fulfilled = item.quantity_fulfilled_accross_all_versions
+        superseded_items_data.append({
+            "item": item,
+            "boxed_details": boxed_details,
+            "coupled_details": coupled_details,
+            "total_fulfilled": total_fulfilled,
+        })
 
     context = {
         "agreement": agreement,
         "customer": customer,
         "line_items_data": line_items_data,
-        "superseded_items": superseded_items,
+        "superseded_items_data": superseded_items_data,
     }
     if request.htmx:
         return render(
@@ -1168,6 +1211,12 @@ def sales(request):
     filter_payment = request.GET.get("payment", "")
     filter_date_from = request.GET.get("date_from", "")
     filter_date_to = request.GET.get("date_to", "")
+    sort_field = request.GET.get("sort", "sale_date")
+    direction = request.GET.get("direction", "desc")
+
+    allowed_sort_fields = [
+        "sale_date",
+    ]
 
     sale_list = Sale.objects.select_related("customer").prefetch_related(
         "boxed_sales", "coupled_sales"
@@ -1180,47 +1229,43 @@ def sales(request):
             | Q(customer__customer_number__icontains=search_query)
         )
 
-    if filter_status:
-        status_map = {"ACTIVE": "active", "VOIDED": "voided"}
-        db_status = status_map.get(filter_status, filter_status.lower())
-        sale_list = sale_list.filter(status=db_status)
+    # Status filter
+    match filter_status:
+        case "ACTIVE":
+            sale_list = sale_list.filter(status="active")
+        case "VOIDED":
+            sale_list = sale_list.filter(status="voided")
+        case "":
+            pass
 
-    if filter_payment:
-        payment_map = {
-            "from_deposit": "from deposit",
-            "transfer": "bank transfer",
-            "cash": "cash",
-        }
-        db_payment = payment_map.get(filter_payment, filter_payment)
-        sale_list = sale_list.filter(payment_method=db_payment)
+    # Payment filter
+    match filter_payment:
+        case "from_deposit":
+            sale_list = sale_list.filter(payment_method="from deposit")
+        case "transfer":
+            sale_list = sale_list.filter(payment_method="bank transfer")
+        case "cash":
+            sale_list = sale_list.filter(payment_method="cash")
+        case "":
+            pass
 
+    # Date filter
     if filter_date_from:
         sale_list = sale_list.filter(sale_date__date__gte=filter_date_from)
-
     if filter_date_to:
         sale_list = sale_list.filter(sale_date__date__lte=filter_date_to)
 
     # Sorting
-    sort_field = request.GET.get("sort", "sale_date")
-    direction = request.GET.get("direction", "desc")
-    allowed_sort_fields = [
-        "sale_date",
-        "sale_number",
-        "customer__full_name",
-        "payment_method",
-        "status",
-    ]
-
-    if direction == "desc":
-        order_by_field = f"-{sort_field}"
-    else:
-        order_by_field = sort_field
-
     if sort_field in allowed_sort_fields:
-        sale_list = sale_list.order_by(order_by_field)
+        match direction:
+            case "desc":
+                sale_list = sale_list.order_by(f"-{sort_field}")
+            case "asc":
+                sale_list = sale_list.order_by(sort_field)
 
     paginator = Paginator(sale_list, PAGE_SIZE)
     page_obj = paginator.get_page(page_number)
+
     context = {
         "sales": page_obj,
         "search_query": search_query,
@@ -1233,17 +1278,11 @@ def sales(request):
     }
 
     if request.htmx:
-        if any(key in request.GET for key in ["q", "status", "payment", "date_from", "date_to", "page"]):
-            return render(
-                request,
-                "customers/sales/sales.html#sales-table-partial",
-                context,
-            )
-        return render(
-            request,
-            "customers/sales/sales.html#sales-list-partial",
-            context,
-        )
+        match any(key in request.GET for key in ["q", "status", "payment", "date_from", "date_to", "page"]):
+            case True:
+                return render(request, "customers/sales/sales.html#sales-table-partial", context)
+            case False:
+                return render(request, "customers/sales/sales.html#sales-list-partial", context)
 
     return render(request, "customers/sales/sales.html", context)
 
@@ -1272,97 +1311,48 @@ def sale_detail(request, pk):
     return render(request, "customers/sales/sale_detail.html", context)
 
 
-# def search_customers(request):
-#     query = request.GET.get("q", "")
-#     customers = []
-#     if query:
-#         customers = Customer.objects.filter(
-#             Q(full_name__icontains=query)
-#             | Q(phone__icontains=query)
-#             | Q(customer_number__icontains=query)
-#         )[:10]
-#     return render(
-#         request, "partials/search_results_customer.html", {"customers": customers}
-#     )
+def search_customers_for_sale(request):
+    """HTMX endpoint: returns a dropdown of matching customers."""
+    query = request.GET.get("new_customer_name", "").strip()
+    customers = []
+    if query:
+        customers = Customer.objects.filter(
+            Q(full_name__icontains=query)
+            | Q(phone__icontains=query)
+            | Q(customer_number__icontains=query)
+        )[:10]
+    return render(
+        request,
+        "customers/sales/partials/customer_search_results.html",
+        {"customers": customers, "query": query},
+    )
 
 
-# def search_products(request):
-#     query = request.GET.get("q", "")
-#     products = []
-#     if query:
-#         products = Product.objects.filter(
-#             Q(modelname__icontains=query)
-#             | Q(sku__icontains=query)
-#             | Q(brand__name__icontains=query),
-#             type_variant=Product.TypeVariant.BOXED,
-#         ).select_related("brand")[:10]
-#     return render(
-#         request, "partials/search_results_product.html", {"products": products}
-#     )
+def create_normal_sale(request):
+    """Flow 1: Normal direct sale with Select2 customer picker."""
+    selected_customer = None
 
-
-# def search_transformation_items(request):
-#     query = request.GET.get("q", "")
-#     items = []
-#     if query:
-#         items = TransformationItem.objects.filter(
-#             Q(item_number__icontains=query)
-#             | Q(engine_number__icontains=query)
-#             | Q(chassis_number__icontains=query)
-#             | Q(target_product__brand__name__icontains=query)
-#             | Q(target_product__modelname__icontains=query),
-#             status=TransformationItem.Status.AVAILABLE,
-#         ).select_related("target_product")[:10]
-#     return render(
-#         request, "partials/search_results_transformation_item.html", {"items": items}
-#     )
-
-
-def record_sale(request):
-    selected_customer = None  # Initialize for context
+    customers_qs = (
+        Customer.objects.all()
+        .select_related("deposit_account")
+        .order_by("full_name")
+    )
 
     if request.method == "POST":
-        form = RecordSaleForm(request.POST)
+        form = NormalSaleForm(request.POST)
+        boxed_formset = BoxedSaleFormSet(request.POST, prefix="boxed")
+        coupled_formset = CoupledSaleFormSet(request.POST, prefix="coupled")
 
-        # Determine if this is a "from deposit" sale
-        payment_method = request.POST.get("payment_method", "")
-        is_from_deposit = payment_method == Sale.PaymentMethod.FROM_DEPOSIT
-
-        # Always create formsets with POST data for validation and re-rendering
-        boxed_formset = BoxedSaleFormSet(
-            request.POST, prefix="boxed", is_from_deposit=is_from_deposit
-        )
-        coupled_formset = CoupledSaleFormSet(
-            request.POST, prefix="coupled", is_from_deposit=is_from_deposit
-        )
-
-        # Try to get the selected customer from the POST data for re-rendering
+        # Try to resolve selected customer for re-rendering
         customer_pk = request.POST.get("customer")
         if customer_pk:
             try:
-                selected_customer = Customer.objects.get(pk=customer_pk)
+                selected_customer = Customer.objects.select_related(
+                    "deposit_account"
+                ).get(pk=customer_pk)
             except Customer.DoesNotExist:
                 pass
 
-        # Filter agreement_line_item queryset based on selected agreement
-        agreement_pk = request.POST.get("agreement")
-        if agreement_pk:
-            line_items_qs = PurchaseAgreementLineItem.objects.filter(
-                purchase_agreement__pk=agreement_pk,
-                is_current_version=True,
-                status__in=[
-                    PurchaseAgreementLineItem.Status.ACTIVE,
-                    PurchaseAgreementLineItem.Status.PARTIALLY_FULFILLED,
-                ],
-            ).select_related("product")
-
-            # Apply the filtered queryset to each form in the formsets
-            for formset_form in boxed_formset.forms:
-                formset_form.fields["agreement_line_item"].queryset = line_items_qs
-            for formset_form in coupled_formset.forms:
-                formset_form.fields["agreement_line_item"].queryset = line_items_qs
-
-        # Validate all forms before saving anything
         form_valid = form.is_valid()
         boxed_valid = boxed_formset.is_valid()
         coupled_valid = coupled_formset.is_valid()
@@ -1373,20 +1363,14 @@ def record_sale(request):
                 sale.created_by = request.user
                 sale.updated_by = request.user
 
-                # Re-bind formsets with the sale instance for saving
+                # Re-bind formsets to the unsaved sale instance so that
+                # inlineformset_factory can generate the related objects.
                 boxed_formset = BoxedSaleFormSet(
-                    request.POST,
-                    instance=sale,
-                    prefix="boxed",
-                    is_from_deposit=is_from_deposit,
+                    request.POST, instance=sale, prefix="boxed"
                 )
                 coupled_formset = CoupledSaleFormSet(
-                    request.POST,
-                    instance=sale,
-                    prefix="coupled",
-                    is_from_deposit=is_from_deposit,
+                    request.POST, instance=sale, prefix="coupled"
                 )
-
                 boxed_formset.is_valid()
                 coupled_formset.is_valid()
 
@@ -1400,9 +1384,8 @@ def record_sale(request):
                     item.created_by = request.user
                     item.updated_by = request.user
 
-                # Call service to handle all business logic
                 customer_services.create_sale(
-                    sale, boxed_items, coupled_items, request.user
+                    sale, boxed_items, coupled_items, request.user, request=request
                 )
 
                 messages.success(
@@ -1412,36 +1395,19 @@ def record_sale(request):
                     return HttpResponseClientRedirect(reverse("sales"))
                 return redirect("sales")
         else:
-            # Form validation failed - errors will be displayed in template
-            if not form_valid:
-                messages.error(request, "Please correct the errors in the sale form.")
-            if not boxed_valid or not coupled_valid:
-                messages.error(request, "Please correct the errors in the sale items.")
-
+            messages.error(request, "Please correct the errors below.")
     else:
-        # Check for customer query param (from customer detail page)
         customer_pk = request.GET.get("customer")
         initial = {}
-
         if customer_pk:
             try:
-                selected_customer = Customer.objects.get(pk=customer_pk)
+                selected_customer = Customer.objects.select_related(
+                    "deposit_account"
+                ).get(pk=customer_pk)
                 initial["customer"] = customer_pk
             except Customer.DoesNotExist:
                 pass
-
-        form = RecordSaleForm(initial=initial)
-
-        # If customer is preselected, load their agreements
-        if selected_customer:
-            form.fields["agreement"].queryset = PurchaseAgreement.objects.filter(
-                account__customer=selected_customer,
-                status__in=[
-                    PurchaseAgreement.Status.ACTIVE,
-                    PurchaseAgreement.Status.PARTIALLY_FULFILLED,
-                ],
-            )
-
+        form = NormalSaleForm(initial=initial)
         boxed_formset = BoxedSaleFormSet(prefix="boxed")
         coupled_formset = CoupledSaleFormSet(prefix="coupled")
 
@@ -1450,62 +1416,276 @@ def record_sale(request):
         "boxed_formset": boxed_formset,
         "coupled_formset": coupled_formset,
         "selected_customer": selected_customer,
+        "customers": customers_qs,
+        "selected_customer_pk": str(selected_customer.pk) if selected_customer else "",
     }
 
     if request.htmx:
-        return HttpResponse(
-            render_block_to_string(
-                "customers/sales/record_sale.html", "content", context, request=request
-            )
+        return render(
+            request,
+            "customers/sales/normal_sale_form.html#normal-sale-partial",
+            context,
         )
+    return render(request, "customers/sales/normal_sale_form.html", context)
 
-    return render(request, "customers/sales/record_sale.html", context)
 
-
-def load_customer_agreements(request):
-    """
-    HTMX view to return options for Agreement Select based on Customer.
-    """
-    customer_pk = request.GET.get("customer")
-    agreements = PurchaseAgreement.objects.none()
-
-    if customer_pk:
-        agreements = PurchaseAgreement.objects.filter(
-            account__customer__pk=customer_pk,
-            status__in=[
-                PurchaseAgreement.Status.ACTIVE,
-                PurchaseAgreement.Status.PARTIALLY_FULFILLED,
-            ],
-        )
-
+def ajax_customer_select(request):
+    """HTMX endpoint: returns the customer <select> partial for Select2 refresh."""
+    selected_customer_pk = request.GET.get("customer", "")
+    customers_qs = (
+        Customer.objects.all()
+        .select_related("deposit_account")
+        .order_by("full_name")
+    )
     return render(
-        request, "customers/partials/agreement_options.html", {"agreements": agreements}
+        request,
+        "customers/sales/normal_sale_form.html#customer-select-partial",
+        {
+            "customers": customers_qs,
+            "selected_customer_pk": selected_customer_pk,
+        },
     )
 
 
-def load_agreement_line_items(request):
-    """
-    HTMX view to return options for Agreement Line Items based on selected Agreement.
-    Returns line items that still have remaining quantity to fulfill.
-    """
-    agreement_pk = request.GET.get("agreement")
-    line_items = PurchaseAgreementLineItem.objects.none()
 
-    if agreement_pk:
-        line_items = PurchaseAgreementLineItem.objects.filter(
-            purchase_agreement__pk=agreement_pk,
+def normal_sale_boxed_add(request):
+    post_data = request.POST.copy()
+    total_forms = int(post_data.get("boxed-TOTAL_FORMS", 0))
+    post_data[f"boxed-{total_forms}-product"] = ""
+    post_data[f"boxed-{total_forms}-quantity"] = ""
+    post_data[f"boxed-{total_forms}-price"] = ""
+    post_data["boxed-TOTAL_FORMS"] = total_forms + 1
+    formset = BoxedSaleFormSet(post_data, prefix="boxed")
+    return render(
+        request,
+        "customers/sales/partials/boxed_sale_formset.html",
+        {"formset": formset},
+    )
+
+
+def normal_sale_boxed_remove(request, index):
+    post_data = request.POST.copy()
+    total_forms = int(post_data.get("boxed-TOTAL_FORMS", 0))
+    pk_value = post_data.get(f"boxed-{index}-id", "").strip()
+
+    if pk_value:
+        already_deleted = post_data.get(f"boxed-{index}-DELETE", "") == "on"
+        if already_deleted:
+            post_data.pop(f"boxed-{index}-DELETE", None)
+        else:
+            post_data[f"boxed-{index}-DELETE"] = "on"
+        formset = BoxedSaleFormSet(post_data, prefix="boxed")
+    else:
+        import urllib.parse
+        from django.http import QueryDict
+
+        line_fields = ["id", "product", "quantity", "price", "DELETE"]
+        new_data = {}
+        new_index = 0
+        for i in range(total_forms):
+            if i == index:
+                continue
+            for field in line_fields:
+                old_key = f"boxed-{i}-{field}"
+                if old_key in post_data:
+                    new_data[f"boxed-{new_index}-{field}"] = post_data[old_key]
+            new_index += 1
+
+        new_data["boxed-TOTAL_FORMS"] = new_index
+        new_data["boxed-INITIAL_FORMS"] = post_data.get("boxed-INITIAL_FORMS", 0)
+        new_data["boxed-MIN_NUM_FORMS"] = post_data.get("boxed-MIN_NUM_FORMS", 0)
+        new_data["boxed-MAX_NUM_FORMS"] = post_data.get("boxed-MAX_NUM_FORMS", 1000)
+
+        encoded = urllib.parse.urlencode(new_data, doseq=True)
+        rebuilt = QueryDict(encoded, mutable=True)
+        formset = BoxedSaleFormSet(rebuilt, prefix="boxed")
+
+    return render(
+        request,
+        "customers/sales/partials/boxed_sale_formset.html",
+        {"formset": formset},
+    )
+
+
+
+def normal_sale_coupled_add(request):
+    post_data = request.POST.copy()
+    total_forms = int(post_data.get("coupled-TOTAL_FORMS", 0))
+    post_data[f"coupled-{total_forms}-transformation_item"] = ""
+    post_data[f"coupled-{total_forms}-price"] = ""
+    post_data["coupled-TOTAL_FORMS"] = total_forms + 1
+    formset = CoupledSaleFormSet(post_data, prefix="coupled")
+    return render(
+        request,
+        "customers/sales/partials/coupled_sale_formset.html",
+        {"formset": formset},
+    )
+
+
+def normal_sale_coupled_remove(request, index):
+    post_data = request.POST.copy()
+    total_forms = int(post_data.get("coupled-TOTAL_FORMS", 0))
+    pk_value = post_data.get(f"coupled-{index}-id", "").strip()
+
+    if pk_value:
+        already_deleted = post_data.get(f"coupled-{index}-DELETE", "") == "on"
+        if already_deleted:
+            post_data.pop(f"coupled-{index}-DELETE", None)
+        else:
+            post_data[f"coupled-{index}-DELETE"] = "on"
+        formset = CoupledSaleFormSet(post_data, prefix="coupled")
+    else:
+        import urllib.parse
+        from django.http import QueryDict
+
+        line_fields = ["id", "transformation_item", "price", "DELETE"]
+        new_data = {}
+        new_index = 0
+        for i in range(total_forms):
+            if i == index:
+                continue
+            for field in line_fields:
+                old_key = f"coupled-{i}-{field}"
+                if old_key in post_data:
+                    new_data[f"coupled-{new_index}-{field}"] = post_data[old_key]
+            new_index += 1
+
+        new_data["coupled-TOTAL_FORMS"] = new_index
+        new_data["coupled-INITIAL_FORMS"] = post_data.get("coupled-INITIAL_FORMS", 0)
+        new_data["coupled-MIN_NUM_FORMS"] = post_data.get("coupled-MIN_NUM_FORMS", 0)
+        new_data["coupled-MAX_NUM_FORMS"] = post_data.get("coupled-MAX_NUM_FORMS", 1000)
+
+        encoded = urllib.parse.urlencode(new_data, doseq=True)
+        rebuilt = QueryDict(encoded, mutable=True)
+        formset = CoupledSaleFormSet(rebuilt, prefix="coupled")
+
+    return render(
+        request,
+        "customers/sales/partials/coupled_sale_formset.html",
+        {"formset": formset},
+    )
+
+
+
+def fulfill_agreement(request, customer_id, agreement_id):
+    """Convert a Purchase Agreement into a fulfilled sale."""
+    customer = get_object_or_404(
+        Customer.objects.select_related("deposit_account"), pk=customer_id
+    )
+    agreement = get_object_or_404(
+        PurchaseAgreement.objects.select_related("account"),
+        pk=agreement_id,
+        account__customer=customer,
+    )
+
+    line_items = (
+        agreement.agreement_line_items.filter(
             is_current_version=True,
             status__in=[
                 PurchaseAgreementLineItem.Status.ACTIVE,
                 PurchaseAgreementLineItem.Status.PARTIALLY_FULFILLED,
             ],
-        ).select_related("product")
-
-    return render(
-        request,
-        "customers/partials/agreement_line_item_options.html",
-        {"line_items": line_items},
+        )
+        .select_related("product")
+        .order_by("line_number")
     )
+
+    if request.method == "POST":
+        formset = AgreementFulfillmentFormSet(request.POST, prefix="fulfill")
+
+        if formset.is_valid():
+            with transaction.atomic():
+                sale = Sale(
+                    customer=customer,
+                    payment_method=Sale.PaymentMethod.FROM_DEPOSIT,
+                    agreement=agreement,
+                    created_by=request.user,
+                    updated_by=request.user,
+                )
+
+                boxed_items = []
+                coupled_items = []
+                for form in formset.forms:
+                    line_item = get_object_or_404(
+                        PurchaseAgreementLineItem, pk=form.cleaned_data["line_item"]
+                    )
+
+                    quantity = form.cleaned_data.get("quantity") or 0
+                    transformation_items = (
+                        form.cleaned_data.get("transformation_items") or []
+                    )
+
+                    if quantity > 0:
+                        boxed = BoxedSale(
+                            sale=sale,
+                            product=line_item.product,
+                            quantity=quantity,
+                            price=form.cleaned_data["price"],
+                            agreement_line_item=line_item,
+                            created_by=request.user,
+                            updated_by=request.user,
+                        )
+                        boxed_items.append(boxed)
+
+                    for ti in transformation_items:
+                        coupled = CoupledSale(
+                            sale=sale,
+                            transformation_item=ti,
+                            price=form.cleaned_data["price"],
+                            agreement_line_item=line_item,
+                            created_by=request.user,
+                            updated_by=request.user,
+                        )
+                        coupled_items.append(coupled)
+
+                if not boxed_items and not coupled_items:
+                    formset.add_error(None, "You must fulfil at least one item.")
+                else:
+                    customer_services.create_sale(
+                        sale, boxed_items, coupled_items, request.user, request=request
+                    )
+                    messages.success(
+                        request,
+                        f"Agreement {agreement.purchase_agreement_number} fulfilled via sale {sale.sale_number}.",
+                    )
+                    if request.htmx:
+                        return HttpResponseClientRedirect(
+                            reverse("customer_detail", kwargs={"pk": customer.pk})
+                            + "?tab=agreements"
+                        )
+                    return redirect("customer_detail", pk=customer.pk)
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        initial = []
+        for item in line_items:
+            initial.append(
+                {
+                    "line_item": str(item.pk),
+                    "product": item.product.pk,
+                    "price": item.price_per_unit,
+                    "quantity": 0,
+                    "quantity_ordered": item.quantity_ordered,
+                    "remaining_quantity": item.remaining_quantity,
+                }
+            )
+        formset = AgreementFulfillmentFormSet(initial=initial, prefix="fulfill")
+
+    context = {
+        "customer": customer,
+        "agreement": agreement,
+        "formset": formset,
+        "line_items": line_items,
+        "form_line_pairs": list(zip(formset, line_items)),
+    }
+
+    if request.htmx:
+        return render(
+            request,
+            "customers/sales/fulfill_agreement.html#fulfillment-partial",
+            context,
+        )
+    return render(request, "customers/sales/fulfill_agreement.html", context)
 
 
 def modal_void_sale(request, pk):

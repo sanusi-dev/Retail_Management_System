@@ -1,0 +1,70 @@
+{% extends 'index.html' %}
+{% load static humanize %}
+{% block content %}
+  {% partialdef fulfillment-partial inline %}
+  <div class="p-6 lg:p-8 max-w-4xl mx-auto" id="fulfillment-partial">
+    <!-- Header -->
+    <div class="flex items-center gap-3 mb-8">
+      <a href="{% url 'customer_detail' customer.pk %}?tab=agreements"
+         class="btn-back mt-1"
+         hx-target="#fulfillment-partial"
+         hx-swap="outerHTML show:window:top">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </a>
+      <h1 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">Fulfil Agreement</h1>
+    </div>
+    <!-- Customer summary -->
+    <div class="summary-box mb-5">
+      <div class="font-bold text-sm text-slate-800">{{ customer.full_name|title }}</div>
+      <div class="text-xs text-slate-400 mt-1">
+        Available: <span class="amount font-bold text-emerald-600">₦{{ customer.deposit_account.available_balance|floatformat:0|intcomma }}</span>
+      </div>
+    </div>
+    <!-- Agreement summary -->
+    <div class="card card-p mb-6">
+      <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Agreement</div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="font-bold text-slate-800">{{ agreement.purchase_agreement_number }}</span>
+        <span class="badge badge-active">{{ agreement.get_status_display }}</span>
+      </div>
+      <div class="text-xs text-slate-400 mt-2">
+        Total ordered: <span class="amount font-bold text-slate-700">{{ agreement.total_quantity_ordered }}</span> items ·
+        Total value: <span class="amount font-bold text-slate-700">₦{{ agreement.total_allocated_amount|floatformat:0|intcomma }}</span>
+      </div>
+    </div>
+    <form id="fulfillment-form"
+          hx-post="{% url 'fulfill_agreement' customer.pk agreement.pk %}"
+          hx-target="#fulfillment-partial"
+          hx-swap="outerHTML">
+      <!-- Non-field errors -->
+      {% if formset.non_form_errors %}
+        <div class="alert-danger mb-4">
+          <div class="text-xs font-bold text-rose-700 uppercase tracking-wider mb-1">Form Errors</div>
+          {% for error in formset.non_form_errors %}<p class="text-sm text-rose-700 font-medium">{{ error }}</p>{% endfor %}
+        </div>
+      {% endif %}
+      {% if formset.errors %}
+        <div class="text-xs text-rose-600 bg-rose-50 rounded-lg px-3 py-2 mb-4">
+          Please correct the errors highlighted below.
+        </div>
+      {% endif %}
+      <!-- Line Items -->
+      <div class="card card-p mb-6">
+        <div class="flex items-center justify-between mb-5">
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Agreement Line Items</div>
+        </div>
+        {% include 'customers/sales/partials/fulfillment_formset.html' with formset=formset %}
+      </div>
+      <!-- Action Buttons -->
+      <div class="flex gap-3">
+        <a href="{% url 'customer_detail' customer.pk %}?tab=agreements"
+           class="btn-secondary flex-1 text-center">Cancel</a>
+        <button type="submit"
+                class="btn-primary flex-1 shadow-md shadow-brand-600/15">Fulfil &amp; Create Sale</button>
+      </div>
+    </form>
+  </div>
+{% endpartialdef %}
+{% endblock content %}

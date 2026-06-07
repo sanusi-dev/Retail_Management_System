@@ -63,7 +63,7 @@ class PurchaseOrderViewTests(TestCase):
 
         cls.add_po_url = reverse("add_po")
         cls.edit_po_url = reverse("edit_po", args=[cls.po.pk])
-        cls.htmx_add_item_url = reverse("po_item_form")
+        cls.htmx_add_item_url = reverse("po_line_item_add")
 
     def setUp(self):
         self.client = Client()
@@ -73,32 +73,39 @@ class PurchaseOrderViewTests(TestCase):
         response = self.client.get(self.add_po_url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "supply_chain/po/form.html")
-        self.assertEqual(len(response.context["item_formset"]), 1)
+        self.assertEqual(len(response.context["formset"]), 1)
 
     def test_edit_purchase_order_page_get_request(self):
         response = self.client.get(self.edit_po_url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "supply_chain/po/form.html")
-        self.assertEqual(len(response.context["item_formset"]), 3)
-        self.assertEqual(response.context["item_formset"][0].instance, self.po_item2)
-        self.assertEqual(response.context["item_formset"][1].instance, self.po_item1)
+        self.assertEqual(len(response.context["formset"]), 3)
+        self.assertEqual(response.context["formset"][0].instance, self.po_item2)
+        self.assertEqual(response.context["formset"][1].instance, self.po_item1)
 
     def test_htmx_add_item_view_returns_correct_html(self):
-        next_form_index = 2
         headers = {"HTTP_HX_REQUEST": "true"}
-        response = self.client.get(
-            f"{self.htmx_add_item_url}?index={next_form_index}", **headers
-        )
+        post_data = {
+            "items-TOTAL_FORMS": "2",
+            "items-INITIAL_FORMS": "0",
+            "items-MIN_NUM_FORMS": "0",
+            "items-MAX_NUM_FORMS": "1000",
+            "items-0-product": str(self.product1.pk),
+            "items-0-ordered_quantity": "5",
+            "items-0-unit_price_at_order": "100.00",
+            "items-1-product": str(self.product2.pk),
+            "items-1-ordered_quantity": "10",
+            "items-1-unit_price_at_order": "200.00",
+        }
+        response = self.client.post(self.htmx_add_item_url, data=post_data, **headers)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(
-            response, "supply_chain/po/partials/po_item_form_row.html"
+            response, "supply_chain/po/partials/po_formset.html"
         )
-        self.assertContains(response, f'name="items-{next_form_index}-product"')
-        self.assertContains(
-            response, f'name="items-{next_form_index}-ordered_quantity"'
-        )
+        # After adding, there should be 3 forms
+        self.assertContains(response, 'name="items-2-product"')
+        self.assertContains(response, 'name="items-2-ordered_quantity"')
         self.assertContains(response, 'class="remove-form-row')
-        self.assertNotContains(response, f'name="items-{next_form_index}-DELETE"')
 
     def test_create_purchase_order_with_items_success(self):
         form_data = {

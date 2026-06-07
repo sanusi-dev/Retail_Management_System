@@ -6,7 +6,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 line-through pointer-events-none select-none">
       <div class="sm:col-span-5">
         <label class="field-label text-rose-400">Product</label>
-        <select name="{{ form.product.html_name }}" class="field-select" tabindex="-1">
+        <select name="{{ form.product.html_name }}" class="field-select select2-product" tabindex="-1" data-placeholder="Select a product">
           {% for product in form.product.field.queryset %}
             <option value="{{ product.pk }}"
                     {% if form.product.value|stringformat:"s" == product.pk|stringformat:"s" %}selected{% endif %}>
@@ -64,7 +64,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
       <div class="sm:col-span-5">
         <label class="field-label">Product</label>
-        <select name="{{ form.product.html_name }}" class="field-select" required>
+        <select name="{{ form.product.html_name }}" class="field-select select2-product" required data-placeholder="Select a product">
           <option value="">Select a product</option>
           {% for product in form.product.field.queryset %}
             <option value="{{ product.pk }}"

@@ -7,10 +7,63 @@
   <title>{% block title %}RetailMS{% endblock %}</title>
   <meta name="htmx-config" content='{"scrollIntoViewOnBoost": false}'>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  {% comment %} <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=DM+Serif+Display&display=swap"
-        rel="stylesheet"> {% endcomment %}
+        
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+  <link href="{% static 'vendor/select2.min.css' %}" rel="stylesheet" />
+  <style>
+    /* ── Select2 RMS theme overrides ── */
+    .select2-container { width: 100% !important; }
+    .select2-container--default .select2-selection--single {
+      height: auto;
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      font-size: 13px;
+      background: white;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+      color: #0f172a;
+      padding-left: 0;
+      line-height: 1.4;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+      height: 100%;
+      right: 10px;
+    }
+    .select2-container--default.select2-container--focus .select2-selection--single,
+    .select2-container--default.select2-container--open .select2-selection--single {
+      border-color: var(--color-brand);
+      box-shadow: 0 0 0 3px rgba(217,119,6,0.1);
+    }
+    .select2-dropdown {
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-lg);
+      font-size: 13px;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    .select2-container--default .select2-results__option[aria-selected=true] {
+      background: var(--color-brand-light);
+      color: var(--color-brand-hover);
+    }
+    .select2-search--dropdown .select2-search__field {
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+    .select2-results__option {
+      padding: 10px 12px;
+    }
+    .select2-results__option small {
+      color: #94a3b8;
+      font-size: 11px;
+    }
+  </style>
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' hx-boost="true">
 
@@ -45,7 +98,9 @@
   <div id="modal_container"></div>
 
   <script src="{% static 'js/htmx.min.js' %}"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+  <script src="{% static 'vendor/jquery.min.js' %}"></script>
+  <script src="{% static 'vendor/sweetalert2.all.min.js' %}"></script>
+  <script src="{% static 'vendor/select2.min.js' %}"></script>
   <script src="{% static 'js/app.js' %}"></script>
 
   {# Full page load messages — rendered directly on non-HTMX navigation #}

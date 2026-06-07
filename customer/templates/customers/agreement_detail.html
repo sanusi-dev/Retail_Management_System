@@ -36,7 +36,9 @@
       </div>
       {% if agreement.status == 'ACTIVE' or agreement.status == 'PARTIALLY_FULFILLED' %}
         <div class="flex gap-2 flex-shrink-0 flex-wrap btn-responsive-wrap">
-          <a href="{% url 'record_sale' %}?customer={{ customer.pk }}&agreement={{ agreement.pk }}"
+          <a href="{% url 'fulfill_agreement' customer.pk agreement.pk %}"
+             hx-target="#agreement-detail-partial"
+             hx-swap="outerHTML"
              class="btn-primary btn-sm">Fulfill Items</a>
           {% if agreement.can_edit %}
             <a href="{% url 'edit_purchase_agreement' agreement.pk %}?customer={{ customer.pk }}"
@@ -84,7 +86,7 @@
         </div>
         <div class="flex justify-between text-xs text-slate-400 font-medium">
           <span>{{ agreement.total_received_percent|floatformat:0 }}% fulfilled</span>
-          <span>{{ agreement.total_quantity_ordered|add:agreement.total_quantity_fulfilled|floatformat:0 }} remaining</span>
+          <span>{{ agreement.total_quantity_remaining|floatformat:0 }} remaining</span>
         </div>
       </div>
     {% endif %}
@@ -167,6 +169,8 @@
                             </svg>
                             <span class="text-slate-600">{{ bd.quantity }}× unit{{ bd.quantity|pluralize }} via</span>
                             <a href="{% url 'sale_detail' bd.sale_pk %}"
+                               hx-target="#agreement-detail-partial"
+                               hx-swap="outerHTML"
                                class="font-mono text-xs text-brand-600 hover:underline">{{ bd.sale_number }}</a>
                           </div>
                           <div class="text-right">
@@ -214,28 +218,60 @@
       {% endif %}
     </div>
     <!-- Superseded (Old Version) Line Items -->
-    {% if superseded_items %}
+    {% if superseded_items_data %}
       <div class="card card-p mb-6">
         <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-5">Amendment History</div>
         <div class="space-y-3">
-          {% for item in superseded_items %}
+          {% for data in superseded_items_data %}
             <div class="bg-slate-50 rounded-xl p-4 opacity-60">
-              <div class="flex items-center justify-between">
+              <div class="flex items-center justify-between mb-3">
                 <div>
                   <div class="flex items-center gap-2">
-                    <span class="font-mono text-xs text-slate-400">{{ item.line_number }}</span>
-                    <span class="text-sm font-medium text-slate-600">{{ item.product.brand.name|title }} <span class="font-mono text-xs font-medium text-slate-400">{{ item.product.modelname|upper }}</span></span>
+                    <span class="font-mono text-xs text-slate-400">{{ data.item.line_number }}</span>
+                    <span class="text-sm font-medium text-slate-600">{{ data.item.product.brand.name|title }} <span class="font-mono text-xs font-medium text-slate-400">{{ data.item.product.modelname|upper }}</span></span>
                     <span class="badge badge-voided text-xs">Superseded</span>
                   </div>
                   <div class="text-xs text-slate-400 mt-1">
-                    {{ item.quantity_ordered }} units @ ₦{{ item.price_per_unit|floatformat:0|intcomma }}
-                    · Replaced by version {{ item.superseded_by.version }}
+                    {{ data.item.quantity_ordered }} units @ ₦{{ data.item.price_per_unit|floatformat:0|intcomma }}
+                    · Replaced by version {{ data.item.superseded_by.version }}
                   </div>
                 </div>
                 <div class="text-right text-xs text-slate-400">
-                  <div>Version {{ item.version }}</div>
+                  <div>Version {{ data.item.version }}</div>
                 </div>
               </div>
+              <!-- Fulfillment links for superseded items -->
+              {% if data.boxed_details or data.coupled_details %}
+                <div class="border-t border-slate-200 pt-3 mt-2">
+                  <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Fulfilled Before Amendment</div>
+                  <div class="space-y-1.5">
+                    {% for bd in data.boxed_details %}
+                      <div class="flex items-center justify-between text-xs bg-white rounded-lg px-2.5 py-1.5">
+                        <div class="flex items-center gap-1.5">
+                          <span class="text-slate-500">{{ bd.quantity }}× via</span>
+                          <a href="{% url 'sale_detail' bd.sale_pk %}"
+                             hx-target="#agreement-detail-partial"
+                             hx-swap="outerHTML"
+                             class="font-mono text-brand-600 hover:underline">{{ bd.sale_number }}</a>
+                        </div>
+                        <span class="amount font-medium text-slate-700">₦{{ bd.price|floatformat:0|intcomma }}</span>
+                      </div>
+                    {% endfor %}
+                    {% for cd in data.coupled_details %}
+                      <div class="flex items-center justify-between text-xs bg-white rounded-lg px-2.5 py-1.5">
+                        <div class="flex items-center gap-1.5">
+                          <span class="text-slate-500">Coupled via</span>
+                          <a href="{% url 'sale_detail' cd.sale_pk %}"
+                             hx-target="#agreement-detail-partial"
+                             hx-swap="outerHTML"
+                             class="font-mono text-brand-600 hover:underline">{{ cd.sale_number }}</a>
+                        </div>
+                        <span class="amount font-medium text-slate-700">₦{{ cd.price|floatformat:0|intcomma }}</span>
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              {% endif %}
             </div>
           {% endfor %}
         </div>

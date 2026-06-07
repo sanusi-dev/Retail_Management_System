@@ -1,0 +1,21 @@
+<div id="void">
+   {% if not can_void %}
+      <div class="flex items-center gap-2 text-red-600 bg-red-50 px-3 py-1.5 border border-red-200 rounded-md text-sm font-medium opacity-75 cursor-not-allowed">
+         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+           <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+         </svg>
+         <span>Voided</span>
+      </div>
+   {% else %}
+      <button hx-post="{{ transformation.get_void_url }}"
+              hx-target="#void"
+              hx-swap="outerHTML"
+              hx-confirm="Are you sure you want to void this transformation? This action cannot be undone."
+              class="flex items-center gap-2 text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 border border-red-200 rounded-md transition-colors duration-200 text-sm font-medium">
+         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+           <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+         </svg>
+         <span>Void</span>
+      </button>
+   {% endif %}
+</div>
