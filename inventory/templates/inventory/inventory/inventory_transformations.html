@@ -74,7 +74,7 @@
                 <td class="whitespace-nowrap">
                   <div class="text-slate-500">{{ transformation.transformation_date|date:"j M Y" }}</div>
                 </td>
-                <td class="text-right font-bold text-slate-700">{{ transformation.total_transformed_qty }}</td>
+                <td class="text-right font-bold text-slate-700">{{ transformation._total_qty }}</td>
                 <td class="text-right amount text-slate-600">₦{{ transformation.service_fee|floatformat:0|intcomma }}</td>
                 <td class="text-center">
                   {% if transformation.status == 'active' %}

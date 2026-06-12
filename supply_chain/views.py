@@ -2,18 +2,21 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, HttpResponseBadRequest
 from django_htmx.http import replace_url, HttpResponseClientRedirect
 from django.db import transaction
-from django.contrib.auth.decorators import login_required
 from .models import *
 from .forms import *
 from django.forms import modelformset_factory
 from django.db.models import Sum, F, IntegerField, Q, DecimalField, Value, Count, OuterRef, Subquery
 from django.db.models.functions import Coalesce
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.template.loader import render_to_string
 from . import services
 from django.contrib import messages
 from django.urls import reverse
 from . import utils
+import logging
+
+logger = logging.getLogger(__name__)
 from core.utils import apply_sorting
 
 
@@ -131,7 +134,7 @@ def supplier_detail(request, pk):
 
     open_po_count = supplier.purchase_orders.filter(~Q(status="closed")).count()
 
-    undelivered_value = sum(po.po_total_undelivered_value for po in supplier.purchase_orders.all())
+    undelivered_value = sum(po.po_total_undelivered_value for po in purchase_orders)
 
     context = {
         "supplier": supplier,
@@ -173,6 +176,8 @@ def delete_supplier(request, pk):
         full_response = supplier_list + success_toast
         response = HttpResponse(full_response)
         return replace_url(response, reverse("suppliers"))
+
+    return HttpResponse(status=405)
 
 
 def purchases(request):
@@ -297,7 +302,7 @@ def manage_purchases(request, pk=None):
                     f"Purchase Order {form.instance.po_number} {'updated' if instance else 'created'}.",
                 )
                 return redirect("purchases")
-            except Exception as e:
+            except (ValidationError, services.BusinessRuleViolation) as e:
                 messages.error(request, f"Error occurred while processing Purchase Order: {str(e)}")
     else:
         form = PurchaseOrderForm(instance=instance)
@@ -433,6 +438,8 @@ def delete_po(request, pk):
         response = HttpResponse(purchase_list + success_toast)
         return replace_url(response, reverse("purchases"))
 
+    return HttpResponse(status=405)
+
 
 def payments(request):
     PAGE_SIZE = 100
@@ -489,7 +496,7 @@ def modal_manage_payment(request):
                 response = HttpResponse(status=204)
                 response["HX-Trigger"] = "poDetailChanged"
                 return response
-            except Exception as e:
+            except (ValidationError, services.BusinessRuleViolation) as e:
                 form.add_error(None, str(e))
     else:
         initial = {}
@@ -500,7 +507,7 @@ def modal_manage_payment(request):
                 purchase_order = PurchaseOrder.objects.get(pk=po_pk)
                 initial["purchase_order"] = purchase_order
             except PurchaseOrder.DoesNotExist:
-                pass
+                logger.warning("Payment modal: PO %s not found", po_pk)
         form = PaymentForm(initial=initial)
 
     return render(
@@ -569,7 +576,7 @@ def good_receipts(request):
     page_number = request.GET.get("page", 1)
     search_query = request.GET.get("q", "")
     filter_status = request.GET.get("status", "")
-    receipts_list = GoodsReceipt.objects.select_related("purchase_order")
+    receipts_list = GoodsReceipt.objects.select_related("purchase_order__supplier")
 
     if search_query:
         receipts_list = receipts_list.filter(

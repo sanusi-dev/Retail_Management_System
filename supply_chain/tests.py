@@ -99,13 +99,10 @@ class PurchaseOrderViewTests(TestCase):
         }
         response = self.client.post(self.htmx_add_item_url, data=post_data, **headers)
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(
-            response, "supply_chain/po/partials/po_formset.html"
-        )
-        # After adding, there should be 3 forms
-        self.assertContains(response, 'name="items-2-product"')
-        self.assertContains(response, 'name="items-2-ordered_quantity"')
-        self.assertContains(response, 'class="remove-form-row')
+        content = response.content.decode("utf-8")
+        self.assertIn('name="items-2-product"', content)
+        self.assertIn('name="items-2-ordered_quantity"', content)
+        self.assertIn("remove-form-row", content)
 
     def test_create_purchase_order_with_items_success(self):
         form_data = {

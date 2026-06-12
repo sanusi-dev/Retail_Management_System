@@ -9,7 +9,7 @@
           {% for product in form.product.field.queryset %}
             <option value="{{ product.pk }}"
                     {% if form.product.value|stringformat:"s" == product.pk|stringformat:"s" %}selected{% endif %}>
-              {{ product.brand.name|title }} {{ product.modelname|title }} (Stock: {{ product.inventory.quantity }})
+               {{ product.brand.name|title }} {{ product.modelname|title }} (Stock: {% if product.inventory %}{{ product.inventory.quantity }}{% else %}0{% endif %})
             </option>
           {% endfor %}
         </select>
@@ -67,7 +67,7 @@
           {% for product in form.product.field.queryset %}
             <option value="{{ product.pk }}"
                     {% if form.product.value|stringformat:"s" == product.pk|stringformat:"s" %}selected{% endif %}>
-              {{ product.brand.name|title }} {{ product.modelname|title }} (Stock: {{ product.inventory.quantity }})
+               {{ product.brand.name|title }} {{ product.modelname|title }} (Stock: {% if product.inventory %}{{ product.inventory.quantity }}{% else %}0{% endif %})
             </option>
           {% endfor %}
         </select>

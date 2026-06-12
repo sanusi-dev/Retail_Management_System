@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+@layer base {
+  * {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    overflow: hidden;
+    background: #f8fafc;
+    color: #0f172a;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #app {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+  }
+}
+
+@layer components {
+  .font-mono {
+    font-family: 'IBM Plex Mono', monospace !important;
+  }
+
+  .font-display {
+    font-family: 'DM Serif Display', serif;
+  }
+
+  .amount {
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .data-table {
+    width: 100%;
+    font-size: 13px;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .data-table thead th {
+    padding: 12px 20px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1.5px solid #e2e8f0;
+    white-space: nowrap;
+    background: #fafafa;
+  }
+  .data-table tbody tr {
+    transition: background 150ms;
+  }
+  .data-table tbody tr:hover {
+    background: #f8fafc;
+  }
+  .data-table tbody td {
+    padding: 14px 20px;
+    color: #334155;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .data-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  /* ─── Timeline ─── */
+  .tl-item {
+    position: relative;
+    padding-left: 36px;
+    padding-bottom: 28px;
+  }
+  .tl-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 22px;
+    bottom: -4px;
+    width: 2px;
+    background: #e2e8f0;
+    border-radius: 1px;
+  }
+  .tl-dot {
+    position: absolute;
+    left: 0;
+    top: 4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2.5px solid #cbd5e1;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 150ms;
+  }
+  .tl-dot.done {
+    border-color: #059669;
+    background: #059669;
+  }
+  .tl-dot.current {
+    border-color: #d97706;
+    background: #fffbeb;
+  }
+  .tl-dot.future {
+    border-color: #e2e8f0;
+    background: #f8fafc;
+  }
+
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  #main_body > :first-child {
+    animation: fadeSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}

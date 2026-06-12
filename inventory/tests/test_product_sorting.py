@@ -37,18 +37,15 @@ class ProductSortingTest(TestCase):
         response = self.client.get(url, {'sort': 'sku'}, **headers)
         self.assertEqual(response.status_code, 200)
         content = response.content.decode('utf-8')
-        
-        # Should contain table rows
-        self.assertIn('A-SKU', content)
-        # Should NOT contain search bar (which is in header)
-        self.assertNotIn('Search products...', content)
-        
+
+        self.assertIn('Model A', content)
+        self.assertNotIn('name="q"', content)
+
     def test_htmx_full_load_renders_content(self):
         url = reverse('products')
         headers = {'HTTP_HX_REQUEST': 'true'}
-        response = self.client.get(url, {}, **headers) # No sort/page/q
+        response = self.client.get(url, {}, **headers)
         self.assertEqual(response.status_code, 200)
         content = response.content.decode('utf-8')
-        
-        # Should contain search bar because it renders 'content' block
-        self.assertIn('Search products...', content)
+
+        self.assertIn('name="q"', content)

@@ -1,5 +1,6 @@
 import logging
 
+from django.db import DatabaseError, IntegrityError, OperationalError
 from django.db.models import QuerySet
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,7 @@ def audit(user, action, obj, detail=None, request=None):
             detail=detail or {},
             ip_address=ip,
         )
-    except Exception:
+    except (DatabaseError, IntegrityError, OperationalError):
         logging.getLogger('core.audit').error(
             f"AuditLog failed: action={action}", exc_info=True
         )

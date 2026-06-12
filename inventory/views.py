@@ -172,6 +172,8 @@ def delete_product(request, pk):
         response = resp
         return replace_url(response, reverse("products"))
 
+    return HttpResponse(status=405)
+
 
 def product_status_change(request, pk):
     product = get_object_or_404(Product, pk=pk)
@@ -196,6 +198,8 @@ def product_status_change(request, pk):
 
         full_response = _status_change + success_toast
         return HttpResponse(full_response)
+
+    return HttpResponse(status=405)
 
 
 def inventories(request):
@@ -606,7 +610,9 @@ def transformations(request):
     page_number = request.GET.get("page", 1)
     search_query = request.GET.get("q", "")
     status_filter = request.GET.get("status", "")
-    transformations = Transformation.objects.order_by("-created_at")
+    transformations = Transformation.objects.annotate(
+        _total_qty=Count("transformation_items")
+    ).order_by("-created_at")
 
     if search_query:
         transformations = transformations.filter(

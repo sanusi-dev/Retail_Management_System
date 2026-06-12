@@ -1,5 +1,6 @@
 import logging
 from decimal import Decimal
+from django.db import DatabaseError, IntegrityError, OperationalError
 from django.db import transaction as db_transaction
 from django.db.models import F
 from django.contrib.contenttypes.models import ContentType
@@ -47,7 +48,7 @@ def _refresh_balances(account):
                 'cached_available_balance',
                 'balances_last_updated',
             ])
-    except Exception:
+    except (DatabaseError, IntegrityError, OperationalError):
         logger.error(
             "Balance cache refresh failed for account %s", account.pk,
             exc_info=True

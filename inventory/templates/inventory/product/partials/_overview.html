@@ -12,11 +12,11 @@
                </div>
                <div class="flex items-center">
                   <span class="text-sm text-gray-600 w-40">Brand</span>
-                  <span class="text-sm font-medium text-gray-700">{{ product.brand|upper }}</span>
+                   <span class="text-sm font-medium text-gray-700">{{ product.brand.name|upper|default:"" }}</span>
                </div>
                <div class="flex items-center">
                   <span class="text-sm text-gray-600 w-40">Category</span>
-                  <span class="text-sm font-medium text-gray-700">{{ product.category|title }}</span>
+                   <span class="text-sm font-medium text-gray-700">{{ product.category|title|default:"" }}</span>
                </div>
                <div class="flex items-center">
                   <span class="text-sm text-gray-600 w-40">Status</span>
@@ -25,7 +25,7 @@
                </div>
                <div class="flex items-center">
                   <span class="text-sm text-gray-600 w-40">Created by</span>
-                  <span class="text-sm font-medium text-gray-700">{{ product.created_by|title }}</span>
+                   <span class="text-sm font-medium text-gray-700">{{ product.created_by|default:""|title }}</span>
                </div>
             </div>
          </div>
@@ -36,11 +36,11 @@
             <div class="space-y-4">
                <div class="flex items-center">
                   <span class="text-sm text-gray-600 w-40">Cost Price</span>
-                  <span class="text-sm font-medium text-gray-700">NGN{{ product.average_cost_price }}</span>
+                   <span class="text-sm font-medium text-gray-700">NGN{{ product.average_cost_price|default:"0.00" }}</span>
                </div>
                <div class="flex items-center">
                   <span class="text-sm text-gray-600 w-40">To be Recieved</span>
-                  <span class="text-sm font-medium text-gray-700">{{ product.total_remaining_qty }} Qty</span>
+                   <span class="text-sm font-medium text-gray-700">{{ product.total_remaining_qty|default:"0" }} Qty</span>
                </div>
             </div>
          </div>
@@ -51,15 +51,15 @@
             <div class="space-y-4">
                <div class="flex items-center">
                   <span class="text-sm text-gray-600 w-40">Sales Price</span>
-                  <span class="text-sm font-medium text-gray-700">NGN{{ product.average_sales_price }}</span>
-               </div>
-               <div class="flex items-center">
-                  <span class="text-sm text-gray-600 w-40">Total Coupled Sold</span>
-                  <span class="text-sm font-medium text-gray-700">{{ product.sale_items.count }} Qty</span>
-               </div>
-               <div class="flex items-center">
-                  <span class="text-sm text-gray-600 w-40">Total Boxed Sold</span>
-                  <span class="text-sm font-medium text-gray-700">{{ product.sale_items.count }} Qty</span>
+                   <span class="text-sm font-medium text-gray-700">NGN{{ product.average_sales_price|default:"0.00" }}</span>
+                </div>
+                <div class="flex items-center">
+                   <span class="text-sm text-gray-600 w-40">Total Coupled Sold</span>
+                   <span class="text-sm font-medium text-gray-700">{{ coupled_sold|default:0 }} Qty</span>
+                </div>
+                <div class="flex items-center">
+                   <span class="text-sm text-gray-600 w-40">Total Boxed Sold</span>
+                   <span class="text-sm font-medium text-gray-700">{{ boxed_sales|length|default:0 }} Qty</span>
                </div>
             </div>
          </div>

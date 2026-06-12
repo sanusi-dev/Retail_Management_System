@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from customer.models import DepositAccount
-from django.db import transaction
+from django.db import transaction, DatabaseError, IntegrityError, OperationalError
 
 
 class Command(BaseCommand):
@@ -36,7 +36,7 @@ class Command(BaseCommand):
                             f"Progress: {updated}/{total} "
                             f"({(updated/total*100):.1f}%)"
                         )
-            except Exception as e:
+            except (DatabaseError, IntegrityError, OperationalError, ValueError) as e:
                 errors += 1
                 self.stdout.write(
                     self.style.ERROR(

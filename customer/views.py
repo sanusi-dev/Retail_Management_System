@@ -2,6 +2,7 @@ from decimal import Decimal, InvalidOperation
 from django.shortcuts import render, get_object_or_404, redirect
 from render_block import render_block_to_string
 from django.urls import reverse
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.http import HttpResponse
 from django_htmx.http import HttpResponseClientRedirect
@@ -241,7 +242,7 @@ def customer_detail(request, pk):
                 "agreement_line_items",
                 queryset=PurchaseAgreementLineItem.objects.filter(
                     is_current_version=True
-                ).select_related("product"),
+                ).select_related("product", "product__brand"),
             )
         )
         .order_by("-created_at")
@@ -545,7 +546,7 @@ def modal_void_transaction(request, pk):
             response["HX-Trigger"] = "customerDetailChanged"
             return response
 
-        except Exception as e:
+        except (ValidationError, customer_services.BusinessRuleViolation) as e:
             error_msg = str(e)
             if hasattr(e, "message_dict"):
                 error_msg = "; ".join(
@@ -629,7 +630,7 @@ def modal_void_cfa_fulfillment(request, pk):
             response["HX-Trigger"] = "customerDetailChanged"
             return response
 
-        except Exception as e:
+        except (ValidationError, customer_services.BusinessRuleViolation) as e:
             error_msg = str(e)
             if hasattr(e, "message_dict"):
                 error_msg = "; ".join(
@@ -863,7 +864,7 @@ def manage_purchase_agreements(request, pk=None):
                 )
                 customer = account.customer
             except DepositAccount.DoesNotExist:
-                pass
+                logger.warning("Manage agreement: account %s not found", account_pk)
 
     context = {
         "form": form,
@@ -1073,7 +1074,7 @@ def agreement_detail(request, pk):
 
     line_items = (
         agreement.agreement_line_items.filter(is_current_version=True)
-        .select_related("product", "product__inventory")
+        .select_related("product", "product__inventory", "product__brand")
         .prefetch_related(
             "boxed_sales",
             "boxed_sales__sale",
@@ -1087,12 +1088,11 @@ def agreement_detail(request, pk):
     # Build line item data with fulfillment details
     line_items_data = []
     for item in line_items:
-        boxed_sales = item.boxed_sales.filter(sale__status=Sale.Status.ACTIVE)
-        coupled_sales = item.coupled_sales.filter(
-            sale__status=Sale.Status.ACTIVE
-        ).select_related(
-            "transformation_item", "transformation_item__transformation"
-        )
+        boxed_sales = [bs for bs in item.boxed_sales.all() if bs.sale.status == Sale.Status.ACTIVE]
+        coupled_sales = [
+            cs for cs in item.coupled_sales.all()
+            if cs.sale.status == Sale.Status.ACTIVE
+        ]
 
         # Get all transformation items (coupled units) sold for this line item
         coupled_details = []
@@ -1140,7 +1140,7 @@ def agreement_detail(request, pk):
     # Check for superseded (old version) line items
     superseded_items = (
         agreement.agreement_line_items.filter(is_current_version=False)
-        .select_related("product")
+        .select_related("product", "product__brand")
         .prefetch_related(
             "boxed_sales",
             "boxed_sales__sale",
@@ -1154,10 +1154,11 @@ def agreement_detail(request, pk):
     # Build fulfillment data for superseded items (links to sale detail)
     superseded_items_data = []
     for item in superseded_items:
-        boxed_sales = item.boxed_sales.filter(sale__status=Sale.Status.ACTIVE)
-        coupled_sales = item.coupled_sales.filter(
-            sale__status=Sale.Status.ACTIVE
-        ).select_related("transformation_item")
+        boxed_sales = [bs for bs in item.boxed_sales.all() if bs.sale.status == Sale.Status.ACTIVE]
+        coupled_sales = [
+            cs for cs in item.coupled_sales.all()
+            if cs.sale.status == Sale.Status.ACTIVE
+        ]
 
         boxed_details = [
             {
@@ -1406,7 +1407,7 @@ def create_normal_sale(request):
                 ).get(pk=customer_pk)
                 initial["customer"] = customer_pk
             except Customer.DoesNotExist:
-                pass
+                logger.warning("Create sale GET: customer %s not found", customer_pk)
         form = NormalSaleForm(initial=initial)
         boxed_formset = BoxedSaleFormSet(prefix="boxed")
         coupled_formset = CoupledSaleFormSet(prefix="coupled")

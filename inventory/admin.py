@@ -176,16 +176,13 @@ class InventoryAdmin(AuditAdminMixin, admin.ModelAdmin):
         if cost is None:
             return "N/A"
 
-        # rounded_cost = round(cost, 0)
         rounded_int_cost = int(round(cost, 0))
-        # formatted_cost = number_format(rounded_cost, 0)
         formatted_cost = f"{rounded_int_cost:,}"
 
         return formatted_cost
 
     get_formatted_weighted_average_cost.short_description = "Avg. Cost"
     get_formatted_weighted_average_cost.admin_order_field = "weighted_average_cost"
-    # ------------------------------------
 
     def has_add_permission(self, request):
         return False

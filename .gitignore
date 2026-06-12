@@ -6,6 +6,8 @@
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
 *$py.class
 *.so
 .Python
@@ -38,6 +40,8 @@ staticfiles/
 .DS_Store
 Thumbs.db
 .directory
+*.orig
+*.bak
 
 # Coverage reports
 htmlcov/
@@ -77,17 +81,14 @@ Retail_Management_System_Win_Dist.zip
 logs/
 backups/
 
-# Documentation
-# reconstruction_document.md
-
 # Tailwind standalone CLI binary and config
 tailwindcss
 tailwind.config.js
 Procfile.tailwind
 
 # Static files (collected/generated)
-static/
 staticfiles/
+static/css/output.css
 
 # Generated migration files (if auto-generated)
 */migrations/000*.py

@@ -17,10 +17,10 @@ class Supplier(models.Model):
         INACTIVE = "inactive", "Inactive"
 
     supplier_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    full_name = models.CharField(max_length=255, null=True, blank=True)
-    company_name = models.CharField(max_length=255, null=True, blank=True, default="")
-    phone = models.CharField(max_length=20, null=True, blank=True)
-    address = models.TextField(null=True, blank=True, default="")
+    full_name = models.CharField(max_length=255, blank=True)
+    company_name = models.CharField(max_length=255, blank=True, default="")
+    phone = models.CharField(max_length=20, blank=True)
+    address = models.TextField(blank=True, default="")
     status = models.CharField(max_length=10, choices=Status, default=Status.ACTIVE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

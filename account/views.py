@@ -1,3 +1,1 @@
-from django.shortcuts import render
-
-# Create your views here.
+# account/views.py — reserved for future auth views

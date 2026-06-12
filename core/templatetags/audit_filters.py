@@ -65,7 +65,7 @@ def format_audit_detail(detail: dict, action: str = "") -> str:
         if key in MONETARY_KEYS:
             try:
                 formatted = f"₦{Decimal(str(value)):,.0f}"
-            except (ValueError, Exception):
+            except (ValueError,):
                 formatted = f"₦{value}"
             parts.append(f"{label}: {formatted}")
         else:

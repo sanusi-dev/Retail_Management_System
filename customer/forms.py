@@ -497,7 +497,7 @@ class AgreementFulfillmentLineForm(forms.Form):
                     line = PurchaseAgreementLineItem.objects.get(pk=line_item_pk)
                     product_pk = line.product.pk
                 except PurchaseAgreementLineItem.DoesNotExist:
-                    pass
+                    logger.warning("AmendLineItemForm: line item %s not found", line_item_pk)
 
         if product_pk:
             # Lock the product queryset so the template only shows the

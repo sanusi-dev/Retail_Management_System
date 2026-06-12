@@ -1,6 +1,9 @@
 from django.db import models, transaction
 from account.models import CustomUser
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 from django.db.models import (
     Sum,
     Q,
@@ -27,7 +30,7 @@ class Customer(models.Model):
     customer_id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     customer_number = models.CharField(max_length=20, unique=True, editable=False)
     full_name = models.CharField(max_length=200, unique=True)
-    phone = models.CharField(max_length=20, null=True, blank=True)
+    phone = models.CharField(max_length=20, blank=True)
     email = models.EmailField(blank=True)
     address = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -620,7 +623,7 @@ class PurchaseAgreementLineItem(models.Model):
         related_name="supersedes",
     )
     voided_at = models.DateTimeField(null=True, blank=True)
-    void_reason = models.TextField(null=True, blank=True)
+    void_reason = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
@@ -822,7 +825,7 @@ class CfaAgreement(models.Model):
                 original = CfaAgreement.objects.get(pk=self.pk)
                 available += original.amount_allocated
             except CfaAgreement.DoesNotExist:
-                pass
+                logger.warning("CfaAgreement.save: original pk %s not found", self.pk)
         if available < self.amount_allocated:
             raise ValidationError(
                 {
@@ -1230,7 +1233,7 @@ class BoxedSale(models.Model):
                 original_sale = BoxedSale.objects.get(pk=self.pk)
                 available_stock += original_sale.quantity
             except BoxedSale.DoesNotExist:
-                pass
+                logger.warning("BoxedSale.clean: existing sale pk %s not found", self.pk)
 
         if self.quantity > available_stock:
             raise ValidationError(
