@@ -116,6 +116,18 @@ echo [5/9] Setting up database...
 
 cd /d "%APP_DIR%"
 call "%APP_DIR%\venv\Scripts\activate.bat" >nul 2>&1
+
+REM If a database was provided alongside setup.bat, use it
+if exist "%SETUP_DIR%db.sqlite3" (
+    echo   Found existing database — copying to application folder...
+    copy /y "%SETUP_DIR%db.sqlite3" "%APP_DIR%\db.sqlite3" >nul 2>&1
+    echo   Database copied.
+) else if exist "%APP_DIR%\backups\db_safety_backup_20260210_050520.sqlite3" (
+    echo   Found backup database — copying to application folder...
+    copy /y "%APP_DIR%\backups\db_safety_backup_20260210_050520.sqlite3" "%APP_DIR%\db.sqlite3" >nul 2>&1
+    echo   Database copied.
+)
+
 python manage.py makemigrations --noinput >nul 2>&1
 python manage.py migrate --run-syncdb >nul 2>&1
 if errorlevel 1 (
