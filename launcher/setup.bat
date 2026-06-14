@@ -1,15 +1,15 @@
 @echo off
-SETLOCAL ENABLEDELAYEDEXPANSION
+setlocal enabledelayedexpansion
 
 REM ============================================================
 REM  RetailMS — One-Time Setup Script
-REM  The client runs this ONCE. After setup, they use the
-REM  desktop shortcut to launch the app.
+REM  Run this ONCE. After setup, use the desktop shortcut.
 REM ============================================================
 
 REM ---------- Configuration ----------
-SET "APP_DIR=C:\RetailMS"
-SET "REPO_URL=https://github.com/sanusi-dev/Retail_Management_System.git"
+set "APP_DIR=C:\RetailMS"
+set "REPO_URL=https://github.com/sanusi-dev/Retail_Management_System.git"
+set "SETUP_DIR=%~dp0"
 REM -----------------------------------
 
 title RetailMS Setup
@@ -22,55 +22,41 @@ echo.
 REM ---------- Step 1: Check prerequisites ----------
 echo [1/9] Checking prerequisites...
 
-git --version >nul 2>&1
+echo   Checking Git ...
+call :run git --version
 if errorlevel 1 (
-    echo.
-    echo ERROR: Git is not installed or not in your PATH.
-    echo.
-    echo Please download Git from: https://git-scm.com/download/win
-    echo During installation, accept all default options.
-    echo.
-    pause
-    exit /b 1
+    echo   FAILED - Git is not installed or not in PATH.
+    echo   Download: https://git-scm.com/download/win
+    goto :fail
 )
-echo   Git is installed.
+echo   Git OK.
 
-python --version >nul 2>&1
+echo   Checking Python ...
+call :run python --version
 if errorlevel 1 (
-    echo.
-    echo ERROR: Python is not installed or not in your PATH.
-    echo.
-    echo Please download Python from: https://www.python.org/downloads/
-    echo.
-    echo IMPORTANT: On the first screen of the installer,
-    echo check the box that says "Add Python to PATH"
-    echo (at the bottom of the window) before clicking Install.
-    echo.
-    pause
-    exit /b 1
+    echo   FAILED - Python is not installed or not in PATH.
+    echo   Download: https://www.python.org/downloads/
+    echo   IMPORTANT: Check "Add Python to PATH" during install.
+    goto :fail
 )
-echo   Python is installed.
+echo   Python OK.
 
 echo.
 
 REM ---------- Step 2: Clone the repo ----------
-echo [2/9] Installing application files...
+echo [2/9] Installing application files ...
 
 if exist "%APP_DIR%\.git" (
-    echo   Application directory already exists — skipping clone.
+    echo   Already installed — skipping clone.
 ) else (
-    if not exist "%APP_DIR%" (
-        mkdir "%APP_DIR%"
-    )
-    echo   Cloning repository to %APP_DIR% ...
-    git clone "%REPO_URL%" "%APP_DIR%" >nul 2>&1
+    if not exist "%APP_DIR%" mkdir "%APP_DIR%"
+    echo   Cloning from GitHub ...
+    call :run git clone "%REPO_URL%" "%APP_DIR%"
     if errorlevel 1 (
-        echo.
-        echo ERROR: Failed to clone the repository.
-        echo Check your internet connection and try again.
-        echo.
-        pause
-        exit /b 1
+        echo   FAILED - Could not clone. Check internet connection.
+        echo   If this is a private repo, you may need to install
+        echo   GitHub CLI and authenticate first: https://cli.github.com
+        goto :fail
     )
     echo   Clone successful.
 )
@@ -78,116 +64,101 @@ if exist "%APP_DIR%\.git" (
 echo.
 
 REM ---------- Step 3: Create virtual environment ----------
-echo [3/9] Creating Python virtual environment...
+echo [3/9] Creating Python virtual environment ...
 
 if exist "%APP_DIR%\venv\Scripts\python.exe" (
-    echo   Virtual environment already exists — skipping.
+    echo   Already exists — skipping.
 ) else (
-    python -m venv "%APP_DIR%\venv" >nul 2>&1
+    call :run python -m venv "%APP_DIR%\venv"
     if errorlevel 1 (
-        echo.
-        echo ERROR: Failed to create virtual environment.
-        echo Please check your Python installation.
-        echo.
-        pause
-        exit /b 1
+        echo   FAILED - Could not create virtual environment.
+        goto :fail
     )
-    echo   Virtual environment created.
+    echo   Created.
 )
 
 echo.
 
-REM ---------- Step 4: Install requirements ----------
-echo [4/9] Installing Python packages (this may take a few minutes)...
+REM ---------- Step 4: Install Python packages ----------
+echo [4/9] Installing Python packages (may take a few minutes) ...
 
-"%APP_DIR%\venv\Scripts\pip.exe" install -r "%APP_DIR%\requirements.txt" --quiet >nul 2>&1
+call :run "%APP_DIR%\venv\Scripts\pip.exe" install -r "%APP_DIR%\requirements.txt" --quiet
 if errorlevel 1 (
-    echo.
-    echo WARNING: Some packages may have failed to install.
-    echo The app may still work. Check server.log if you see errors.
+    echo   WARNING: Some packages may have failed. The app may still work.
+) else (
+    echo   Packages installed.
 )
-
-echo   Packages installed.
 
 echo.
 
-REM ---------- Step 5: Database setup ----------
-echo [5/9] Setting up database...
+REM ---------- Step 5: Database ----------
+echo [5/9] Setting up database ...
+
+if exist "%SETUP_DIR%db.sqlite3" (
+    echo   Found database — copying ...
+    copy /y "%SETUP_DIR%db.sqlite3" "%APP_DIR%\db.sqlite3" >nul
+    echo   Copied.
+) else if exist "%APP_DIR%\backups\db_safety_backup_20260210_050520.sqlite3" (
+    echo   Found backup database — copying ...
+    copy /y "%APP_DIR%\backups\db_safety_backup_20260210_050520.sqlite3" "%APP_DIR%\db.sqlite3" >nul
+    echo   Copied.
+) else (
+    echo   No database found — creating new empty database.
+)
 
 cd /d "%APP_DIR%"
-call "%APP_DIR%\venv\Scripts\activate.bat" >nul 2>&1
+call "%APP_DIR%\venv\Scripts\activate.bat" >nul
 
-REM If a database was provided alongside setup.bat, use it
-if exist "%SETUP_DIR%db.sqlite3" (
-    echo   Found existing database — copying to application folder...
-    copy /y "%SETUP_DIR%db.sqlite3" "%APP_DIR%\db.sqlite3" >nul 2>&1
-    echo   Database copied.
-) else if exist "%APP_DIR%\backups\db_safety_backup_20260210_050520.sqlite3" (
-    echo   Found backup database — copying to application folder...
-    copy /y "%APP_DIR%\backups\db_safety_backup_20260210_050520.sqlite3" "%APP_DIR%\db.sqlite3" >nul 2>&1
-    echo   Database copied.
-)
-
-python manage.py makemigrations --noinput >nul 2>&1
-python manage.py migrate --run-syncdb >nul 2>&1
+call :run python manage.py makemigrations --noinput
+call :run python manage.py migrate --run-syncdb
 if errorlevel 1 (
-    echo.
-    echo ERROR: Database migration failed.
-    echo Check "%APP_DIR%\server.log" for details.
-    echo.
-    pause
-    exit /b 1
+    echo   FAILED - Database migration failed.
+    goto :fail
 )
-
 echo   Database ready.
 
 echo.
 
-REM ---------- Step 6: Collect static files ----------
-echo [6/9] Collecting static files...
+REM ---------- Step 6: Static files ----------
+echo [6/9] Collecting static files ...
 
-python manage.py collectstatic --noinput >nul 2>&1
+call :run python manage.py collectstatic --noinput
 if errorlevel 1 (
-    echo   WARNING: collectstatic failed. The app may still work.
+    echo   WARNING: collectstatic failed. App may still work.
 ) else (
-    echo   Static files collected.
+    echo   Done.
 )
 
 echo.
 
-REM ---------- Step 7: Create admin account ----------
-echo [7/9] Creating admin account...
-echo.
-echo   You need an admin account to log into the app.
-echo   Please enter a username, email, and password below.
+REM ---------- Step 7: Admin account ----------
+echo [7/9] Creating admin account ...
+echo   Enter a username, email, and password for your admin login.
 echo.
 
 python manage.py createsuperuser
 
 if errorlevel 1 (
-    echo.
-    echo   WARNING: Could not create admin account automatically.
-    echo   You can create one later by opening a Command Prompt
-    echo   in %APP_DIR% and running:
-    echo     venv\Scripts\python.exe manage.py createsuperuser
-    echo.
+    echo   WARNING: Could not create admin account.
+    echo   You can create one later by running:
+    echo     %APP_DIR%\venv\Scripts\python.exe %APP_DIR%\manage.py createsuperuser
+    echo   in a Command Prompt.
 )
 
 echo.
 
-REM ---------- Step 8: Copy launcher files ----------
-echo [8/9] Copying launcher files...
+REM ---------- Step 8: Launcher files ----------
+echo [8/9] Copying launcher files ...
 
-set "SETUP_DIR=%~dp0"
-copy /y "%SETUP_DIR%launch.bat" "%APP_DIR%\launch.bat" >nul 2>&1
-copy /y "%SETUP_DIR%RetailMS.vbs" "%APP_DIR%\RetailMS.vbs" >nul 2>&1
+copy /y "%SETUP_DIR%launch.bat" "%APP_DIR%\launch.bat" >nul
+copy /y "%SETUP_DIR%RetailMS.vbs" "%APP_DIR%\RetailMS.vbs" >nul
 
-echo   Launcher files copied.
+echo   Done.
 
 echo.
 
-REM ---------- Step 9: Create desktop shortcut ----------
-echo [9/9] Creating desktop shortcut...
+REM ---------- Step 9: Desktop shortcut ----------
+echo [9/9] Creating desktop shortcut ...
 
 powershell -NoProfile -Command ^
     "$ws = New-Object -ComObject WScript.Shell; ^
@@ -196,15 +167,14 @@ powershell -NoProfile -Command ^
      $shortcut.TargetPath = '%APP_DIR%\RetailMS.vbs'; ^
      $shortcut.WorkingDirectory = '%APP_DIR%'; ^
      $shortcut.Description = 'Launch Retail Management System'; ^
-     $shortcut.Save()" >nul 2>&1
+     $shortcut.Save(); ^
+     Write-Host 'Shortcut created on Desktop.'"
 
 if errorlevel 1 (
-    echo   WARNING: Could not create desktop shortcut automatically.
-    echo   You can create one manually: right-click on RetailMS.vbs
-    echo   in %APP_DIR% and select "Create shortcut", then
-    echo   drag it to your desktop.
+    echo   WARNING: Could not create desktop shortcut.
+    echo   Manually: right-click %APP_DIR%\RetailMS.vbs ^> Send to Desktop.
 ) else (
-    echo   Desktop shortcut created: RetailMS.lnk
+    echo   Desktop shortcut ready.
 )
 
 echo.
@@ -213,19 +183,22 @@ echo ========================================================
 echo   SETUP COMPLETE!
 echo ========================================================
 echo.
-echo   A "RetailMS" shortcut has been placed on your desktop.
-echo   Double-click it to launch the app.
-echo.
-echo   What happens each time you launch:
-echo     - The app checks for updates automatically
-echo     - If an update is found, it installs it
-echo     - Your web browser opens to the app
-echo     - The app closes when you close the browser tab
-echo.
+echo   Double-click "RetailMS" on your desktop to launch.
 echo   Login with the admin account you just created.
 echo   The app runs at: http://127.0.0.1:8000
 echo.
-echo   If you ever need help, check the README in the
-echo   %APP_DIR% folder.
+pause
+exit /b 0
+
+:fail
+echo.
+echo   Setup failed. Please check the messages above.
+echo   If you need help, contact your developer.
 echo.
 pause
+exit /b 1
+
+:run
+echo   Running: %*
+%* 2>&1
+exit /b %errorlevel%
