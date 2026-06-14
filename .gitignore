@@ -90,9 +90,6 @@ Procfile.tailwind
 staticfiles/
 static/css/output.css
 
-# Generated migration files (if auto-generated)
-*/migrations/000*.py
-
 # Temporary/compiled files
 *.egg-info/
 *.whl
