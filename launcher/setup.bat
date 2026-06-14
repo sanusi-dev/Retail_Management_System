@@ -3,14 +3,11 @@ setlocal enabledelayedexpansion
 
 REM ============================================================
 REM  RetailMS — One-Time Setup Script
-REM  Run this ONCE. After setup, use the desktop shortcut.
 REM ============================================================
 
-REM ---------- Configuration ----------
 set "APP_DIR=C:\RetailMS"
 set "REPO_URL=https://github.com/sanusi-dev/Retail_Management_System.git"
 set "SETUP_DIR=%~dp0"
-REM -----------------------------------
 
 title RetailMS Setup
 
@@ -19,13 +16,11 @@ echo   Retail Management System — SETUP
 echo ========================================================
 echo.
 
-REM ---------- Step 1: Check prerequisites ----------
 echo [1/9] Checking prerequisites...
-
 echo   Checking Git ...
 call :run git --version
 if errorlevel 1 (
-    echo   FAILED - Git is not installed or not in PATH.
+    echo   FAILED - Git not installed or not in PATH.
     echo   Download: https://git-scm.com/download/win
     goto :fail
 )
@@ -34,18 +29,15 @@ echo   Git OK.
 echo   Checking Python ...
 call :run python --version
 if errorlevel 1 (
-    echo   FAILED - Python is not installed or not in PATH.
+    echo   FAILED - Python not installed or not in PATH.
     echo   Download: https://www.python.org/downloads/
     echo   IMPORTANT: Check "Add Python to PATH" during install.
     goto :fail
 )
 echo   Python OK.
-
 echo.
 
-REM ---------- Step 2: Clone the repo ----------
 echo [2/9] Installing application files ...
-
 if exist "%APP_DIR%\.git" (
     echo   Already installed — skipping clone.
 ) else (
@@ -54,59 +46,49 @@ if exist "%APP_DIR%\.git" (
     call :run git clone "%REPO_URL%" "%APP_DIR%"
     if errorlevel 1 (
         echo   FAILED - Could not clone. Check internet connection.
-        echo   If repo is private, you may need GitHub CLI: https://cli.github.com
         goto :fail
     )
     echo   Clone successful.
 )
-
 echo.
 
-REM ---------- Step 3: Create virtual environment ----------
 echo [3/9] Creating Python virtual environment ...
-
-if exist "%APP_DIR%env\Scripts\python.exe" (
+if exist "%APP_DIR%\venv\Scripts\python.exe" (
     echo   Already exists — skipping.
 ) else (
-    call :run python -m venv "%APP_DIR%env"
+    call :run python -m venv "%APP_DIR%\venv"
     if errorlevel 1 (
         echo   FAILED - Could not create virtual environment.
         goto :fail
     )
     echo   Created.
 )
-
 echo.
 
-REM ---------- Step 4: Install Python packages ----------
 echo [4/9] Installing Python packages (may take a few minutes) ...
-
-call :run "%APP_DIR%env\Scripts\pip.exe" install -r "%APP_DIR%equirements.txt" --quiet
+call :run "%APP_DIR%\venv\Scripts\pip.exe" install -r "%APP_DIR%\requirements.txt" --quiet
 if errorlevel 1 (
-    echo   WARNING: Some packages may have failed. The app may still work.
+    echo   WARNING: Some packages may have failed. App may still work.
 ) else (
     echo   Packages installed.
 )
-
 echo.
 
-REM ---------- Step 5: Database ----------
 echo [5/9] Setting up database ...
-
 if exist "%SETUP_DIR%db.sqlite3" (
     echo   Found database — copying ...
     copy /y "%SETUP_DIR%db.sqlite3" "%APP_DIR%\db.sqlite3" >nul
     echo   Copied.
-) else if exist "%APP_DIR%ackups\db_safety_backup_20260210_050520.sqlite3" (
+) else if exist "%APP_DIR%\backups\db_safety_backup_20260210_050520.sqlite3" (
     echo   Found backup database — copying ...
-    copy /y "%APP_DIR%ackups\db_safety_backup_20260210_050520.sqlite3" "%APP_DIR%\db.sqlite3" >nul
+    copy /y "%APP_DIR%\backups\db_safety_backup_20260210_050520.sqlite3" "%APP_DIR%\db.sqlite3" >nul
     echo   Copied.
 ) else (
     echo   No database found — creating new empty database.
 )
 
 cd /d "%APP_DIR%"
-call "%APP_DIR%env\Scriptsctivate.bat" >nul
+call "%APP_DIR%\venv\Scripts\activate.bat" >nul
 
 if not exist "%APP_DIR%\logs" mkdir "%APP_DIR%\logs"
 if not exist "%APP_DIR%\media" mkdir "%APP_DIR%\media"
@@ -117,56 +99,44 @@ if errorlevel 1 (
     goto :fail
 )
 echo   Database ready.
-
 echo.
 
-REM ---------- Step 6: Static files ----------
 echo [6/9] Collecting static files ...
-
 call :run python manage.py collectstatic --noinput
 if errorlevel 1 (
     echo   WARNING: collectstatic failed. App may still work.
 ) else (
     echo   Done.
 )
-
 echo.
 
-REM ---------- Step 7: Admin account ----------
 echo [7/9] Creating admin account ...
 echo   Enter a username, email, and password for your admin login.
 echo.
-
 python manage.py createsuperuser
-
 if errorlevel 1 (
     echo   WARNING: Could not create admin account.
-    echo   Run this in Command Prompt to create one later:
-    echo     %APP_DIR%env\Scripts\python.exe %APP_DIR%\manage.py createsuperuser
+    echo   Run this later in Command Prompt:
+    echo     %APP_DIR%\venv\Scripts\python.exe %APP_DIR%\manage.py createsuperuser
 )
-
 echo.
 
-REM ---------- Step 8: Launcher files ----------
 echo [8/9] Copying launcher files ...
-
 copy /y "%SETUP_DIR%launch.bat" "%APP_DIR%\launch.bat" >nul
 copy /y "%SETUP_DIR%RetailMS.vbs" "%APP_DIR%\RetailMS.vbs" >nul
-
 echo   Done.
-
 echo.
 
-REM ---------- Step 9: Desktop shortcut ----------
 echo [9/9] Creating desktop shortcut ...
-
-powershell -NoProfile -Command " = New-Object -ComObject WScript.Shell;  = [Environment]::GetFolderPath('Desktop');  = .CreateShortcut( + '\RetailMS.lnk'); .TargetPath = '%APP_DIR%\RetailMS.vbs'; .WorkingDirectory = '%APP_DIR%'; .Description = 'Launch Retail Management System'; .Save(); Write-Host 'Shortcut created.'"
-
+set "VBS_PATH=%APP_DIR%\RetailMS.vbs"
+set "SHORTCUT_NAME=RetailMS"
+powershell -NoProfile -Command "$s=(New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Desktop')+'\RetailMS.lnk'); $s.TargetPath='%APP_DIR%\RetailMS.vbs'; $s.WorkingDirectory='%APP_DIR%'; $s.Description='Retail Management System'; $s.Save(); Write-Host 'Shortcut created.'"
 if errorlevel 1 (
     echo   WARNING: Could not create desktop shortcut.
     echo   Manually: right-click %APP_DIR%\RetailMS.vbs ^> Send to Desktop.
+) else (
+    echo   Desktop shortcut ready.
 )
-
 echo.
 
 echo ========================================================
