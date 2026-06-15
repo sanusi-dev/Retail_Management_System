@@ -179,7 +179,7 @@ LOGGING = {
         # Suppress noisy DB query logs unless you explicitly need them
         "django.db.backends": {
             "handlers": ["console"] if DEBUG else [],
-            "level": "DEBUG",
+            "level": "WARNING",
             "propagate": False,
         },
     },
