@@ -39,7 +39,7 @@ if not errorlevel 1 (
         for /f "delims=" %%i in ('git rev-parse HEAD 2^>nul') do set "AFTER=%%i"
         if not "!BEFORE!"=="!AFTER!" (
             pip install -r requirements.txt --quiet >nul 2>&1
-            python manage.py migrate --run-syncdb >nul 2>&1
+            python manage.py migrate >nul 2>&1
             python manage.py collectstatic --noinput >nul 2>&1
         )
     )

@@ -93,7 +93,7 @@ call "%APP_DIR%\venv\Scripts\activate.bat" >nul
 if not exist "%APP_DIR%\logs" mkdir "%APP_DIR%\logs"
 if not exist "%APP_DIR%\media" mkdir "%APP_DIR%\media"
 
-call :run python manage.py migrate --run-syncdb
+call :run python manage.py migrate
 if errorlevel 1 (
     echo   FAILED - Database migration failed.
     goto :fail
