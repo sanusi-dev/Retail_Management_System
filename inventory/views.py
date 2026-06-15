@@ -13,7 +13,7 @@ from django.contrib import messages
 from django.db import transaction
 from django.template.loader import render_to_string
 from django.core.paginator import Paginator
-from django.db.models import OuterRef, Subquery, Q
+from django.db.models import OuterRef, Subquery, Q, Count
 from django.urls import reverse
 from . import services
 import logging
