@@ -81,7 +81,7 @@ def dashboard(request):
         Payment.objects.filter(status=Payment.Status.PAID)
     ).aggregate(total=Sum('amount_paid'))['total'] or 0
     
-    # --- Gross Profit (Estimated) ---
+    # --- Gross Profit ---
     boxed_cost_qs = BoxedSale.objects.filter(sale__status=Sale.Status.ACTIVE)
     coupled_cost_qs = CoupledSale.objects.filter(sale__status=Sale.Status.ACTIVE)
     
@@ -99,7 +99,9 @@ def dashboard(request):
         coupled_cost_qs = coupled_cost_qs.filter(sale__sale_date__year=filter_year)
     
     boxed_cost = boxed_cost_qs.aggregate(
-        total=Sum(F('quantity') * F('product__inventory__weighted_average_cost'), output_field=DecimalField())
+        total=Sum(
+            Coalesce('cost_basis', F('quantity') * F('product__inventory__weighted_average_cost'), output_field=DecimalField())
+        )
     )['total'] or Decimal('0.00')
     
     coupled_cost = coupled_cost_qs.aggregate(
