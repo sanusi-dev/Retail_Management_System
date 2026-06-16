@@ -23,7 +23,9 @@ class DashboardViewTest(TestCase):
         response = self.client.get(self.dashboard_url)
         self.assertEqual(response.status_code, 200)
         self.assertIn('daily_sales', response.context)
-        self.assertIn('monthly_sales', response.context)
+        self.assertIn('period_sales', response.context)
+        self.assertIn('period_gross_profit', response.context)
+        self.assertIn('period_net_profit', response.context)
         self.assertIn('total_customers', response.context)
         self.assertIn('low_stock_products', response.context)
 
