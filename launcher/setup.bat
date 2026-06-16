@@ -110,15 +110,15 @@ if errorlevel 1 (
 )
 echo.
 
-echo [7/9] Creating admin account ...
-echo   Enter a username, email, and password for your admin login.
+echo [7/9] Admin account ...
 echo.
-python manage.py createsuperuser
-if errorlevel 1 (
-    echo   WARNING: Could not create admin account.
-    echo   Run this later in Command Prompt:
-    echo     %APP_DIR%\venv\Scripts\python.exe %APP_DIR%\manage.py createsuperuser
-)
+echo   If this is a fresh database, create an admin account now.
+echo   (If a database was provided, an account already exists and
+echo    you can skip this — just press Ctrl+C.)
+echo.
+
+python manage.py createsuperuser 2>nul || echo   (account already exists or skipped — that is OK)
+echo.
 echo.
 
 echo [8/9] Copying launcher files ...
@@ -144,8 +144,13 @@ echo   SETUP COMPLETE
 echo ========================================================
 echo.
 echo   Double-click "RetailMS" on your desktop to launch.
-echo   Login with the admin account you just created.
 echo   The app runs at: http://127.0.0.1:8000
+echo.
+echo   Login credentials:
+echo     If you created an account above, use those credentials.
+echo     If a database was provided, ask your developer for
+echo     the default login details.
+echo.
 echo.
 pause
 exit /b 0
