@@ -6,7 +6,7 @@ REM  RetailMS Launcher
 REM ============================================================
 
 set "APP_DIR=C:\RetailMS"
-set "PORT=8000"
+set "PORT=8088"
 set "VENV_DIR=%APP_DIR%\venv"
 set "APP_URL=http://127.0.0.1:%PORT%"
 set "LOG_FILE=%APP_DIR%\server.log"
