@@ -611,7 +611,7 @@ def transformations(request):
     search_query = request.GET.get("q", "")
     status_filter = request.GET.get("status", "")
     transformations = Transformation.objects.annotate(
-        _total_qty=Count("transformation_items")
+        total_qty=Count("transformation_items")
     ).order_by("-created_at")
 
     if search_query:
