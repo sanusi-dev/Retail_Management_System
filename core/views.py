@@ -6,7 +6,7 @@ from django.db.models.functions import TruncMonth, TruncDay, Coalesce
 from django.utils import timezone
 from datetime import timedelta, datetime
 from customer.models import Sale, Customer, Transaction, BoxedSale, CoupledSale, DepositAccount, PurchaseAgreement, CfaAgreement
-from inventory.models import Product, Inventory, Transformation
+from inventory.models import Product, Inventory
 from supply_chain.models import PurchaseOrder, Payment, GoodsReceipt
 import json
 from decimal import Decimal
@@ -77,16 +77,10 @@ def dashboard(request):
         total=Sum(F('boxed_sales__price') * F('boxed_sales__quantity')) + Sum('coupled_sales__price')
     )['total'] or 0
 
-    # Total Expenses (supplier payments + transformation service fees)
-    supplier_payments = period_filter(
+    # Total Expenses
+    period_expenses = period_filter(
         Payment.objects.filter(status=Payment.Status.PAID), 'payment_date'
     ).aggregate(total=Sum('amount_paid'))['total'] or 0
-
-    transformation_fees = period_filter(
-        Transformation.objects.all(), 'created_at'
-    ).aggregate(total=Sum('service_fee'))['total'] or 0
-
-    period_expenses = supplier_payments + transformation_fees
 
     # --- Gross Profit ---
     boxed_cost_qs = BoxedSale.objects.filter(sale__status=Sale.Status.ACTIVE)
