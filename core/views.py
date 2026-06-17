@@ -77,8 +77,8 @@ def dashboard(request):
         total=Sum(F('boxed_sales__price') * F('boxed_sales__quantity')) + Sum('coupled_sales__price')
     )['total'] or 0
 
-    # Total Expenses
-    period_expenses = period_filter(
+    # Supplier payments (inventory purchases — not expenses, shown separately)
+    supplier_payments = period_filter(
         Payment.objects.filter(status=Payment.Status.PAID), 'payment_date'
     ).aggregate(total=Sum('amount_paid'))['total'] or 0
 
@@ -98,8 +98,10 @@ def dashboard(request):
         total=Sum('transformation_item__unit_cost_at_transformation')
     )['total'] or Decimal('0.00')
 
-    period_gross_profit = period_sales - (boxed_cost + coupled_cost)
-    period_net_profit = period_gross_profit - period_expenses
+    cost_of_goods = boxed_cost + coupled_cost
+
+    period_gross_profit = period_sales - cost_of_goods
+    period_net_profit = period_gross_profit
     period_profit_margin = (period_gross_profit / period_sales * 100) if period_sales > 0 else 0
 
     # --- Customer Balances ---
@@ -253,7 +255,7 @@ def dashboard(request):
         'daily_sales': daily_sales,
         'period_sales': period_sales,
         'yearly_sales': yearly_sales,
-        'period_expenses': period_expenses,
+        'period_expenses': supplier_payments,
         'period_gross_profit': period_gross_profit,
         'period_net_profit': period_net_profit,
         'period_profit_margin': period_profit_margin,

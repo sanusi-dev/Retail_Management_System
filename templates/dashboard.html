@@ -120,18 +120,18 @@
         </div>
       </div>
       <div class="stat-card">
-        <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Total Expenses</div>
-        <div class="amount text-2xl lg:text-3xl font-semibold text-rose-600">
+        <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Inventory Purchased</div>
+        <div class="amount text-2xl lg:text-3xl font-semibold text-slate-900">
           ₦{{ period_expenses|floatformat:0|intcomma }}
         </div>
-        <div class="text-xs text-slate-400 mt-2">Supplier payments</div>
+        <div class="text-xs text-slate-400 mt-2">Stock acquired in period</div>
       </div>
       <div class="stat-card">
         <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Net Profit</div>
         <div class="amount text-2xl lg:text-3xl font-semibold {% if period_net_profit >= 0 %}text-emerald-700{% else %}text-rose-600{% endif %}">
           ₦{{ period_net_profit|floatformat:0|intcomma }}
         </div>
-        <div class="text-xs text-slate-400 mt-2">Revenue − Costs − Expenses</div>
+        <div class="text-xs text-slate-400 mt-2">Gross profit</div>
       </div>
       <div class="stat-card">
         <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Inventory Value</div>
