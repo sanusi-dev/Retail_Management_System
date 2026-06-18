@@ -655,12 +655,13 @@ class PurchaseAgreementLineItem(models.Model):
 
     @property
     def quantity_fulfilled_accross_all_versions(self):
-        """Sum ALL fulfillments for this line number across all versions"""
+        """Sum ACTIVE fulfillments for this line number across all versions"""
 
         total_boxed_sale = (
             BoxedSale.objects.filter(
                 agreement_line_item__line_number=self.line_number,
                 agreement_line_item__purchase_agreement=self.purchase_agreement,
+                sale__status=Sale.Status.ACTIVE,
             ).aggregate(total=Sum("quantity"))["total"]
             or 0
         )
@@ -668,6 +669,7 @@ class PurchaseAgreementLineItem(models.Model):
         total_coupled_sale = CoupledSale.objects.filter(
             agreement_line_item__line_number=self.line_number,
             agreement_line_item__purchase_agreement=self.purchase_agreement,
+            sale__status=Sale.Status.ACTIVE,
         ).count()
 
         return total_boxed_sale + total_coupled_sale
