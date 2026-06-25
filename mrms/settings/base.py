@@ -15,7 +15,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     "account",
-    "loan",
     "supply_chain",
     "customer",
     "inventory",

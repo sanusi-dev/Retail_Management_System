@@ -31,7 +31,7 @@ python manage.py test customer.tests.test_financial_logic   # single module
 python manage.py test inventory.tests.test_stock_display     # single test class
 ```
 
-No pytest config — uses Django's built-in test runner. Tests live in `customer/tests/` and `inventory/tests/` (app-level `tests/` packages), or `tests.py` at app root for other apps (`supply_chain`, `core`, `loan`).
+No pytest config — uses Django's built-in test runner. Tests live in `customer/tests/` and `inventory/tests/` (app-level `tests/` packages), or `tests.py` at app root for other apps (`supply_chain`, `core`).
 
 Dev dependencies include `Faker` (test factories), `djlint` (template linting), and `django-stubs` (type checking).
 
@@ -53,10 +53,9 @@ djlint --lint inventory/templates/                # template linting
 | `core` | `/` (dashboard) | Dashboard, AuditLog, shared utils |
 | `customer` | `/customer/` | Customers, DepositAccounts, Transactions, PurchaseAgreements, CFA, Sales |
 | `inventory` | `/inventory/` | Products, Brands, Inventory, Transformations |
-| `loan` | `/` (empty) | Loans, Repayments |
 | `supply_chain` | `/purchases/` | Suppliers, PurchaseOrders, Payments, GoodsReceipts |
 
-**Root URLconf**: `mrms/urls.py` — note `account` and `loan` mount at root with no prefix.
+**Root URLconf**: `mrms/urls.py` |
 
 ### Critical Pattern: Services Layer
 
@@ -82,7 +81,6 @@ Use `core.utils.audit(user, action, obj, detail=None, request=None)` from servic
 - `customer` models import from `inventory` (Product, TransformationItem, Inventory) and `account` (CustomUser)
 - `supply_chain` models import from `inventory` and uses `inventory.utils.create_inventory_transaction`
 - `inventory` models import from `account` and `inventory.utils`
-- `loan` models import from `customer` and `account`
 
 ### Inventory Transactions
 
