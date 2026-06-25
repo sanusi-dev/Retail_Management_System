@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: retail-management-system
+    runtime: python
+    buildCommand: |
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate
+    startCommand: gunicorn mrms.wsgi --log-file -
+    envVars:
+      - key: DJANGO_ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: .onrender.com
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://*.onrender.com
+      - key: PYTHON_VERSION
+        value: 3.12.0

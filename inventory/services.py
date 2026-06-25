@@ -42,11 +42,6 @@ def _deplete_fifo_layers(product, quantity):
         # Fallback: no (or insufficient) FIFO layers — use current WAC for the gap
         inventory = product.inventory
         wac = inventory.weighted_average_cost
-        if inventory.quantity < quantity:
-            raise BusinessRuleViolation(
-                f"Insufficient stock for {product.modelname}. "
-                f"Requested: {quantity}, available: {inventory.quantity}."
-            )
 
         gap = quantity - total_available
         # Create a synthetic layer for the uncovered portion (legacy inventory)

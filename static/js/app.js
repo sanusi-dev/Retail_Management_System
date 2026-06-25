@@ -53,6 +53,50 @@ document.addEventListener("keydown", function (e) {
   if (e.key === "Escape") closeModal();
 });
 
+// Mobile sidebar: toggle open/close
+function closeMobileSidebar() {
+  var sidebar = document.getElementById("sidebar");
+  var overlay = document.getElementById("sidebar-overlay");
+  if (sidebar) sidebar.classList.remove("open");
+  if (overlay) overlay.classList.remove("open");
+}
+
+function isMobile() {
+  return window.innerWidth < 1024;
+}
+
+// Hamburger toggle
+document.addEventListener("DOMContentLoaded", function () {
+  var toggleBtn = document.getElementById("mobile-menu-toggle");
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", function () {
+      var sidebar = document.getElementById("sidebar");
+      var overlay = document.getElementById("sidebar-overlay");
+      if (sidebar) sidebar.classList.toggle("open");
+      if (overlay) overlay.classList.toggle("open");
+    });
+  }
+
+  // Overlay click closes sidebar
+  var overlay = document.getElementById("sidebar-overlay");
+  if (overlay) {
+    overlay.addEventListener("click", function () {
+      closeMobileSidebar();
+    });
+  }
+
+  // Sidebar link clicks close mobile sidebar
+  var sidebar = document.getElementById("sidebar");
+  if (sidebar) {
+    sidebar.addEventListener("click", function (e) {
+      var link = e.target.closest("a.nav-link");
+      if (link && isMobile()) {
+        closeMobileSidebar();
+      }
+    });
+  }
+});
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 2. SweetAlert2 toast system

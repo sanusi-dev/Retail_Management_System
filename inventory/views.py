@@ -1,3 +1,4 @@
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django_htmx.http import replace_url
 from django.http import HttpResponse
@@ -147,6 +148,7 @@ def modal_manage_product(request, pk=None):
     )
 
 
+@login_required
 def delete_product(request, pk):
     product = get_object_or_404(Product, pk=pk)
 
@@ -434,9 +436,9 @@ def product_detail(request, pk):
     boxed_value = Decimal(str(boxed_qty)) * boxed_wac
 
     # Coupled data
-    coupled_variant = product.variants.filter(
-        type_variant=Product.TypeVariant.COUPLED
-    ).first()
+    coupled_variant = next(
+        (v for v in product.variants.all() if v.type_variant == Product.TypeVariant.COUPLED), None
+    )
 
     coupled_count = 0
     coupled_available = 0
@@ -511,7 +513,7 @@ def product_detail(request, pk):
 
     boxed_sales = (
         BoxedSale.objects.filter(product=product, sale__status=Sale.Status.ACTIVE)
-        .select_related("sale", "sale__customer")
+        .select_related("sale", "sale__customer", "product__inventory")
         .order_by("-sale__sale_date")[:100]
     )
 
@@ -674,6 +676,7 @@ def transformation_detail(request, pk):
     return render(request, "inventory/inventory/transformation_detail.html", context)
 
 
+@login_required
 def manage_transformations(request):
 
     if request.method == "POST":
@@ -681,12 +684,15 @@ def manage_transformations(request):
         formset = TransformationItemFormset(request.POST, prefix="items")
 
         if form.is_valid() and formset.is_valid():
-            transformation = services.process_transformation(form, formset, request)
-            messages.success(
-                request,
-                f"Transformation {transformation.transformation_number} saved successfully.",
-            )
-            return redirect("transformation_detail", pk=transformation.pk)
+            try:
+                transformation = services.process_transformation(form, formset, request)
+                messages.success(
+                    request,
+                    f"Transformation {transformation.transformation_number} saved successfully.",
+                )
+                return redirect("transformation_detail", pk=transformation.pk)
+            except services.BusinessRuleViolation as e:
+                messages.error(request, str(e))
 
     else:
         form = TransformationForm()
@@ -761,6 +767,7 @@ def transformation_item_remove(request, index):
     )
 
 
+@login_required
 def modal_void_transformation(request, pk):
     transformation = get_object_or_404(
         Transformation.objects.prefetch_related(

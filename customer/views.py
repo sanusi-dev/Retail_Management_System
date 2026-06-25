@@ -1,4 +1,5 @@
 from decimal import Decimal, InvalidOperation
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from render_block import render_block_to_string
 from django.urls import reverse
@@ -449,15 +450,13 @@ def modal_cfa_agreement_edit(request, pk):
         form = CfaAgreementForm(request.POST, instance=cfa_agreement)
         if form.is_valid():
             try:
-                with transaction.atomic():
-                    cfa_agreement.amount_allocated = form.cleaned_data[
-                        "amount_allocated"
-                    ]
-                    cfa_agreement.exchange_rate = form.cleaned_data["exchange_rate"]
-                    cfa_agreement.updated_by = request.user
-                    cfa_agreement.full_clean()
-                    cfa_agreement.save()
-                    customer_services._refresh_balances(cfa_agreement.account)
+                customer_services.update_cfa_agreement(
+                    cfa_agreement,
+                    form.cleaned_data["amount_allocated"],
+                    form.cleaned_data["exchange_rate"],
+                    request.user,
+                    request=request,
+                )
                 messages.success(request, "CFA agreement updated.")
                 response = HttpResponse(status=204)
                 response["HX-Trigger"] = "customerDetailChanged"
@@ -527,6 +526,7 @@ def modal_cancel_cfa_agreement(request, pk):
     )
 
 
+@login_required
 def modal_void_transaction(request, pk):
     txn = get_object_or_404(
         Transaction.objects.select_related("account__customer"), pk=pk
@@ -969,6 +969,7 @@ def agreement_line_item_remove(request, index):
     )
 
 
+@login_required
 def modal_cancel_purchase_agreement(request, pk):
     agreement = get_object_or_404(
         PurchaseAgreement.objects.select_related("account__customer"), pk=pk
@@ -1329,6 +1330,7 @@ def search_customers_for_sale(request):
     )
 
 
+@login_required
 def create_normal_sale(request):
     """Flow 1: Normal direct sale with Select2 customer picker."""
     selected_customer = None
@@ -1689,6 +1691,7 @@ def fulfill_agreement(request, customer_id, agreement_id):
     return render(request, "customers/sales/fulfill_agreement.html", context)
 
 
+@login_required
 def modal_void_sale(request, pk):
     sale = get_object_or_404(
         Sale.objects.select_related("customer__deposit_account"), pk=pk

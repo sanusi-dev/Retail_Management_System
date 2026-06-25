@@ -49,8 +49,6 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           {% if low_stock %}
             <a href="{% url 'products' %}"
-               hx-boost="true"
-               hx-target="#main_body"
                class="bg-white rounded-xl p-4 border border-brand-100 cursor-pointer hover:border-brand-300 hover:shadow-md transition-all block no-underline">
               <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Low Stock Alert</div>
               <div class="text-sm font-bold text-slate-900">
@@ -66,8 +64,6 @@
           {% endif %}
           {% if pending_deliveries %}
             <a href="{% url 'purchases' %}"
-               hx-boost="true"
-               hx-target="#main_body"
                class="bg-white rounded-xl p-4 border border-brand-100 cursor-pointer hover:border-brand-300 hover:shadow-md transition-all block no-underline">
               <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Pending Delivery</div>
               <div class="text-sm font-bold text-slate-900">{{ pending_deliveries.0.po_number }} awaiting goods</div>
@@ -81,8 +77,6 @@
           {% endif %}
           {% if idle_balances %}
             <a href="{% url 'customer_detail' idle_balances.0.customer.pk %}"
-               hx-boost="true"
-               hx-target="#main_body"
                class="bg-white rounded-xl p-4 border border-brand-100 cursor-pointer hover:border-brand-300 hover:shadow-md transition-all block no-underline">
               <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Large Idle Balance</div>
               <div class="text-sm font-bold text-slate-900">
@@ -249,10 +243,8 @@
       <div class="card overflow-hidden">
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div class="font-bold text-sm text-slate-800">Recent Deposits</div>
-          <a href="{% url 'customers' %}"
-             class="text-xs text-brand-600 font-bold hover:text-brand-700 transition-colors"
-             hx-boost="true"
-             hx-target="#main_body">View all →</a>
+           <a href="{% url 'customers' %}"
+              class="text-xs text-brand-600 font-bold hover:text-brand-700 transition-colors">View all →</a>
         </div>
         <div class="table-wrap">
           <table class="data-table">

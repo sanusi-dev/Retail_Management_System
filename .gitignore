@@ -23,18 +23,19 @@ venv.bak/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+*.db
+*.sqlite3
 media/
 mediafiles/
 staticfiles/
-
-# MySQL
-*.sql
+static/css/output.css
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+.code-workspace
 
 # OS
 .DS_Store
@@ -62,41 +63,46 @@ coverage.xml
 # Celery
 celerybeat-schedule
 
-# SageMath parsed files
-*.sage.py
-virtualenv/
-
-# Node modules (if not committed)
-node_modules/
-
 # Virtual environments
 .venv/
 
 # Build artifacts and distributions
 dist/
 dist_build/
-Retail_Management_System_Win_Dist.zip
+dist_resources/
+build/
+*.zip
+*.whl
+*.egg-info/
+*.tar.gz
 
 # Logs and backups
 logs/
 backups/
 
+# Windows scripts
+*.bat
+*.ps1
+*.vbs
+
 # Tailwind standalone CLI binary and config
 tailwindcss
-tailwind.config.js
-Procfile.tailwind
 
 # Static files (collected/generated)
 staticfiles/
-static/css/output.css
-
-# Temporary/compiled files
-*.egg-info/
-*.whl
-*.tar.gz
 
 # npm/node build artifacts
 package-lock.json
 
+# Session artifacts
+rms_session.json
+
 # Development files
 requirements-dev.txt
+
+# MySQL
+*.sql
+
+# SageMath parsed files
+*.sage.py
+virtualenv/

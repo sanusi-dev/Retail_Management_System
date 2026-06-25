@@ -4,7 +4,7 @@ from .views import *
 
 urlpatterns = [
     path("products/", products, name="products"),
-    path("products/modal/add", modal_manage_product, name="modal_add_product"),
+    path("products/modal/add/", modal_manage_product, name="modal_add_product"),
     path("products/modal/<uuid:pk>/", modal_manage_product, name="modal_edit_product"),
     path("products/add", manage_products, name="add_product"),
     path("products/edit/<uuid:pk>/", manage_products, name="edit_product"),
@@ -23,12 +23,12 @@ urlpatterns = [
     path("transformations/item/remove/<int:index>/", transformation_item_remove, name="transformation_item_remove"),
 
     path(
-        "transformations/modal/void/<uuid:pk>",
+        "transformations/modal/void/<uuid:pk>/",
         modal_void_transformation,
         name="modal_void_transformation",
     ),
     path(
-        "transformation_detail/<uuid:pk>",
+        "transformation_detail/<uuid:pk>/",
         transformation_detail,
         name="transformation_detail",
     ),

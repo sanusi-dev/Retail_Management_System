@@ -22,11 +22,12 @@ def apply_sorting(queryset: QuerySet, sort_field: str, direction: str = 'asc', a
     if not sort_field:
         return queryset
 
-    if allowed_fields and sort_field not in allowed_fields:
+    clean_field = sort_field.lstrip("-")
+    if allowed_fields and clean_field not in allowed_fields:
         return queryset
 
-    if direction == 'desc':
-        sort_field = f'-{sort_field}'
+    if direction == "desc":
+        sort_field = f"-{clean_field}"
 
     return queryset.order_by(sort_field)
 

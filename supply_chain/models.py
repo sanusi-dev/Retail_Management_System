@@ -165,7 +165,7 @@ class PurchaseOrder(models.Model):
 
     # Total quantity of units received for this purchase order
     @property
-    def total_recieved(self):
+    def total_received(self):
         total_received = self.po_items.aggregate(
             total=Sum(F("receipt_items__received_quantity"))
         )["total"]
@@ -232,9 +232,9 @@ class PurchaseOrder(models.Model):
         self.save()
 
     def update_po_delivery_status(self):
-        if self.total_ordered == self.total_recieved:
+        if self.total_ordered == self.total_received:
             self.delivery_status = self.DeliveryStatus.RECEIVED
-        elif self.total_recieved > 0:
+        elif self.total_received > 0:
             self.delivery_status = self.DeliveryStatus.PARTIALLY_RECEIVED
         else:
             self.delivery_status = self.DeliveryStatus.PENDING
@@ -559,6 +559,9 @@ class GoodsReceiptItem(models.Model):
         null=True,
         related_name="updated_%(class)s_set",
     )
+
+    class Meta:
+        ordering = ["created_at"]
 
     def __str__(self):
         return f"{self.goods_receipt.gr_number}"

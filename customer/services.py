@@ -79,6 +79,12 @@ def record_deposit(account, amount, note, user, request=None, created_at=None):
             txn.created_at = created_at
             txn.save(update_fields=["created_at"])
         _refresh_balances(account)
+
+        audit(user, 'create_deposit', txn, detail={
+            'amount': str(amount),
+            'account_id': str(account.pk),
+        }, request=request)
+
     return txn
 
 
@@ -304,6 +310,29 @@ def void_cfa_fulfillment(fulfillment_id, void_reason, user, request=None):
         }, request=request)
 
     return fulfillment
+
+
+def update_cfa_agreement(agreement, amount_allocated, exchange_rate, user, request=None):
+    """Update a CFA agreement's allocation and exchange rate."""
+    from customer.models import CfaAgreement
+
+    with db_transaction.atomic():
+        agreement_locked = CfaAgreement.objects.select_for_update().get(pk=agreement.pk)
+        agreement_locked.amount_allocated = amount_allocated
+        agreement_locked.exchange_rate = exchange_rate
+        agreement_locked.updated_by = user
+        agreement_locked.full_clean()
+        agreement_locked.save()
+        _refresh_balances(agreement_locked.account)
+
+        audit(user, 'update_cfa_agreement', agreement_locked, detail={
+            'cfa_agreement_number': agreement_locked.cfa_agreement_number,
+            'amount_allocated': str(amount_allocated),
+            'exchange_rate': str(exchange_rate),
+            'account_id': str(agreement_locked.account.pk),
+        }, request=request)
+
+    return agreement_locked
 
 
 def cancel_cfa_agreement(agreement_id, user, request=None):

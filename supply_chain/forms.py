@@ -111,7 +111,9 @@ class PaymentForm(ModelForm):
         amount = cleaned_data.get("amount_paid")
         purchase_order = cleaned_data.get("purchase_order")
 
-        purchase_order = get_object_or_404(PurchaseOrder, pk=purchase_order.pk)
+        if not purchase_order:
+            raise forms.ValidationError("A purchase order is required.")
+
         remaining_balance = (
             purchase_order.total_amount - purchase_order.total_payment_made
         )

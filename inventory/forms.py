@@ -83,7 +83,7 @@ class BaseTransformationItemFormSet(BaseModelFormSet):
         engine_numbers = set()
         chassis_numbers = set()
 
-        qs = TransformationItem.objects.all()
+        qs = TransformationItem.objects.exclude(status="voided")
         inventory = Inventory.objects.select_related("product")
         consumption_demand = {inv.product: 0 for inv in inventory}
         inventory_lookup = {inv.product: inv for inv in inventory}
@@ -96,7 +96,8 @@ class BaseTransformationItemFormSet(BaseModelFormSet):
                 continue
 
             source_product = form.cleaned_data.get("source_product")
-            consumption_demand[source_product] += 1
+            if source_product is not None:
+                consumption_demand[source_product] += 1
 
             engine_number = form.cleaned_data.get("engine_number")
             chassis_number = form.cleaned_data.get("chassis_number")

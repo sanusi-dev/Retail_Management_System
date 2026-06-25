@@ -51,6 +51,7 @@ class Customer(models.Model):
     )
 
     class Meta:
+        ordering = ["full_name"]
         indexes = [
             models.Index(fields=["customer_number"]),
             models.Index(fields=["phone"]),
@@ -124,6 +125,7 @@ class DepositAccount(models.Model):
     )
 
     class Meta:
+        ordering = ["account_number"]
         indexes = [
             models.Index(fields=["account_number"]),
         ]
@@ -1230,7 +1232,7 @@ class BoxedSale(models.Model):
 
         available_stock = inventory.quantity
 
-        if self._state.adding:
+        if not self._state.adding:
             try:
                 original_sale = BoxedSale.objects.get(pk=self.pk)
                 available_stock += original_sale.quantity

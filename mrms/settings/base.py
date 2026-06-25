@@ -1,18 +1,11 @@
 from pathlib import Path
 from decouple import config
+import dj_database_url
 
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+SECRET_KEY = config("SECRET_KEY", default="change-me-in-production")
 
-DEBUG = config("DEBUG", default=True, cast=bool)
-SECRET_KEY = config("SECRET_KEY")
-
-
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
-
-
-# Application definition
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -44,7 +37,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
-    "middleware.HtmxMessageMiddleware",  # must be last — reads messages into HX-Trigger
+    "middleware.HtmxMessageMiddleware",
 ]
 
 ROOT_URLCONF = "mrms.urls"
@@ -67,36 +60,30 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "mrms.wsgi.application"
 
-
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
-
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
-
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Africa/Lagos"
 USE_I18N = True
 USE_TZ = True
 
-
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [
-    BASE_DIR / "static",
-]
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
@@ -111,7 +98,8 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LOGIN_URL = "admin/login/"
-
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "admin/login/"
 
 LOGS_DIR = BASE_DIR / "logs"
 LOGGING = {
@@ -151,21 +139,16 @@ LOGGING = {
             "level": "ERROR",
         },
     },
-    # Root catches everything not explicitly handled — your app loggers land here
     "root": {
-        "handlers": (
-            ["console", "file", "error_file"] if DEBUG else ["file", "error_file"]
-        ),
+        "handlers": ["console", "file", "error_file"],
         "level": "DEBUG",
     },
     "loggers": {
-        # Django's own internal logging — noisy, keep it at INFO
         "django": {
-            "handlers": ["console", "file"] if DEBUG else ["file"],
+            "handlers": ["console", "file"],
             "level": "INFO",
             "propagate": False,
         },
-        # Request errors (500s) and security warnings
         "django.request": {
             "handlers": ["error_file"],
             "level": "ERROR",
@@ -176,9 +159,8 @@ LOGGING = {
             "level": "ERROR",
             "propagate": False,
         },
-        # Suppress noisy DB query logs unless you explicitly need them
         "django.db.backends": {
-            "handlers": ["console"] if DEBUG else [],
+            "handlers": ["console"],
             "level": "WARNING",
             "propagate": False,
         },

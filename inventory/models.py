@@ -32,6 +32,9 @@ class Brand(models.Model):
         related_name="updated_%(class)s_set",
     )
 
+    class Meta:
+        ordering = ["name"]
+
     def __str__(self):
         return self.name
 
@@ -235,6 +238,7 @@ class Inventory(models.Model):
 
     class Meta:
         ordering = ["-quantity"]
+        verbose_name_plural = "Inventories"
 
     def __str__(self):
         return self.product.modelname
@@ -349,6 +353,9 @@ class Transformation(models.Model):
         related_name="updated_%(class)s_set",
     )
 
+    class Meta:
+        ordering = ["-transformation_date"]
+
     def __str__(self):
         return f"{self.transformation_number.upper()}"
 
@@ -404,10 +411,10 @@ class TransformationItem(models.Model):
         limit_choices_to={"type_variant": Product.TypeVariant.COUPLED},
     )
     engine_number = models.CharField(
-        max_length=100, null=False, blank=False
+        max_length=100, null=False, blank=False, unique=True
     )
     chassis_number = models.CharField(
-        max_length=100, null=False, blank=False
+        max_length=100, null=False, blank=False, unique=True
     )
     allocated_service_fee = models.DecimalField(
         max_digits=10, decimal_places=2, default=0.00
@@ -443,8 +450,13 @@ class TransformationItem(models.Model):
         related_name="updated_%(class)s_set",
     )
 
+    class Meta:
+        ordering = ["created_at"]
+
     def __str__(self):
-        return f"{self.item_number} - {self.target_product.brand} - {self.target_product.modelname.upper()} - ENG: ...{self.engine_number[-5:]} | CHA: ...{self.chassis_number[-5:]}"
+        if self.target_product:
+            return f"{self.item_number} - {self.target_product.brand} - {self.target_product.modelname.upper()} - ENG: ...{self.engine_number[-5:]} | CHA: ...{self.chassis_number[-5:]}"
+        return f"Transformation Item {self.transformation_item_number} (no target product)"
 
     def clean(self):
         if self.source_product and self.source_product.type_variant != Product.TypeVariant.BOXED:
@@ -473,7 +485,9 @@ class TransformationItem(models.Model):
                 )
 
     def create_reversal(self):
-        inventory = self.source_product.inventory
+        inventory = Inventory.objects.select_for_update().get(
+            pk=self.source_product.inventory.pk
+        )
         inventory.quantity += 1
         inventory.save(update_fields=["quantity"])
 

@@ -47,6 +47,9 @@ class Loan(models.Model):
         related_name="updated_%(class)s_set",
     )
 
+    class Meta:
+        ordering = ["-loan_date"]
+
     def __str__(self):
         return str(self.loan_id)
 
@@ -97,6 +100,8 @@ class LoanRepayments(models.Model):
         return self.trxn_ref
 
     class Meta:
+        ordering = ["-repayment_date"]
+        verbose_name_plural = "Loan Repayments"
         constraints = [
             CheckConstraint(
                 condition=Q(amount__gt=0), name="chk_positive_repayment_amount"

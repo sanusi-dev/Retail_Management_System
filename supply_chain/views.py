@@ -1,3 +1,4 @@
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, HttpResponseBadRequest
 from django_htmx.http import replace_url, HttpResponseClientRedirect
@@ -156,12 +157,26 @@ def supplier_detail(request, pk):
     return render(request, "supply_chain/suppliers/supplier_detail.html", context)
 
 
+@login_required
 def delete_supplier(request, pk):
     supplier = get_object_or_404(Supplier, pk=pk)
 
     if request.method == "DELETE":
         supplier.delete()
-        suppliers = Supplier.objects.all()
+        suppliers = Supplier.objects.annotate(
+            open_po_count=Count("purchase_orders", filter=~Q(purchase_orders__status="closed")),
+            total_ordered_ytd=Coalesce(
+                Subquery(
+                    PurchaseOrder.objects.filter(
+                        supplier=OuterRef("pk"),
+                    )
+                    .annotate(total=Sum(F("po_items__ordered_quantity") * F("po_items__unit_price_at_order")))
+                    .values("total")[:1],
+                    output_field=DecimalField(),
+                ),
+                Value(0, output_field=DecimalField()),
+            ),
+        ).order_by("company_name")
         context = {"suppliers": suppliers}
 
         supplier_list = render_to_string(
@@ -242,6 +257,7 @@ def purchases(request):
         "all_suppliers": all_suppliers,
         "sort_field": sort_field,
         "direction": direction,
+        "params": request.GET.dict(),
     }
 
     if request.htmx:
@@ -418,12 +434,18 @@ def po_line_item_remove(request, index):
     )
 
 
+@login_required
 def delete_po(request, pk):
     purchase = get_object_or_404(PurchaseOrder, pk=pk)
 
     if request.method == "DELETE":
         purchase.delete()
-        purchases = PurchaseOrder.objects.select_related("supplier")
+        purchases = PurchaseOrder.objects.select_related("supplier").annotate(
+            total_amount_val=Coalesce(
+                Sum(F("po_items__ordered_quantity") * F("po_items__unit_price_at_order"), output_field=DecimalField()),
+                Value(0, output_field=DecimalField()),
+            )
+        ).order_by("-updated_at")
         context = {"purchases": purchases}
 
         purchase_list = render_to_string(
@@ -537,6 +559,7 @@ def payments_detail(request, pk):
     return render(request, "supply_chain/payment_made/payment_detail.html", context)
 
 
+@login_required
 def modal_void_payment(request, pk):
     payment = get_object_or_404(
         Payment.objects.select_related("purchase_order__supplier"), pk=pk
@@ -545,7 +568,7 @@ def modal_void_payment(request, pk):
     if request.method == "POST":
         void_reason = request.POST.get("void_reason", "")
         try:
-            services.void_supplier_payment(pk, request.user, request=request)
+            services.void_supplier_payment(pk, request.user, void_reason=void_reason, request=request)
             messages.success(request, f"Payment {payment.trxn_ref} voided.")
             response = HttpResponse(status=204)
             response["HX-Trigger"] = "paymentChanged"
@@ -608,6 +631,7 @@ def good_receipts(request):
         "filter_status": filter_status,
         "sort_field": sort_field,
         "direction": direction,
+        "params": request.GET.dict(),
     }
 
     if request.htmx:
@@ -649,6 +673,7 @@ def receipt_detail(request, pk):
     return render(request, "supply_chain/goods_receipts/receipt_detail.html", context)
 
 
+@login_required
 def modal_void_receipt(request, pk):
     receipt = get_object_or_404(
         GoodsReceipt.objects.select_related("purchase_order"), pk=pk
@@ -657,7 +682,7 @@ def modal_void_receipt(request, pk):
     if request.method == "POST":
         void_reason = request.POST.get("void_reason", "")
         try:
-            services.void_and_correct(receipt.pk, request.user, request=request)
+            services.void_and_correct(receipt.pk, request.user, void_reason=void_reason, request=request)
             messages.success(request, f"Receipt {receipt.gr_number} voided successfully.")
             response = HttpResponse(status=204)
             response["HX-Trigger"] = "receiptDetailChanged"
@@ -683,6 +708,7 @@ def modal_void_receipt(request, pk):
     )
 
 
+@login_required
 def manage_receipts(request):
     zipped_data = None
     formset = None

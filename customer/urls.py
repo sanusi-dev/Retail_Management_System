@@ -71,7 +71,7 @@ urlpatterns = [
         name="modal_cancel_purchase_agreement",
     ),
     path(
-        "modal/amend_line_item/<uuid:pk>",
+        "modal/amend_line_item/<uuid:pk>/",
         modal_amend_line_item,
         name="modal_amend_line_item",
     ),
@@ -81,7 +81,7 @@ urlpatterns = [
         name="agreement_detail",
     ),
     path(
-        "modal/deposit/<uuid:pk>",
+        "modal/deposit/<uuid:pk>/",
         modal_deposit,
         name="modal_deposit",
     ),
@@ -101,22 +101,22 @@ urlpatterns = [
         name="modal_void_cfa_fulfillment",
     ),
     path(
-        "modal/withdrawal/<uuid:pk>",
+        "modal/withdrawal/<uuid:pk>/",
         modal_withdrawal,
         name="modal_withdrawal",
     ),
     path(
-        "modal/cfa_agreement/<uuid:pk>",
+        "modal/cfa_agreement/<uuid:pk>/",
         modal_cfa_agreement,
         name="modal_cfa_agreement",
     ),
     path(
-        "modal/cfa_agreement/<uuid:pk>/edit",
+        "modal/cfa_agreement/<uuid:pk>/edit/",
         modal_cfa_agreement_edit,
         name="modal_cfa_agreement_edit",
     ),
     path(
-        "modal/cancel_cfa_agreement/<uuid:pk>",
+        "modal/cancel_cfa_agreement/<uuid:pk>/",
         modal_cancel_cfa_agreement,
         name="modal_cancel_cfa_agreement",
     ),

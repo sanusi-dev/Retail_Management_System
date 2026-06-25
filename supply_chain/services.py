@@ -51,6 +51,7 @@ def process_receipt(form, formset, user):
         receipt = form.save(commit=False)
         receipt.created_by = user
         receipt.updated_by = user
+        receipt.full_clean()
         receipt.save()
 
         items = formset.save(commit=False)
@@ -129,7 +130,7 @@ def can_void_receipt(receipt):
     return True 
 
 
-def void_and_correct(receipt_id, user, request=None):
+def void_and_correct(receipt_id, user, void_reason="", request=None):
     """
     Void a goods receipt: create reversals, restore inventory, update PO statuses.
     Replaces reverse_inventory_on_receipt_void, update_po_status,
@@ -199,6 +200,7 @@ def void_and_correct(receipt_id, user, request=None):
         audit(user, 'void_receipt', receipt, detail={
             'gr_number': receipt.gr_number,
             'po_number': receipt.purchase_order.po_number,
+            'void_reason': void_reason,
         }, request=request)
 
 
@@ -225,7 +227,7 @@ def record_supplier_payment(po, amount, method, user, trxn_ref="", remark=""):
     return payment
 
 
-def void_supplier_payment(payment_id, user, request=None):
+def void_supplier_payment(payment_id, user, void_reason="", request=None):
     """
     Void a supplier payment and update PO payment status.
     Replaces update_po_payment_status signal.
@@ -248,6 +250,7 @@ def void_supplier_payment(payment_id, user, request=None):
             'payment_method': payment.payment_method,
             'po_number': payment.purchase_order.po_number,
             'trxn_ref': payment.trxn_ref,
+            'void_reason': void_reason,
         }, request=request)
 
     return payment

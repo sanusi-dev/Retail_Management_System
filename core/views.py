@@ -195,6 +195,11 @@ def dashboard(request):
     # --- Recent Activity ---
     recent_sales = Sale.objects.filter(
         status=Sale.Status.ACTIVE
+    ).annotate(
+        sales_total=(
+            Sum(F("boxed_sales__price") * F("boxed_sales__quantity")) +
+            Sum("coupled_sales__price")
+        )
     ).select_related('customer').order_by('-sale_date')[:5]
 
     recent_deposits = Transaction.objects.filter(
@@ -266,7 +271,6 @@ def dashboard(request):
         'recent_sales': recent_sales,
         'recent_deposits': recent_deposits,
         'low_stock_products': low_stock,
-        'stockouts_count': len(stockout),
         'total_stock_value': total_stock_value,
         'total_customers': total_customers,
         'new_customers_period': new_customers_period,
