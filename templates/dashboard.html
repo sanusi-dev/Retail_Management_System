@@ -218,7 +218,7 @@
                     <div class="text-xs text-slate-400 font-mono mt-0.5">{{ sale.sale_number }}</div>
                   </td>
                   <td class="text-right">
-                    <div class="amount font-bold text-sm text-slate-800">₦{{ sale.sales_total|floatformat:0|intcomma }}</div>
+                    <div class="amount font-bold text-sm text-slate-800">₦{{ sale.calc_total|floatformat:0|intcomma }}</div>
                     <div class="text-xs text-slate-400">{{ sale.get_payment_method_display }}</div>
                   </td>
                   <td class="text-right">

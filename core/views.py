@@ -196,7 +196,7 @@ def dashboard(request):
     recent_sales = Sale.objects.filter(
         status=Sale.Status.ACTIVE
     ).annotate(
-        sales_total=(
+        calc_total=(
             Sum(F("boxed_sales__price") * F("boxed_sales__quantity")) +
             Sum("coupled_sales__price")
         )
