@@ -27,5 +27,5 @@ class DashboardViewTest(TestCase):
         self.assertIn('period_gross_profit', response.context)
         self.assertIn('period_net_profit', response.context)
         self.assertIn('total_customers', response.context)
-        self.assertIn('low_stock_products', response.context)
+        self.assertIn('low_stock', response.context)
 

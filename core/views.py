@@ -58,24 +58,45 @@ def dashboard(request):
     def period_filter(queryset, date_field):
         return queryset.filter(**{f'{date_field}__date__gte': start_date, f'{date_field}__date__lte': end_date})
 
+    # --- Safe revenue calculation helpers ---
+    # Use separate aggregates on BoxedSale + CoupledSale to avoid NULL poisoning
+    # and cartesian-product bugs from joining two reverse relations in one Sum expr.
+    def _revenue_in_range(start, end):
+        """Total revenue from ACTIVE sales with sale_date in [start, end] (inclusive)."""
+        boxed = BoxedSale.objects.filter(
+            sale__status=Sale.Status.ACTIVE,
+            sale__sale_date__date__gte=start,
+            sale__sale_date__date__lte=end,
+        ).aggregate(
+            total=Coalesce(
+                Sum(F("price") * F("quantity"), output_field=DecimalField()),
+                Value(Decimal("0.00")),
+                output_field=DecimalField(),
+            )
+        )["total"] or Decimal("0.00")
+
+        coupled = CoupledSale.objects.filter(
+            sale__status=Sale.Status.ACTIVE,
+            sale__sale_date__date__gte=start,
+            sale__sale_date__date__lte=end,
+        ).aggregate(
+            total=Coalesce(
+                Sum("price", output_field=DecimalField()),
+                Value(Decimal("0.00")),
+                output_field=DecimalField(),
+            )
+        )["total"] or Decimal("0.00")
+
+        return boxed + coupled
+
     # --- Financial Metrics ---
-    daily_sales = Sale.objects.filter(
-        sale_date__date=today, status=Sale.Status.ACTIVE
-    ).aggregate(
-        total=Sum(F('boxed_sales__price') * F('boxed_sales__quantity')) + Sum('coupled_sales__price')
-    )['total'] or 0
+    daily_sales = _revenue_in_range(today, today)
 
-    period_sales = period_filter(
-        Sale.objects.filter(status=Sale.Status.ACTIVE), 'sale_date'
-    ).aggregate(
-        total=Sum(F('boxed_sales__price') * F('boxed_sales__quantity')) + Sum('coupled_sales__price')
-    )['total'] or 0
+    period_sales = _revenue_in_range(start_date, end_date)
 
-    yearly_sales = Sale.objects.filter(
-        sale_date__year=current_year, status=Sale.Status.ACTIVE
-    ).aggregate(
-        total=Sum(F('boxed_sales__price') * F('boxed_sales__quantity')) + Sum('coupled_sales__price')
-    )['total'] or 0
+    year_start = today.replace(month=1, day=1)
+    year_end = today.replace(month=12, day=31)
+    yearly_sales = _revenue_in_range(year_start, year_end)
 
     # Supplier payments (inventory purchases — not expenses, shown separately)
     supplier_payments = period_filter(
@@ -89,14 +110,27 @@ def dashboard(request):
     coupled_cost_qs = period_filter(coupled_cost_qs, 'sale__sale_date')
 
     boxed_cost = boxed_cost_qs.aggregate(
-        total=Sum(
-            Coalesce('cost_basis', F('quantity') * F('product__inventory__weighted_average_cost'), output_field=DecimalField())
+        total=Coalesce(
+            Sum(
+                Coalesce(
+                    "cost_basis",
+                    F("quantity") * F("product__inventory__weighted_average_cost"),
+                    output_field=DecimalField(),
+                ),
+                output_field=DecimalField(),
+            ),
+            Value(Decimal("0.00")),
+            output_field=DecimalField(),
         )
-    )['total'] or Decimal('0.00')
+    )["total"] or Decimal("0.00")
 
     coupled_cost = coupled_cost_qs.aggregate(
-        total=Sum('transformation_item__unit_cost_at_transformation')
-    )['total'] or Decimal('0.00')
+        total=Coalesce(
+            Sum("transformation_item__unit_cost_at_transformation", output_field=DecimalField()),
+            Value(Decimal("0.00")),
+            output_field=DecimalField(),
+        )
+    )["total"] or Decimal("0.00")
 
     cost_of_goods = boxed_cost + coupled_cost
 
@@ -120,20 +154,14 @@ def dashboard(request):
 
     # --- Charts Data ---
     last_7_days = today - timedelta(days=6)
-    sales_last_7_days = Sale.objects.filter(
-        sale_date__date__gte=last_7_days, status=Sale.Status.ACTIVE
-    ).annotate(day=TruncDay('sale_date')).values('day').annotate(
-        total=Sum(F('boxed_sales__price') * F('boxed_sales__quantity')) + Sum('coupled_sales__price')
-    ).order_by('day')
-
     days_labels = []
     days_data = []
-    sales_dict = {entry['day'].strftime('%Y-%m-%d'): entry['total'] for entry in sales_last_7_days}
-
     for i in range(7):
-        day = (last_7_days + timedelta(days=i)).strftime('%Y-%m-%d')
-        days_labels.append(day)
-        days_data.append(float(sales_dict.get(day) or 0))
+        day = last_7_days + timedelta(days=i)
+        day_str = day.strftime("%Y-%m-%d")
+        days_labels.append(day_str)
+        rev = _revenue_in_range(day, day)
+        days_data.append(float(rev))
 
     chart_max = max(days_data) if days_data else 1
     if chart_max == 0:
@@ -158,24 +186,53 @@ def dashboard(request):
         })
 
     # --- Top Selling Products ---
-    top_products_qs = Product.objects.annotate(
-        total_revenue=Coalesce(
-            Sum(F('boxed_sales__price') * F('boxed_sales__quantity'),
-                filter=Q(boxed_sales__sale__status=Sale.Status.ACTIVE)
-            ), 0.0, output_field=DecimalField()
-        ) + Coalesce(
-            Sum('transform_to__coupled_sales__price',
-                filter=Q(transform_to__coupled_sales__sale__status=Sale.Status.ACTIVE)
-            ), 0.0, output_field=DecimalField()
+    # Compute using separate per-channel aggregates + python merge to avoid
+    # cross-relation Sum cartesian / date-filter join duplication bugs.
+    boxed_revenue = (
+        BoxedSale.objects.filter(
+            sale__status=Sale.Status.ACTIVE,
+            sale__sale_date__date__gte=start_date,
+            sale__sale_date__date__lte=end_date,
+        )
+        .values("product_id")
+        .annotate(
+            rev=Coalesce(
+                Sum(F("price") * F("quantity"), output_field=DecimalField()),
+                Value(Decimal("0.00")),
+            )
         )
     )
+    boxed_map = {item["product_id"]: item["rev"] for item in boxed_revenue}
 
-    top_products_qs = top_products_qs.filter(
-        Q(boxed_sales__sale__sale_date__date__gte=start_date, boxed_sales__sale__sale_date__date__lte=end_date) |
-        Q(transform_to__coupled_sales__sale__sale_date__date__gte=start_date, transform_to__coupled_sales__sale__sale_date__date__lte=end_date)
+    coupled_revenue = (
+        CoupledSale.objects.filter(
+            sale__status=Sale.Status.ACTIVE,
+            sale__sale_date__date__gte=start_date,
+            sale__sale_date__date__lte=end_date,
+        )
+        .values("transformation_item__target_product_id")
+        .annotate(
+            rev=Coalesce(Sum("price", output_field=DecimalField()), Value(Decimal("0.00")))
+        )
     )
+    coupled_map = {
+        item["transformation_item__target_product_id"]: item["rev"] for item in coupled_revenue
+    }
 
-    top_products = top_products_qs.order_by('-total_revenue').distinct()[:5]
+    all_revenues = {}
+    for pid, rev in boxed_map.items():
+        all_revenues[pid] = all_revenues.get(pid, Decimal("0.00")) + rev
+    for pid, rev in coupled_map.items():
+        all_revenues[pid] = all_revenues.get(pid, Decimal("0.00")) + rev
+
+    sorted_items = sorted(all_revenues.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_pids = [pid for pid, _ in sorted_items]
+    top_products = list(Product.objects.filter(pk__in=top_pids)) if top_pids else []
+
+    rev_map = {pid: rev for pid, rev in sorted_items}
+    for p in top_products:
+        p.total_revenue = rev_map.get(p.pk, Decimal("0.00"))
+    top_products.sort(key=lambda p: p.total_revenue, reverse=True)
 
     max_revenue = max([float(p.total_revenue) for p in top_products], default=1) or 1
     for p in top_products:
@@ -193,14 +250,15 @@ def dashboard(request):
     category_data = [float(item['total']) for item in sales_by_category]
 
     # --- Recent Activity ---
-    recent_sales = Sale.objects.filter(
-        status=Sale.Status.ACTIVE
-    ).annotate(
-        calc_total=(
-            Sum(F("boxed_sales__price") * F("boxed_sales__quantity")) +
-            Sum("coupled_sales__price")
-        )
-    ).select_related('customer').order_by('-sale_date')[:5]
+    # Avoid fragile annotate; reuse the model's sales_total property which
+    # safely aggregates boxed + coupled separately.
+    recent_sales = (
+        Sale.objects.filter(status=Sale.Status.ACTIVE)
+        .select_related("customer")
+        .order_by("-sale_date")[:5]
+    )
+    for sale in recent_sales:
+        sale.calc_total = sale.sales_total
 
     recent_deposits = Transaction.objects.filter(
         status=Transaction.Status.ACTIVE,
@@ -270,11 +328,9 @@ def dashboard(request):
         'active_agreement_count': active_agreement_count,
         'recent_sales': recent_sales,
         'recent_deposits': recent_deposits,
-        'low_stock_products': low_stock,
         'total_stock_value': total_stock_value,
         'total_customers': total_customers,
         'new_customers_period': new_customers_period,
-        'pending_deliveries': pending_deliveries_count,
         'days_labels': json.dumps(days_labels),
         'days_data': json.dumps(days_data),
         'top_products_names': json.dumps([p.modelname for p in top_products]),
